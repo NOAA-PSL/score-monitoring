@@ -84,9 +84,8 @@
 		execution retry delays = 168*PT2H # if job fails, wait two hours and try again
     [[get_data<stats>]]
         inherit=GET_DATA
-        script = """
-        # line to run script 
-        print("Hello World 123")
+        script = """ 
+        echo Hello World
         """
     
 
