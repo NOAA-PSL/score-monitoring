@@ -22,22 +22,23 @@
 # <http://www.gnu.org/licenses/>.
 
 # =========================================================================
-
-title = "monitoring statistics"
-description = "perform statistics monitoring for replay experiments"
+[meta]
+	title = "monitoring statistics"
+	description = "perform statistics monitoring for replay experiments"
 
 # parameters 
 {% set MAIL_ADDRESS = 'jessica.knezha@noaa.gov' %}
-{% set INITIAL_CYCLE_POINT = 2015010100 %}
-{% set FINAL_CYCLE_POINT = 2016010100 %}
+{% set INITIAL_CYCLE_POINT = '20150101T00' %}
+{% set FINAL_CYCLE_POINT = '20160101T00' %}
 #TODO: insert other necessary parameters
 
 [cylc]
-    UTC mode = TRUE
+    UTC mode = True
+    cycle point format = %Y%m%dT%H
     [[environment]]
         MAIL_ADDRESS = {{ MAIL_ADDRESS }}
     [[parameters]]
-        statistics = file_count
+        stats = file_count
     
 [scheduling]
     initial cycle point = {{ INITIAL_CYCLE_POINT }}
@@ -45,17 +46,9 @@ description = "perform statistics monitoring for replay experiments"
     max active cycle points = 1
 
     [[dependencies]]
-        [[[0Z]]]
+        [[[T06]]]
             graph = """
-            """
-        [[[6Z]]]
-            graph = """
-            """
-        [[[12Z]]]
-            graph = """
-            """
-        [[[18Z]]]
-            graph = """
+		GET_DATA
             """
 
 [runtime]
@@ -78,21 +71,18 @@ description = "perform statistics monitoring for replay experiments"
         if [[ -d ${JOBDIR:+"$JOBDIR"} ]]; then 
             rm -rf ${JOBDIR}
         fi
-        """
+        """ 
 
-            [[[simulation mode]]]
-                run time range = PT2S, PT3S # in simulation mode, 2 seconds per task 
-
-            [[[job submission]]]
-                method = background
-                shell = /bin/ksh -1 #TODO: I DON'T THINK THIS APPLIES HERE
+            [[[job]]]
+                batch system = background
             
-            [[[event hooks]]]
+            [[[events]]]
                 failed handler = cylc email-task
-                submission failed handlet = cylc email-task
+                submission failed handler = cylc email-task
     [[GET_DATA]]
-        retry delays = 168*PT2H # if job fails, wait two hours and try again
-    [[get_data<stats,member>]]
+        [[[job]]]
+		execution retry delays = 168*PT2H # if job fails, wait two hours and try again
+    [[get_data<stats>]]
         inherit=GET_DATA
         script = """
         # line to run script 
