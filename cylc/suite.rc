@@ -85,7 +85,7 @@
     [[get_data<stats>]]
         inherit=GET_DATA
         script = """
-		 python $CYLC_SUITE_DEF_PATH/../scripts/hello-world.py
+		 python $CYLC_SUITE_DEF_PATH/../scripts/bucket-file-count.py
     	"""
 
 
