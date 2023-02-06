@@ -19,7 +19,8 @@ s3 = boto3.resource(
 bucket = s3.Bucket('noaa-ufs-gefsv13replay-pds')
 
 prefix = "spinup/" + year + "/" + month + "/" + datetime + "/"
-file_list = bucket.objects.filter(Prefix=prefix)
-file_count = len(file_list)
+file_count = 0
+files = bucket.objects.filter(Prefix=prefix)
+for file in files: file_count+=1
 print("File count: ")
 print(file_count)
