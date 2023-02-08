@@ -48,7 +48,7 @@
     [[dependencies]]
         [[[T06]]]
             graph = """
-		GET_DATA
+		        GET_DATA
             """
 
 [runtime]
