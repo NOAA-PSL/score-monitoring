@@ -1,6 +1,6 @@
 import sys
-from datetime import datetime
 import boto3
+from datetime import datetime
 from botocore import UNSIGNED
 from botocore.client import Config
 
@@ -10,9 +10,9 @@ print(sys.argv[1])
 input = sys.argv[1]
 datetime_obj =  datetime.strptime(input, "%Y%m%dT%H")
 # parse input into year, month, and datetime without the T 
-year = datetime_obj.year
-month = datetime_obj.month
-datetime = datetime.strftime("%Y%m%d%H")
+year = datetime_obj.strftime("%Y")
+month = datetime_obj.strftime("%m")
+datetime = datetime_obj.strftime("%Y%m%d%H")
 
 print("year: ")
 print(year)
