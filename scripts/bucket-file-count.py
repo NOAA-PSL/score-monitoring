@@ -9,17 +9,9 @@ print(sys.argv[1])
 
 input = sys.argv[1]
 datetime_obj =  datetime.strptime(input, "%Y%m%dT%H")
-# parse input into year, month, and datetime without the T 
 year = datetime_obj.strftime("%Y")
 month = datetime_obj.strftime("%m")
 datetime = datetime_obj.strftime("%Y%m%d%H")
-
-print("year: ")
-print(year)
-print("month: ")
-print(month)
-print("datetime: ")
-print(datetime)
 
 s3 = boto3.resource(
     's3',
@@ -34,5 +26,6 @@ file_count = 0
 files = bucket.objects.filter(Prefix=prefix)
 for file in files: 
     file_count+=1
+    
 print("File count: ")
 print(file_count)
