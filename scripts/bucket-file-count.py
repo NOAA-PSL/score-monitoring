@@ -19,9 +19,11 @@ s3 = boto3.resource(
     aws_secret_access_key='',
     config=Config(signature_version=UNSIGNED)
 )
-bucket = s3.Bucket('noaa-ufs-gefsv13replay-pds')
+# bucket = s3.Bucket('noaa-ufs-gefsv13replay-pds')
+bucket = s3.Bucket('noaa-reanalyses-pds')
 
-prefix = "spinup/" + year + "/" + month + "/" + datetime + "/"
+# prefix = "spinup/" + year + "/" + month + "/" + datetime + "/"
+prefix = "observations/reanalysis/ozone/nasa/sbuv_v87/" + year + "/" +  month + "/bufr/"
 file_count = 0
 files = bucket.objects.filter(Prefix=prefix)
 for file in files: 
