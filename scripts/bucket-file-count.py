@@ -26,6 +26,9 @@ file_count = 0
 files = bucket.objects.filter(Prefix=prefix)
 for file in files: 
     file_count+=1
-    
+
+if file_count is 0:
+    raise Exception("no files found in bucket " + datetime)
+
 print("File count: ")
 print(file_count)
