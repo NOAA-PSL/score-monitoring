@@ -19,10 +19,10 @@ s3 = boto3.resource(
     aws_secret_access_key='',
     config=Config(signature_version=UNSIGNED)
 )
+
 bucket = s3.Bucket('noaa-ufs-gefsv13replay-pds')
-# bucket = s3.Bucket('noaa-reanalyses-pds')
 prefix = "spinup/" + year + "/" + month + "/" + datetime_str + "/"
-# prefix = "observations/reanalysis/ozone/nasa/sbuv_v87/" + year + "/" +  month + "/bufr/"
+
 file_count = 0
 latest = dt.datetime(1, 1, 1, tzinfo=dt.timezone.utc)
 files = bucket.objects.filter(Prefix=prefix)
@@ -32,13 +32,14 @@ for file in files:
         latest = file.last_modified
 
 if file_count is 0:
-    raise Exception("no files found in bucket " + datetime)
+    raise Exception("no files found in bucket " + datetime_str)
 
 diff = dt.datetime.now(dt.timezone.utc) - latest 
+diff_minutes = diff.total_seconds() / 60
 
-print("minutes")
-print(diff.minute) 
-if diff.minute < 30:
+print("minutes: ")
+print(diff_minutes) 
+if diff_minutes < 30:
     raise Exception("the latest file is more recent than 30 minutes, try again later")
 
 print("last modified:")
