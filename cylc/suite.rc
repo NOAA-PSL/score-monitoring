@@ -46,7 +46,19 @@
     max active cycle points = 1
 
     [[dependencies]]
+        [[[T00]]]
+            graph = """
+		        GET_DATA
+            """
         [[[T06]]]
+            graph = """
+		        GET_DATA
+            """
+        [[[T12]]]
+            graph = """
+		        GET_DATA
+            """
+        [[[T18]]]
             graph = """
 		        GET_DATA
             """
