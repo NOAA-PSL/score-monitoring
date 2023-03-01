@@ -93,12 +93,11 @@
                 submission failed handler = cylc email-task
 
     [[FILE_CHECK]]
-        [[[job]]]
-        execution retry delays = 168*PT1H # if job fails, wait one hour and try again
         script = """
             python $CYLC_SUITE_DEF_PATH/../scripts/bucket-file-count.py $CYLC_TASK_CYCLE_POINT
         """
-
+	[[[job]]]
+		execution retry delays = 168*PT1H # if job fails, wait one hour and try again
     [[GET_DATA]]
         [[[job]]]
 		execution retry delays = 168*PT1H # if job fails, wait one hour and try again
