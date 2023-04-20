@@ -3,6 +3,8 @@ import boto3
 import datetime as dt
 from botocore import UNSIGNED
 from botocore.client import Config
+from dotenv import load_dotenv
+import os
 
 print("Arg value: ")
 print(sys.argv[1])
@@ -13,6 +15,8 @@ year = datetime_obj.strftime("%Y")
 month = datetime_obj.strftime("%m")
 datetime_str = datetime_obj.strftime("%Y%m%d%H")
 
+load_dotenv()
+
 s3 = boto3.resource(
     's3',
     aws_access_key_id='',
@@ -20,7 +24,7 @@ s3 = boto3.resource(
     config=Config(signature_version=UNSIGNED)
 )
 
-bucket = s3.Bucket('noaa-ufs-gefsv13replay-pds')
+bucket = s3.Bucket(os.getenv('S3_BUCKET'))
 prefix = "spinup/" + year + "/" + month + "/" + datetime_str + "/"
 
 file_count = 0

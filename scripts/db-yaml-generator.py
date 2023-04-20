@@ -2,53 +2,81 @@ import yaml
 import pathlib
 import os
 import datetime as dt
+from dotenv import load_dotenv
 
 PY_CURRENT_DIR = pathlib.Path(__file__).parent.resolve()
 
-def generate_exp_reg_yaml(exp_name):
-    yaml_file_path = os.path.join(PY_CURRENT_DIR, 'replay-exp-reg-', dt.datetime.now().strftime("%Y%m%d%H%M%S"), '.yaml')
+load_dotenv()
+
+YAML_FILE_PREFIX = 'monitoring-yaml-'
+
+def generate_exp_reg_yaml(cycle_start, cycle_end):
+    yaml_file_path = os.path.join(PY_CURRENT_DIR, YAML_FILE_PREFIX, dt.datetime.now().strftime("%Y%m%d%H%M%S"), '.yaml')
     
     body = {
         'db_request_name' : 'experiment',
         'method': 'PUT',
         'body' : {
-            'name' : exp_name,
+            'name' : os.getenv('EXPERIMENT_NAME'),
             'datestr_format' : "%Y-%m-%d %H:%M:%S",
-            'cycle_start' : '',
-            'cycle_stop' : '',
+            'cycle_start' : cycle_start,
+            'cycle_stop' : cycle_end,
             'owner_id' : 'score-mointoring.generated',
             'group_id' : 'gsienkf',
             'experiment_type' : 'REPLAY',
             'platform' : 'aws',
-            'wallclock_start' : '',
+            'wallclock_start' : os.getenv('EXPERIMENT_WALLCLOCK_START'),
             'wallclock_end' : '',
             'description' : '{}'
         }
     }
 
-    yaml_file = yaml.dump(body, yaml_file_path)
+    yaml.dump(body, yaml_file_path)
     return yaml_file_path
 
-def generate_metrics_yaml(exp_name, metric_name):
-    yaml_file_path = os.path.join(PY_CURRENT_DIR, 'replay-exp-reg-', dt.datetime.now().strftime("%Y%m%d%H%M%S"), '.yaml')
+def generate_metrics_yaml(cycle_start, cycle_end, metric_name):
+    yaml_file_path = os.path.join(PY_CURRENT_DIR, YAML_FILE_PREFIX, dt.datetime.now().strftime("%Y%m%d%H%M%S"), '.yaml')
     
     body = {
         'db_request_name' : 'expt_metrics',
         'method': 'PUT',
         'body' : {
-            'name' : exp_name,
-            'datestr_format' : "%Y-%m-%d %H:%M:%S",
-            'cycle_start' : '',
-            'cycle_stop' : '',
-            'owner_id' : 'score-mointoring.generated',
-            'group_id' : 'gsienkf',
-            'experiment_type' : 'REPLAY',
-            'platform' : 'aws',
-            'wallclock_start' : '',
-            'wallclock_end' : '',
-            'description' : '{}'
+            'expt_name': os.getenv('EXPERIMENT_NAME'),
+            'expt_wallclock_start': os.getenv('EXPERIMENT_WALLCLOCK_START'),
+            'metrics': {
+                'name': '',
+                'region_name': '',
+                'elevation': '',
+                'elevation_unit':'',
+                'value': '',
+                'time_valid': ''
+            },
+            'datestr_format': '%Y-%m-%d %H:%M:%S',
         }
     }
 
-    yaml_file = yaml.dump(body, yaml_file_path)
+    yaml.dump(body, yaml_file_path)
     return yaml_file_path
+
+def generate_file_count_yaml(count, file_type, file_extension, time_valid, location_key):
+    yaml_file_path = os.path.join(PY_CURRENT_DIR, YAML_FILE_PREFIX, dt.datetime.now().strftime("%Y%m%d%H%M%S"), '.yaml')
+
+    body = {
+        'name': 'expt_file_counts',
+        'method': 'PUT',
+        'body': {
+            'experiment_name': os.getenv('EXPERIMENT_NAME'),
+            'wallclock_start': os.getenv('EXPERIMENT_WALLCLOCK_START'),
+            'file_type_name': file_type,
+            'file_extension': file_extension,
+            'time_valid' : time_valid,
+            'storage_loc_name' : os.getenv('STORAGE_LOCATION_NAME'),
+            'storage_loc_platform': os.getenv('STORAGE_LOCATION_PLATFORM'),
+            'storage_loc_key': location_key,
+            'count': count
+        }
+    }
+
+    yaml.dump(body, yaml_file_path)
+    return yaml_file_path
+
