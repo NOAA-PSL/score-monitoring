@@ -6,6 +6,7 @@ from botocore.client import Config
 import db_yaml_generator 
 import os
 from dotenv import load_dotenv
+import score_db.score_db_base as db
 
 
 print("Arg value: ")
@@ -43,4 +44,5 @@ print(file_count)
 # count, file_type, file_extension, time_valid, location_key
 yaml_file = db_yaml_generator.generate_file_count_yaml(file_count, FILETYPE, EXTENSION, dt.now(), prefix)
 
-# call score-db with this yaml file--- should this be an imported module ike hv into db?
+response = db.handle_request(yaml_file)
+print(response)
