@@ -28,8 +28,8 @@
 
 # parameters 
 {% set MAIL_ADDRESS = 'jessica.knezha@noaa.gov' %}
-{% set INITIAL_CYCLE_POINT = '20190429T06' %}
-{% set FINAL_CYCLE_POINT = '20190430T18' %}
+{% set INITIAL_CYCLE_POINT = '20190201T06' %}
+{% set FINAL_CYCLE_POINT = '20190203T18' %}
 #TODO: insert other necessary parameters
 
 [cylc]

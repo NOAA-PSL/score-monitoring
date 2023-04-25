@@ -5,8 +5,10 @@ from botocore import UNSIGNED
 from botocore.client import Config
 import db_yaml_generator 
 import os
+import pathlib
+
 from dotenv import load_dotenv
-import score_db.score_db_base as db
+import subprocess
 
 
 print("Arg value: ")
@@ -17,6 +19,7 @@ datetime_obj = dt.datetime.strptime(input, "%Y%m%dT%H")
 year = datetime_obj.strftime("%Y")
 month = datetime_obj.strftime("%m")
 datetime_str = datetime_obj.strftime("%Y%m%d%H")
+cycle_str = datetime_obj.strftime("%Y-%m-%d %H:%M:%S")
 
 load_dotenv()
 
@@ -30,6 +33,8 @@ s3 = boto3.resource(
 bucket = s3.Bucket(os.getenv('S3_BUCKET'))
 prefix = "spinup/" + year + "/" + month + "/" + datetime_str + "/"
 
+file_type = 'all_files'
+
 file_count = 0
 files = bucket.objects.filter(Prefix=prefix)
 for file in files: 
@@ -41,8 +46,8 @@ if file_count is 0:
 print("File count: ")
 print(file_count)
 
-# count, file_type, file_extension, time_valid, location_key
-yaml_file = db_yaml_generator.generate_file_count_yaml(file_count, FILETYPE, EXTENSION, dt.now(), prefix)
+yaml_file = db_yaml_generator.generate_file_count_yaml(file_count, file_type, dt.now(), prefix, cycle_str)
 
-response = db.handle_request(yaml_file)
-print(response)
+subprocess.run(["python", os.getenv("SCORE_DB_BASE_LOCATION"), yaml_file])
+#score-db always returns the same type of response so it can be easily checked for success and error messages
+# should we raise an exception? allow for a retry? or just document the error somewhere? 
