@@ -34,7 +34,7 @@ def generate_exp_reg_yaml(cycle_start, cycle_end):
     yaml.dump(body, yaml_file_path)
     return yaml_file_path
 
-def generate_metrics_yaml(cycle_start, cycle_end, metric_name):
+def generate_metrics_yaml(name, region, elevation, elevation_unit, value, time_valid):
     yaml_file_path = os.path.join(PY_CURRENT_DIR, YAML_FILE_PREFIX, dt.datetime.now().strftime("%Y%m%d%H%M%S"), '.yaml')
     
     body = {
@@ -44,12 +44,12 @@ def generate_metrics_yaml(cycle_start, cycle_end, metric_name):
             'expt_name': os.getenv('EXPERIMENT_NAME'),
             'expt_wallclock_start': os.getenv('EXPERIMENT_WALLCLOCK_START'),
             'metrics': {
-                'name': '',
-                'region_name': '',
-                'elevation': '',
-                'elevation_unit':'',
-                'value': '',
-                'time_valid': ''
+                'name': name,
+                'region_name': region,
+                'elevation': elevation,
+                'elevation_unit':elevation_unit,
+                'value': value,
+                'time_valid': time_valid
             },
             'datestr_format': '%Y-%m-%d %H:%M:%S',
         }
