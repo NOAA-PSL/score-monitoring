@@ -46,7 +46,7 @@ if file_count is 0:
 print("File count: ")
 print(file_count)
 
-now = dt.now()
+now = dt.now().strftime("%Y-%m-%d %H:%M:%S")
 yaml_file = db_yaml_generator.generate_file_count_yaml(file_count, file_type, now, prefix, cycle_str)
 
 subprocess.run(["python", os.getenv("SCORE_DB_BASE_LOCATION"), yaml_file])
