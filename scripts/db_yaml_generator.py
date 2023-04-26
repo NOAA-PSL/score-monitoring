@@ -11,7 +11,7 @@ load_dotenv()
 YAML_FILE_PREFIX = 'monitoring-yaml-'
 
 def generate_exp_reg_yaml(cycle_start, cycle_end):
-    yaml_file_path = os.path.join(PY_CURRENT_DIR, YAML_FILE_PREFIX, dt.now().strftime("%Y%m%d%H%M%S"), '.yaml')
+    yaml_file_path = os.path.join(PY_CURRENT_DIR, YAML_FILE_PREFIX, dt.datetime.now().strftime("%Y%m%d%H%M%S"), '.yaml')
     
     body = {
         'db_request_name' : 'experiment',
@@ -35,7 +35,7 @@ def generate_exp_reg_yaml(cycle_start, cycle_end):
     return yaml_file_path
 
 def generate_metrics_yaml(name, region, elevation, elevation_unit, value, time_valid):
-    yaml_file_path = os.path.join(PY_CURRENT_DIR, YAML_FILE_PREFIX, dt.now().strftime("%Y%m%d%H%M%S"), '.yaml')
+    yaml_file_path = os.path.join(PY_CURRENT_DIR, YAML_FILE_PREFIX, dt.datetime.now().strftime("%Y%m%d%H%M%S"), '.yaml')
     
     body = {
         'db_request_name' : 'expt_metrics',
@@ -59,7 +59,7 @@ def generate_metrics_yaml(name, region, elevation, elevation_unit, value, time_v
     return yaml_file_path
 
 def generate_file_count_yaml(count, file_type, time_valid, folder_path, cycle):
-    yaml_file_path = os.path.join(PY_CURRENT_DIR, YAML_FILE_PREFIX, dt.now().strftime("%Y%m%d%H%M%S"), '.yaml')
+    yaml_file_path = os.path.join(PY_CURRENT_DIR, YAML_FILE_PREFIX, dt.datetime.now().strftime("%Y%m%d%H%M%S"), '.yaml')
 
     body = {
         'name': 'expt_file_counts',
