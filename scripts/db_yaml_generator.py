@@ -64,7 +64,7 @@ def generate_file_count_yaml(count, file_type, time_valid, folder_path, cycle):
     yaml_file_path = os.path.join(PY_CURRENT_DIR, YAML_FILE_PREFIX + dt.datetime.now().strftime("%Y%m%d%H%M%S") + '.yaml')
 
     body = {
-        'name': 'expt_file_counts',
+        'db_request_name': 'expt_file_counts',
         'method': 'PUT',
         'body': {
             'experiment_name': os.getenv('EXPERIMENT_NAME'),
