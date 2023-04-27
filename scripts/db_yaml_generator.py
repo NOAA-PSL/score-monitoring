@@ -30,8 +30,9 @@ def generate_exp_reg_yaml(cycle_start, cycle_end):
             'description' : '{}'
         }
     }
-
-    yaml.dump(body, yaml_file_path)
+    
+    with open(yaml_file_path, 'w') as outfile:
+        yaml.dump(body, outfile)
     return yaml_file_path
 
 def generate_metrics_yaml(name, region, elevation, elevation_unit, value, time_valid):
@@ -55,7 +56,8 @@ def generate_metrics_yaml(name, region, elevation, elevation_unit, value, time_v
         }
     }
 
-    yaml.dump(body, yaml_file_path)
+    with open(yaml_file_path, 'w') as outfile:
+        yaml.dump(body, outfile)
     return yaml_file_path
 
 def generate_file_count_yaml(count, file_type, time_valid, folder_path, cycle):
@@ -78,6 +80,7 @@ def generate_file_count_yaml(count, file_type, time_valid, folder_path, cycle):
         }
     }
 
-    yaml.dump(body, yaml_file_path)
+    with open(yaml_file_path, 'w') as outfile:
+        yaml.dump(body, outfile)
     return yaml_file_path
 
