@@ -60,7 +60,7 @@ def generate_metrics_yaml(name, region, elevation, elevation_unit, value, time_v
         yaml.dump(body, outfile)
     return yaml_file_path
 
-def generate_file_count_yaml(count, file_type, time_valid, folder_path, cycle):
+def generate_file_count_yaml(count, file_type, forecast_length, folder_path, cycle):
     yaml_file_path = os.path.join(PY_CURRENT_DIR, YAML_FILE_PREFIX + dt.datetime.now().strftime("%Y%m%d%H%M%S") + '.yaml')
 
     body = {
@@ -70,10 +70,10 @@ def generate_file_count_yaml(count, file_type, time_valid, folder_path, cycle):
             'experiment_name': os.getenv('EXPERIMENT_NAME'),
             'wallclock_start': os.getenv('EXPERIMENT_WALLCLOCK_START'),
             'file_type_name': file_type,
-            'time_valid' : time_valid,
-            'storage_loc_name' : os.getenv('STORAGE_LOCATION_NAME'),
-            'storage_loc_platform': os.getenv('STORAGE_LOCATION_PLATFORM'),
-            'storage_loc_key': os.getenv('STORAGE_LOCATION_KEY'),
+            'forecast_length' : forecast_length,
+            'bucket_name' : os.getenv('STORAGE_LOCATION_BUCKET'),
+            'platform': os.getenv('STORAGE_LOCATION_PLATFORM'),
+            'key': os.getenv('STORAGE_LOCATION_KEY'),
             'count': count,
             'folder_path': folder_path,
             'cycle': cycle
