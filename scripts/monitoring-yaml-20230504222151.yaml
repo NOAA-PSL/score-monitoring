@@ -1,0 +1,14 @@
+body:
+  bucket_name: noaa-ufs-gefsv13replay-pds
+  count: 30
+  cycle: '2019-02-02 18:00:00'
+  experiment_name: EXAMPLE-EXPERIMENT-REPLAY0
+  file_type_name: all_files_example
+  folder_path: spinup/2019/02/2019020218/
+  forecast_length: null
+  key: spinup
+  platform: aws_s3
+  time_valid: null
+  wallclock_start: '2023-01-22 09:22:05'
+db_request_name: expt_file_counts
+method: PUT

@@ -27,7 +27,6 @@ def generate_exp_reg_yaml(cycle_start, cycle_end, owner_id, group_id, experiment
             'experiment_type' : experiment_type,
             'platform' : platform,
             'wallclock_start' : os.getenv('EXPERIMENT_WALLCLOCK_START'),
-            'wallclock_end' : '',
             'description' : description
         }
     }

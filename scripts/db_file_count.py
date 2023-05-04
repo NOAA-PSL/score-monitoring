@@ -32,7 +32,7 @@ s3 = boto3.resource(
 bucket = s3.Bucket(os.getenv('STORAGE_LOCATION_BUCKET'))
 prefix = os.getenv('STORAGE_LOCATION_KEY') + "/" + year + "/" + month + "/" + datetime_str + "/"
 
-file_type = 'example_type'
+file_type = 'all_files_example'
 
 file_count = 0
 files = bucket.objects.filter(Prefix=prefix)

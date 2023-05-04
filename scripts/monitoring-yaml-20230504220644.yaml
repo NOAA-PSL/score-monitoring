@@ -1,0 +1,8 @@
+body:
+  bucket_name: noaa-ufs-gefsv13replay-pds
+  key: spinup
+  name: replay_bucket
+  platform: aws_s3
+  platform_region: n/a
+db_request_name: storage_locations
+method: PUT

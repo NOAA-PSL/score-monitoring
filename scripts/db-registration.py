@@ -17,7 +17,7 @@ def register_experiment(experiment_configuration):
     owner_id = "score-monitoring.generated"
     group_id = "gsienkf"
     experiment_type = "EXAMPLE_REPLAY"
-    platform = "aws"
+    platform = "pw_awv2"
     description = json.dumps({"experiment configuration": experiment_configuration})
 
     yaml_file = db_yaml_generator.generate_exp_reg_yaml(cycle_start, cycle_end, owner_id, group_id, experiment_type, platform, description)
@@ -45,8 +45,8 @@ def register_file_type():
 
 def main():
     register_experiment("input experiment configuration description here")
-    register_storage_location()
-    register_file_type()
+    #register_storage_location()
+    #register_file_type()
 
 if __name__ == "__main__":
     main()
