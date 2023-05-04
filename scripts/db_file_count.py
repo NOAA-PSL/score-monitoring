@@ -32,7 +32,7 @@ s3 = boto3.resource(
 bucket = s3.Bucket(os.getenv('STORAGE_LOCATION_BUCKET'))
 prefix = os.getenv('STORAGE_LOCATION_KEY') + "/" + year + "/" + month + "/" + datetime_str + "/"
 
-file_type = 'all_files'
+file_type = 'example_type'
 
 file_count = 0
 files = bucket.objects.filter(Prefix=prefix)
@@ -47,6 +47,9 @@ print(file_count)
 
 yaml_file = db_yaml_generator.generate_file_count_yaml(file_count, file_type, None, None, prefix, cycle_str)
 
-subprocess.run(["python", os.getenv("SCORE_DB_BASE_LOCATION"), yaml_file])
+print(yaml_file)
+print(os.getenv("SCORE_DB_BASE_LOCATION"))
+print("values above being passed to subprocess")
+subprocess.run(["python3", os.getenv("SCORE_DB_BASE_LOCATION"), yaml_file])
 #score-db always returns the same type of response so it can be easily checked for success and error messages
 # should we raise an exception? allow for a retry? or just document the error somewhere? 
