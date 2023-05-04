@@ -45,9 +45,7 @@ if file_count is 0:
 print("File count: ")
 print(file_count)
 
-now = dt.datetime.now()
-time_valid = now.strftime("%Y-%m-%d %H:%M:%S")
-yaml_file = db_yaml_generator.generate_file_count_yaml(file_count, file_type, time_valid, prefix, cycle_str)
+yaml_file = db_yaml_generator.generate_file_count_yaml(file_count, file_type, None, None, prefix, cycle_str)
 
 subprocess.run(["python", os.getenv("SCORE_DB_BASE_LOCATION"), yaml_file])
 #score-db always returns the same type of response so it can be easily checked for success and error messages
