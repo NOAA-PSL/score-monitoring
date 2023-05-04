@@ -1,7 +1,0 @@
-body:
-  description: '{"type_description": "example for file type registration"}'
-  file_format: text
-  file_template: '*file.example'
-  name: all_files_example
-db_request_name: file_types
-method: PUT
