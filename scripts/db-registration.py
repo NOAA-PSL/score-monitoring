@@ -44,10 +44,9 @@ def register_file_type():
 
 
 def main():
-    register_experiment()
+    register_experiment("input experiment configuration description here")
     register_storage_location()
     register_file_type()
 
 if __name__ == "__main__":
     main()
-    
