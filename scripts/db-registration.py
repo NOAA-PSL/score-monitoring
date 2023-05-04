@@ -18,7 +18,7 @@ def register_experiment(experiment_configuration):
     group_id = "gsienkf"
     experiment_type = "EXAMPLE_REPLAY"
     platform = "aws"
-    description = json.dump({"experiment configuration": experiment_configuration})
+    description = json.dumps({"experiment configuration": experiment_configuration})
 
     yaml_file = db_yaml_generator.generate_exp_reg_yaml(cycle_start, cycle_end, owner_id, group_id, experiment_type, platform, description)
     subprocess.run(["python3", os.getenv("SCORE_DB_BASE_LOCATION"), yaml_file])
