@@ -1,3 +1,11 @@
+"""
+Copyright 2023 NOAA
+All rights reserved.
+
+This script counts the number of files in a given S3 bucket and saves the value in a database.
+This script relies on environment variables for the S3 bucket and the location of the score-db executable.
+Folder structure is assumed to be KEY/%Y/%M/CYCLE.
+"""
 import sys
 import boto3
 from botocore import UNSIGNED
@@ -47,9 +55,6 @@ print(file_count)
 
 yaml_file = db_yaml_generator.generate_file_count_yaml(file_count, file_type, None, None, prefix, cycle_str)
 
-print(yaml_file)
-print(os.getenv("SCORE_DB_BASE_LOCATION"))
-print("values above being passed to subprocess")
-subprocess.run(["python3", os.getenv("SCORE_DB_BASE_LOCATION"), yaml_file])
-#score-db always returns the same type of response so it can be easily checked for success and error messages
-# should we raise an exception? allow for a retry? or just document the error somewhere? 
+print("Calling score-db with yaml file: " + yaml_file + "for cycle: " + cycle_str)
+subprocess.run(["python3", os.getenv("SCORE_DB_BASE_LOCATION"), yaml_file], check=True)
+os.remove(yaml_file)

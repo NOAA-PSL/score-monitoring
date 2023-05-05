@@ -1,3 +1,11 @@
+"""
+Copyright 2023 NOAA
+All rights reserved.
+
+This script checks if files exist and are older than 30 minutes 
+for the given cycle in the S3 storage bucket provided in the environment variables.
+It assumes a folder structure of: KEY/%Y/%M/CYCLE
+"""
 import sys
 import boto3
 import datetime as dt

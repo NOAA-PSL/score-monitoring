@@ -1,3 +1,10 @@
+"""
+Copyright 2023 NOAA
+All rights reserved.
+
+Helper functions to generate yaml file inputs for score-db calls from other scripts.
+Dependent on environmnet variables necessary per yaml file.
+"""
 import yaml 
 import pathlib
 import os
