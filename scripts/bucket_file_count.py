@@ -16,14 +16,16 @@ import os
 
 print("Arg value: ")
 print(sys.argv[1])
+print(sys.argv[2])
 
-input = sys.argv[1]
-datetime_obj = dt.datetime.strptime(input, "%Y%m%dT%H")
+input_cycle = sys.argv[1]
+datetime_obj = dt.datetime.strptime(input_cycle, "%Y%m%dT%H")
 year = datetime_obj.strftime("%Y")
 month = datetime_obj.strftime("%m")
 datetime_str = datetime_obj.strftime("%Y%m%d%H")
 
-load_dotenv()
+input_env = sys.argv[2]
+load_dotenv(input_env)
 
 s3 = boto3.resource(
     's3',
