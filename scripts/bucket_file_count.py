@@ -26,12 +26,8 @@ month = datetime_obj.strftime("%m")
 datetime_str = datetime_obj.strftime("%Y%m%d%H")
 
 input_env = sys.argv[2]
-print(input_env)
 env_path = os.path.join(pathlib.Path(__file__).parent.resolve(), input_env)
-print(env_path)
 load_dotenv(env_path)
-print(os.getenv('EXPERIMENT_NAME'))
-print(pathlib.Path(__file__).parent.resolve())
 
 s3 = boto3.resource(
     's3',

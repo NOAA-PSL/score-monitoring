@@ -55,12 +55,10 @@ def register_file_type():
 
 def main():
     input_env = sys.argv[1]
-    print("input_env: " + input_env)
     load_dotenv(input_env)
-    print(os.getenv('EXPERIMENT_NAME'))
     register_experiment("input experiment configuration description here")
-    #register_storage_location()
-    #register_file_type()
+    register_storage_location()
+    register_file_type()
 
 if __name__ == "__main__":
     main()
