@@ -6,8 +6,10 @@ Script for inital registration of values in score-db necessary for other scripts
 Should be customized with each variable per function as necessary and it may be that the main function should be changed to only call
 whichever registration is needed at the time.
 Functions need to only be called once per variable combination. 
-"""
 
+Expected input for main argument of environment file name to use.
+"""
+import sys
 import db_yaml_generator 
 import os
 from dotenv import load_dotenv
@@ -24,17 +26,18 @@ def register_experiment(experiment_configuration):
     platform = "pw_awv2"
     description = json.dumps({"experiment configuration": experiment_configuration})
 
-    yaml_file = db_yaml_generator.generate_exp_reg_yaml(cycle_start, cycle_end, owner_id, group_id, experiment_type, platform, description)
+    yaml_file = db_yaml_generator.generate_exp_reg_yaml(os.getenv('EXPERIMENT_NAME'), os.getenv('EXPERIMENT_WALLCLOCK_START'), cycle_start, 
+                                                        cycle_end, owner_id, group_id, experiment_type, platform, description)
     subprocess.run(["python3", os.getenv("SCORE_DB_BASE_LOCATION"), yaml_file])
     os.remove(yaml_file)
 
 #register the storage location, utilizes environment variables
 def register_storage_location():
     name = "replay_bucket"
-    platform = "aws_s3"
     platform_region = "n/a"
 
-    yaml_file = db_yaml_generator.generate_storage_loc_reg_yaml(name, platform, platform_region)
+    yaml_file = db_yaml_generator.generate_storage_loc_reg_yaml(name, os.getenv('STORAGE_LOCATION_BUCKET'), os.getenv('STORAGE_LOCATION_KEY'), 
+                                                                os.getenv('STORAGE_LOCATION_PLATFORM'), platform_region)
     subprocess.run(["python3", os.getenv("SCORE_DB_BASE_LOCATION"), yaml_file])
     os.remove(yaml_file)
 
@@ -51,7 +54,8 @@ def register_file_type():
 
 
 def main():
-    load_dotenv()
+    input_env = sys.argv[1]
+    load_dotenv(input_env)
     register_experiment("input experiment configuration description here")
     register_storage_location()
     register_file_type()
