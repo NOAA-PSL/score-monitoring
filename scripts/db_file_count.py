@@ -56,7 +56,10 @@ if file_count is 0:
 print("File count: ")
 print(file_count)
 
-yaml_file = db_yaml_generator.generate_file_count_yaml(file_count, file_type, None, None, prefix, cycle_str)
+yaml_file = db_yaml_generator.generate_file_count_yaml(file_count, file_type, None, None, prefix, cycle_str, 
+                                                       os.getenv('EXPERIMENT_NAME'), os.getenv('EXPERIMENT_WALLCLOCK_START'),
+                                                       os.getenv('STORAGE_LOCATION_BUCKET'), os.getenv('STORAGE_LOCATION_PLATFORM'), 
+                                                       os.getenv('STORAGE_LOCATION_KEY'))
 
 print("Calling score-db with yaml file: " + yaml_file + "for cycle: " + cycle_str)
 subprocess.run(["python3", os.getenv("SCORE_DB_BASE_LOCATION"), yaml_file], check=True)
