@@ -3,8 +3,8 @@ Copyright 2023 NOAA
 All rights reserved.
 
 Script for inital registration of values in score-db necessary for other scripts to save cycle specific values.
-Should be customized with each variable per function as necessary and it may be that the main function should be changed to only call
-whichever registration is needed at the time.
+The user should customize each variable per function as necessary and it may be that the main function should be changed to only call
+whichever registration is needed at the time for that particular use case. 
 Functions need to only be called once per variable combination. 
 
 Expected input for main argument of environment file name to use.
