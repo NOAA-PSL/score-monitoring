@@ -1,17 +1,33 @@
+"""
+Copyright 2023 NOAA
+All rights reserved.
+
+This script checks if files exist and are older than 30 minutes 
+for the given cycle in the S3 storage bucket provided in the environment variables.
+It assumes a folder structure of: KEY/%Y/%M/CYCLE
+"""
 import sys
 import boto3
 import datetime as dt
 from botocore import UNSIGNED
 from botocore.client import Config
+from dotenv import load_dotenv
+import os
+import pathlib
 
 print("Arg value: ")
 print(sys.argv[1])
+print(sys.argv[2])
 
-input = sys.argv[1]
-datetime_obj = dt.datetime.strptime(input, "%Y%m%dT%H")
+input_cycle = sys.argv[1]
+datetime_obj = dt.datetime.strptime(input_cycle, "%Y%m%dT%H")
 year = datetime_obj.strftime("%Y")
 month = datetime_obj.strftime("%m")
 datetime_str = datetime_obj.strftime("%Y%m%d%H")
+
+input_env = sys.argv[2]
+env_path = os.path.join(pathlib.Path(__file__).parent.resolve(), input_env)
+load_dotenv(env_path)
 
 s3 = boto3.resource(
     's3',
@@ -20,8 +36,8 @@ s3 = boto3.resource(
     config=Config(signature_version=UNSIGNED)
 )
 
-bucket = s3.Bucket('noaa-ufs-gefsv13replay-pds')
-prefix = "spinup/" + year + "/" + month + "/" + datetime_str + "/"
+bucket = s3.Bucket(os.getenv('STORAGE_LOCATION_BUCKET'))
+prefix = os.getenv('STORAGE_LOCATION_KEY') + "/" + year + "/" + month + "/" + datetime_str + "/"
 
 file_count = 0
 latest = dt.datetime(1, 1, 1, tzinfo=dt.timezone.utc)

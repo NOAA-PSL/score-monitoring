@@ -28,8 +28,9 @@
 
 # parameters 
 {% set MAIL_ADDRESS = 'jessica.knezha@noaa.gov' %}
-{% set INITIAL_CYCLE_POINT = '20190429T06' %}
-{% set FINAL_CYCLE_POINT = '20190430T18' %}
+{% set INITIAL_CYCLE_POINT = '20090501T06' %}
+{% set FINAL_CYCLE_POINT = '20090503T18' %}
+{% set ENV_PATH = '../.env-test' %}
 #TODO: insert other necessary parameters such as stats
 
 [cylc]
@@ -94,7 +95,9 @@
 
     [[FILE_CHECK]]
         script = """
-            python $CYLC_SUITE_DEF_PATH/../scripts/bucket-file-count.py $CYLC_TASK_CYCLE_POINT
+	    module use /contrib/home/builder/UFS-RNR-stack/modules
+	    module load anaconda3	
+	    python3 $CYLC_SUITE_DEF_PATH/../scripts/bucket_file_count.py $CYLC_TASK_CYCLE_POINT {{ ENV_PATH }}
         """
 	[[[job]]]
 		execution retry delays = 168*PT1H # if job fails, wait one hour and try again
@@ -104,7 +107,9 @@
     [[get_data<stats>]]
         inherit=GET_DATA
         script = """
-		 python $CYLC_SUITE_DEF_PATH/../scripts/bucket-file-count.py $CYLC_TASK_CYCLE_POINT
+	     module use /contrib/home/builder/UFS-RNR-stack/modules
+             module load anaconda3	
+	     python3 $CYLC_SUITE_DEF_PATH/../scripts/db_file_count.py $CYLC_TASK_CYCLE_POINT {{ ENV_PATH }}
     	"""
 
     
