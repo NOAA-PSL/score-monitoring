@@ -39,7 +39,7 @@
     [[environment]]
         MAIL_ADDRESS = {{ MAIL_ADDRESS }}
     [[parameters]]
-        stats = file_count
+        stats = file_count, inc_logs
     
 [scheduling]
     initial cycle point = {{ INITIAL_CYCLE_POINT }}
@@ -49,19 +49,19 @@
     [[dependencies]]
         [[[T00]]]
             graph = """
-		        FILE_CHECK: succeed => GET_DATA
+		        FILE_CHECK: succeed => STORE_DATA
             """
         [[[T06]]]
             graph = """
-		        FILE_CHECK: succeed => GET_DATA
+		        FILE_CHECK: succeed => STORE_DATA
             """
         [[[T12]]]
             graph = """
-		        FILE_CHECK: succeed => GET_DATA
+		        FILE_CHECK: succeed => STORE_DATA
             """
         [[[T18]]]
             graph = """
-		        FILE_CHECK: succeed => GET_DATA
+		        FILE_CHECK: succeed => STORE_DATA
             """
 
 [runtime]
@@ -101,15 +101,15 @@
         """
 	[[[job]]]
 		execution retry delays = 168*PT1H # if job fails, wait one hour and try again
-    [[GET_DATA]]
+    [[STORE_DATA]]
         [[[job]]]
 		execution retry delays = 168*PT1H # if job fails, wait one hour and try again
-    [[get_data<stats>]]
-        inherit=GET_DATA
+    [[store_data<stats>]]
+        inherit=STORE_DATA
         script = """
 	     module use /contrib/home/builder/UFS-RNR-stack/modules
              module load anaconda3	
-	     python3 $CYLC_SUITE_DEF_PATH/../scripts/db_file_count.py $CYLC_TASK_CYCLE_POINT {{ ENV_PATH }}
+	     python3 $CYLC_SUITE_DEF_PATH/../scripts/db_${stat}.py $CYLC_TASK_CYCLE_POINT {{ ENV_PATH }}
     	"""
 
     

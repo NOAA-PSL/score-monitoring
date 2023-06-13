@@ -126,3 +126,21 @@ def generate_file_count_yaml(count, file_type, time_valid, forecast_length, fold
         yaml.dump(body, outfile)
     return yaml_file_path
 
+def generate_harvest_metrics_yaml(experiment_name, experiment_wallclock, hv_translator, harvest_config):
+    yaml_file_path = os.path.join(PY_CURRENT_DIR, YAML_FILE_PREFIX + dt.datetime.now().strftime("%Y%m%d%H%M%S") + '.yaml')
+    
+    body = {
+        'db_request_name' : 'harvest_metrics',
+        'body' : {
+            'expt_name': experiment_name,
+            'expt_wallclock_start': experiment_wallclock,
+            'datestr_format': '%Y-%m-%d %H:%M:%S',
+        },
+        'hv_translator': hv_translator,
+        'harvest_config': harvest_config
+    }
+
+    with open(yaml_file_path, 'w') as outfile:
+        yaml.dump(body, outfile)
+    return yaml_file_path
+ 
