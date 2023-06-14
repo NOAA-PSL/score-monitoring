@@ -16,6 +16,7 @@ import os
 from dotenv import load_dotenv
 import subprocess
 import json
+import argparse
 
 #registers an experiment, datetimes are expected in format: "%Y-%m-%d %H:%M:%S"
 def register_experiment(experiment_configuration):
@@ -68,13 +69,17 @@ def register_file_type():
 
 
 def main():
+    #set up arg parser to provide --help and -h flags and check for required argument
+    parser = argparse.ArgumentParser(description="Required input for main argument when running script is path to environment file name to use (such as ../.env-example)" +
+                    "Example call: python3 db-registration.py ../.env-example ")
+    parser.add_argument('input_env', help="file name and relative location of the environment file")
+    args = parser.parse_args()
+
     #import env variables
-    assert len(sys.argv) == 2, ".env* file not specified. Required calling sequence: db-registration.py <path/to/.env*>"
-    input_env = sys.argv[1]
-    print(f"Input: {input_env}")
-    assert os.path.isfile(input_env), f"File {input_env} was not found, please provide the path to .env* file"
-    load_dotenv(input_env)
-    print(f"{input_env} environment loaded.")
+    print(f"Input: {args.input_env}")
+    assert os.path.isfile(args.input_env), f"File {args.input_env} was not found, please provide the path to .env* file"
+    load_dotenv(args.input_env)
+    print(f"{args.input_env} environment loaded.")
 
     #USER SHOULD COMMENT / UNCOMMENT CALLS AS APPROPRIATE
     register_experiment("USER DEFINED INPUT FOR EXPERIMENT DESCRIPTION")
