@@ -10,6 +10,7 @@ import sys
 import boto3
 from botocore import UNSIGNED
 from botocore.client import Config
+from botocore.errorfactory import ClientError
 import db_yaml_generator 
 import os
 import pathlib
@@ -44,14 +45,22 @@ prefix = os.getenv('STORAGE_LOCATION_KEY') + "/" + year + "/" + month + "/" + da
 
 #file list needed to harvest
 file_list = {
-    'calc_atm_inc.out',
-    'calc_ocn_inc.out'
+    'logs/calc_atm_inc.out',
+    'logs/calc_ocn_inc.out'
 }
 
 #harvester is built to handle one file at a time so make calls per listed file 
 for file in file_list:
     #download file
-    bucket.download_file(prefix, file)
+    try:
+        bucket.download_file(prefix, file)
+    except ClientError as err:
+        if err.response['Error']['Code'] == "404":
+            print(f"File {file} not found at {prefix}. Moving on to the next file in list")
+            continue
+        else:
+            raise err
+
     file_path =  os.path.join(pathlib.Path(__file__).parent.resolve(), file)
 
     #harvest: build harvest config, build yaml, call subprocess
@@ -69,4 +78,5 @@ for file in file_list:
 
     #remove yaml and downloaded file 
     os.remove(yaml_file)
-    os.remove(file) 
+    os.remove(file)
+    print(f"Finished with file {file} at {prefix}") 
