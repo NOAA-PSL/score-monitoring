@@ -109,7 +109,7 @@
         script = """
 	     module use /contrib/home/builder/UFS-RNR-stack/modules
              module load anaconda3	
-	     python3 $CYLC_SUITE_DEF_PATH/../scripts/db_${stat}.py $CYLC_TASK_CYCLE_POINT {{ ENV_PATH }}
+	     python3 $CYLC_SUITE_DEF_PATH/../scripts/db_${CYLC_TASK_PARAM_stats}.py $CYLC_TASK_CYCLE_POINT {{ ENV_PATH }}
     	"""
 
     
