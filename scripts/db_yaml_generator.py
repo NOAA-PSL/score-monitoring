@@ -148,7 +148,7 @@ def generate_metric_type_reg_yaml(name, measurement_type, units, stat_type, desc
     yaml_file_path = os.path.join(PY_CURRENT_DIR, YAML_FILE_PREFIX + dt.datetime.now().strftime("%Y%m%d%H%M%S") + '.yaml')
     
     body = {
-        'db_request_name' : 'metric_type',
+        'db_request_name' : 'metric_types',
         'method': 'PUT',
         'body' : {
             'name': name,

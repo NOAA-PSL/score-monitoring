@@ -41,22 +41,23 @@ s3 = boto3.resource(
 )
 
 bucket = s3.Bucket(os.getenv('STORAGE_LOCATION_BUCKET'))
-prefix = os.getenv('STORAGE_LOCATION_KEY') + "/" + year + "/" + month + "/" + datetime_str + "/"
+prefix = os.getenv('STORAGE_LOCATION_KEY') + "/" + year + "/" + month + "/" + datetime_str + "/" + "logs/"
 
 #file list needed to harvest
 file_list = {
-    'logs/calc_atm_inc.out',
-    'logs/calc_ocn_inc.out'
+    'calc_atm_inc.out',
+    'calc_ocn_inc.out'
 }
 
 #harvester is built to handle one file at a time so make calls per listed file 
 for file in file_list:
     #download file
     try:
-        bucket.download_file(prefix, file)
+        bucket.download_file(prefix+file, file)
     except ClientError as err:
         if err.response['Error']['Code'] == "404":
             print(f"File {file} not found at {prefix}. Moving on to the next file in list")
+            print(err)
             continue
         else:
             raise err
