@@ -52,25 +52,27 @@ file_list = {
 #harvester is built to handle one file at a time so make calls per listed file 
 for file in file_list:
     #download file
+    file_path =  os.path.join(pathlib.Path(__file__).parent.resolve(),cycle_str + "-" + file)
+
     try:
-        bucket.download_file(prefix+file, file)
+        bucket.download_file(prefix+file, file_path)
     except ClientError as err:
         if err.response['Error']['Code'] == "404":
             print(f"File {file} not found at {prefix}. Moving on to the next file in list")
             print(err)
             continue
         else:
+            print(err)
             raise err
 
-    file_path =  os.path.join(pathlib.Path(__file__).parent.resolve(), file)
-
+    #file_path =  os.path.join(pathlib.Path(__file__).parent.resolve(), file)
+    print(file_path)
     #harvest: build harvest config, build yaml, call subprocess
     harvest_config = {
         'harvester_name': 'inc_logs',
         'filename': file_path, 
-        'statistic': ['mean', 'RMS'],
-        'variable': ['o3mr_inc', 'sphum_inc', 'T_inc', 'u_inc', 'v_inc',
-                    'delp_inc', 'delz_inc'],
+        'statistic': ['mean'],
+        'variable': ['o3mr_inc'],
         'cycletime': cycle_str
     }
     yaml_file = db_yaml_generator.generate_harvest_metrics_yaml(os.getenv('EXPERIMENT_NAME'), os.getenv('EXPERIMENT_WALLCLOCK_START'),
@@ -80,5 +82,5 @@ for file in file_list:
 
     #remove yaml and downloaded file 
     os.remove(yaml_file)
-    os.remove(file)
+    os.remove(file_path)
     print(f"Finished with file {file} at {prefix}") 
