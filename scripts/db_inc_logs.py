@@ -51,7 +51,7 @@ file_list = {
 
 #harvester is built to handle one file at a time so make calls per listed file 
 for file in file_list:
-    #download file
+    #download file using unique name for each cycle 
     file_path =  os.path.join(pathlib.Path(__file__).parent.resolve(),cycle_str + "-" + file)
 
     try:
@@ -65,9 +65,7 @@ for file in file_list:
             print(err)
             raise err
 
-    #file_path =  os.path.join(pathlib.Path(__file__).parent.resolve(), file)
-    print(file_path)
-    #harvest: build harvest config, build yaml, call subprocess
+    #harvest: build harvest config, build yaml, call subprocess, statistic/variable combo needs to be registered to be saved in db
     harvest_config = {
         'harvester_name': 'inc_logs',
         'filename': file_path, 
