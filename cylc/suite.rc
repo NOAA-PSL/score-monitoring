@@ -31,7 +31,6 @@
 {% set INITIAL_CYCLE_POINT = '20090501T06' %}
 {% set FINAL_CYCLE_POINT = '20090503T18' %}
 {% set ENV_PATH = '../.env-test' %}
-#TODO: insert other necessary parameters such as stats
 
 [cylc]
     UTC mode = True
