@@ -71,7 +71,8 @@ for file in file_list:
         'filename': file_path, 
         'statistic': ['mean', 'RMS'],
         'variable': ['o3mr_inc', 'sphum_inc', 'T_inc', 'u_inc', 'v_inc',
-                                  'delp_inc', 'delz_inc'],
+                                  'delp_inc', 'delz_inc', 'pt_inc', 's_inc', 'u_inc', 'v_inc', 'SSH',
+                                  'Salinity', 'Temperature', 'Speed of Currents'],
         'cycletime': cycle_str
     }
     yaml_file = db_yaml_generator.generate_harvest_metrics_yaml(os.getenv('EXPERIMENT_NAME'), os.getenv('EXPERIMENT_WALLCLOCK_START'),
