@@ -2,7 +2,14 @@
 Copyright 2023 NOAA
 All rights reserved.
 
-This script counts the number of files in a given S3 bucket and saves the value in a database.
+This script is currently only applicable to REPLAY experiments due to the specific cloud based 
+file names, formats, and harvester being used. 
+
+This script calls database harvesting for the given files, statistics, and variables at the top of
+the script. score-db makes the harvesting call, translates, and stores the data as experiment metrics.
+
+This script assumes that the statistics and variables provided are already registered as metric types.
+
 This script relies on environment variables for the S3 bucket and the location of the score-db executable.
 Folder structure is assumed to be KEY/%Y/%M/CYCLE.
 """
@@ -17,6 +24,19 @@ import pathlib
 import datetime as dt
 from dotenv import load_dotenv
 import subprocess
+
+#DICTIONARIES
+#file list needed to harvest
+file_list = {
+    'calc_atm_inc.out',
+    'calc_ocn_inc.out'
+}
+#stats and variables passed in for harvest
+statistics = ['mean', 'RMS']
+variables = ['o3mr_inc', 'sphum_inc', 'T_inc', 'u_inc', 'v_inc',
+                                  'delp_inc', 'delz_inc', 'pt_inc', 's_inc', 'u_inc', 'v_inc', 'SSH',
+                                  'Salinity', 'Temperature', 'Speed of Currents']
+
 
 print("Arg value: ")
 print(sys.argv[1])
@@ -43,11 +63,6 @@ s3 = boto3.resource(
 bucket = s3.Bucket(os.getenv('STORAGE_LOCATION_BUCKET'))
 prefix = os.getenv('STORAGE_LOCATION_KEY') + "/" + year + "/" + month + "/" + datetime_str + "/" + "logs/"
 
-#file list needed to harvest
-file_list = {
-    'calc_atm_inc.out',
-    'calc_ocn_inc.out'
-}
 
 #harvester is built to handle one file at a time so make calls per listed file 
 for file in file_list:
@@ -69,10 +84,8 @@ for file in file_list:
     harvest_config = {
         'harvester_name': 'inc_logs',
         'filename': file_path, 
-        'statistic': ['mean', 'RMS'],
-        'variable': ['o3mr_inc', 'sphum_inc', 'T_inc', 'u_inc', 'v_inc',
-                                  'delp_inc', 'delz_inc', 'pt_inc', 's_inc', 'u_inc', 'v_inc', 'SSH',
-                                  'Salinity', 'Temperature', 'Speed of Currents'],
+        'statistic': statistics,
+        'variable': variables,
         'cycletime': cycle_str
     }
     yaml_file = db_yaml_generator.generate_harvest_metrics_yaml(os.getenv('EXPERIMENT_NAME'), os.getenv('EXPERIMENT_WALLCLOCK_START'),
