@@ -49,7 +49,7 @@ Most of these values are found in the parameters section of the top of the *suit
 
 ```
 # parameters 
-{% set MAIL_ADDRESS = 'jessica.knezha@noaa.gov' %}
+{% set MAIL_ADDRESS = 'first.last@noaa.gov' %}
 {% set INITIAL_CYCLE_POINT = '20090501T06' %}
 {% set FINAL_CYCLE_POINT = '20090503T18' %}
 {% set ENV_PATH = '../.env-example' %}
@@ -57,14 +57,10 @@ Most of these values are found in the parameters section of the top of the *suit
 
 Update each of these values to be appropriate for your user and experiment. The email address is used to notify the user of task failures. The ENV_PATH value should be relative to the locaion of the *suite.rc* file, likely starting with '../.env-*' if following the example pattern and location of .env-example. 
 
-If desired, the user can change with stats will be stored based on the paramater 'stats' found under '[cylc]/[parameters]'. By default, this list is already updated with all current values available. stat values must be associated with a script of the form db_{stat}.py in the scripts folder to be valid. All values listed under stats will be stored via the GET_DATA step of the cylc graph.
+If desired, the user can change with stats will be stored based on the paramater 'stats' found under '[cylc]/[[parameters]]'. By default, this list is already updated with all current values available. stat values must be associated with a script of the form db_{stat}.py in the scripts folder to be valid. All values listed under stats will be stored via the GET_DATA step of the cylc graph.
 
 ```
 [cylc]
-    UTC mode = True
-    cycle point format = %Y%m%dT%H
-    [[environment]]
-        MAIL_ADDRESS = {{ MAIL_ADDRESS }}
     [[parameters]]
         stats = file_count, inc_logs
 ```
