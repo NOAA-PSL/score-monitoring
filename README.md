@@ -144,18 +144,26 @@ cylc register example-suite /path/to/suite
 ```
 
 6. Run the suite
-# FLESH OUT THIS PART
+Once the configurations are complete, the suite can be run using cylc commands. For the full list of commands to use, see the Cylc documentation.
 
 ```
 cylc run example-suite
 ```
 
 7. Monitor the suite
-# FLESH OUT THIS PART
+While the suite is running, you have the option to monnitoring the process using cylc's 'mon' command or by checking the files in the job output folders. 
+
 ```
 cylc mon example-suite
 ```
 
 8. Handling failures
+Some failures are expected in the design of the suite, particularly if files have not populated in the source storage location.
+
+ If the storage location does not contain any files or if any of the files are less than 30 minutes old, the FILE CHECK task will purposely fail and retry in 1 hour. This will contain 168 times to allow files to populate over time as necessary before the suite will completely fail. 
+
+If one of the GET DATA tasks fails, they will also re-attempt the task in one hour for 168 times before failing the entire suite. If the calls to score-db fail, then the task will also fail. 
+
+If a task fails, the job.out and job.err file outputs in the cylc work output folders will contain print out data that can be useful in diagnosing additional issues. 
 
 
