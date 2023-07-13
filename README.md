@@ -21,7 +21,7 @@ The db-registration script will store the provided metadata into the database fo
 
 ### Setup
 
-*1. Install score-db and score-hv*
+**1. Install score-db and score-hv**
 While some of the functionality of this code does not require database interactions, if using the db related code (most of the scripts and all of the stat storage), then the score-db and score-hv modules must be installed. 
 
 Download the packages from [score-db](https://github.com/NOAA-PSL/score-db) and [score-hv](https://github.com/NOAA-PSL/score-hv). It is highly recommended to install the repositoritories into the same folder.
@@ -40,7 +40,7 @@ export PYTHONPATH=$SCORE_DB_HOME_DIR/src
 export PYTHONPATH=$PYTHONPATH:[absolute or relative path to score-hv]/src
 ```
 
-*2. Create the .env file*
+**2. Create the .env file**
 
 The user must define a '.env-*' file containing the appropriate information based on .env-example. The name of the file may be anything starting with .env-{user's choice}, this name will be passed into the code as a variable in the next step. This information will be referenced throughout the suite as needed. 
 
@@ -57,7 +57,7 @@ SCORE_DB_BASE_LOCATION = '/path/to/score-db/src/score_db_base.py'
 The SCORE_DB_BASE_LOCATION value will be the absolute path to score-db loaded in step one to the specific level of the score_db_base.py script as showin the example. 
 
 
-*3. Update the cylc suite*
+**3. Update the cylc suite**
 The cylc suite has four pieces of information that the user should define: email, cycle times, .env file name, and if desired stats to run data collection on. All of this will be edited within the *suite.rc* file.
 
 Most of these values are found in the parameters section of the top of the suite.rc file. 
@@ -84,7 +84,7 @@ If desired, the user can change with stats will be stored bbased on the paramate
         **stats** = file_count, inc_logs
 ```
 
-*4. Register relevant information in the database*
+**4. Register relevant information in the database**
 
 If necessary, information may need to be pre-registered into the database for your cylc suite to store values correctly. Values which must be pre-regsitered in the database include experiments, storage locations, file types, and metric types. Each item must only be registered once and does not need to be re-registered for each run. 
 
@@ -111,7 +111,7 @@ python3 db-registration.py ../.env-example
 
 ### Running the Suite 
 
-*5. Load the cylc and anaconda3 modules*
+**5. Load the cylc and anaconda3 modules**
 In order to run the suite, the cylc and anaconda3 modules must be active. We are using cylc version 7.9.3. 
 
 It can be called from the UFS-RNR-stack modules to ensure all the necessary package are also included in the anaconda3 module. 
@@ -128,7 +128,7 @@ module use -a /scratch2/BMC/gsienkf/UFS-RNR-stack/modules
 module load anaconda3 cylc-flow
 ```
 
-*6. Register the suite* 
+**6. Register the suite** 
 It is recommended to register the suite first for ease of monitoring but is not required to run the suite.
 
 Within the folder containing the *suite.rc* file, call the cylc registration command with your desired name, in this case 'example-suite'. 
@@ -143,21 +143,21 @@ If not calling the registration in the folder containing the suite.rc file, you 
 cylc register example-suite /path/to/suite
 ```
 
-*7. Run the suite*
+**7. Run the suite**
 Once the configurations are complete, the suite can be run using cylc commands. For the full list of commands to use, see the Cylc documentation.
 
 ```
 cylc run example-suite
 ```
 
-*8. Monitor the suite*
+**8. Monitor the suite**
 While the suite is running, you have the option to monnitoring the process using cylc's 'mon' command or by checking the files in the job output folders. 
 
 ```
 cylc mon example-suite
 ```
 
-*9. Handling failures*
+**9. Handling failures**
 Some failures are expected in the design of the suite, particularly if files have not populated in the source storage location.
 
  If the storage location does not contain any files or if any of the files are less than 30 minutes old, the FILE CHECK task will purposely fail and retry in 1 hour. This will contain 168 times to allow files to populate over time as necessary before the suite will completely fail. 
