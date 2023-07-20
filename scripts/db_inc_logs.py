@@ -11,7 +11,7 @@ the script. score-db makes the harvesting call, translates, and stores the data 
 This script assumes that the statistics and variables provided are already registered as metric types.
 
 This script relies on environment variables for the S3 bucket and the location of the score-db executable.
-Folder structure is assumed to be KEY/%Y/%M/CYCLE.
+Folder structure is assumed to be KEY/%Y/%M/CYCLE/logs.
 """
 import sys
 import boto3
@@ -61,7 +61,11 @@ s3 = boto3.resource(
 )
 
 bucket = s3.Bucket(os.getenv('STORAGE_LOCATION_BUCKET'))
-prefix = os.getenv('STORAGE_LOCATION_KEY') + "/" + year + "/" + month + "/" + datetime_str + "/" + "logs/"
+key = os.getenv('STORAGE_LOCATION_KEY')
+if(key):
+    prefix = key + "/" + year + "/" + month + "/" + datetime_str + "/" + "logs/"
+else: 
+    prefix = year + "/" + month + "/" + datetime_str + "/" + "logs/"
 
 
 #harvester is built to handle one file at a time so make calls per listed file 
