@@ -62,7 +62,7 @@ s3 = boto3.resource(
 
 bucket = s3.Bucket(os.getenv('STORAGE_LOCATION_BUCKET'))
 key = os.getenv('STORAGE_LOCATION_KEY')
-if(key):
+if key:
     prefix = key + "/" + year + "/" + month + "/" + datetime_str + "/" + "logs/"
 else: 
     prefix = year + "/" + month + "/" + datetime_str + "/" + "logs/"
