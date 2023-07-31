@@ -13,7 +13,7 @@ For the cylc suite, users should specify the parameters in the suite.rc file pri
 
 
 ## Python Scripts
-Most of the python scripts are called via the cylc suite, except the db-registration.py script which must be run independently by the user as necessary. Scripts called via the stats parameter in the cylc suite must be titled in the format of db_{stat}.py where stat is the same name that is listed under the stats parameter. 
+Most of the python scripts are called via the cylc suite, except the db-registration.py script which must be run independently by the user as necessary. db-registration.py should be run on the first time using a specific variable in which the metadata must be first stored in the database, prior to running the cylc suite. Scripts called via the stats parameter in the cylc suite must be titled in the format of db_{stat}.py where stat is the same name that is listed under the stats parameter. 
 
 The db-registration script will store the provided metadata into the database for experiments, storage locations, file types, and metric types. This metadata is requird in the database to store file counts and metrics. Each experiment, storage location, file type, and metric type will only need to be registered once. Usage of the script is dependent on the users specific use case and must be edited for the user defined input prior to each run. It is also possible the user may only want to register one type of metadata and in those cases the other function calls should be commented out in the main() function. For example, if you only need to add a new file type and metric type, you'd edit the file type metadata in the register_file_type() function and the metric type metadata in the register_metric_type() function and then comment out the register_experiment() and register_storage_location() functions from the main() function "#register_experiment() and #register_storage_location()".
 
@@ -25,6 +25,13 @@ The db-registration script will store the provided metadata into the database fo
 While some of the functionality of score-monitoring does not require database interactions, if using the db related code (most of the scripts and all of the data storage functionality), then the score-db and score-hv modules must be installed. 
 
 To install, download the packages from [score-db](https://github.com/NOAA-PSL/score-db) and [score-hv](https://github.com/NOAA-PSL/score-hv). It is highly recommended to install the repositoritories into the same folder.
+
+```
+git clone https://github.com/NOAA-PSL/score-db
+git clone https://github.com/NOAA-PSL/score-hv
+```
+
+After installing the suite-db repository, you will need to create a .env file based on the repository example and obtain the database password from the administrator. See the score-db [README](https://github.com/NOAA-PSL/score-db#installation-and-environment-setup) installiation step 6 for more details.
 
 ### **2. Create the .env file**
 
@@ -40,6 +47,10 @@ STORAGE_LOCATION_KEY = 'location/key'
 SCORE_DB_BASE_LOCATION = '/path/to/score-db/src/score_db_base.py'
 ```
 
+EXPERIMENT_NAME and EXPERIMENT_WALLCLOCK_START are user defined values which are used for registering experiments and then referencing that experiment when storing other data, including file counts and metrics. Once registered, these values need to stay consistent.
+STORAGE_LOCATION_BUCKET is the root name of the S3 bucket, this must match what is in AWS.
+STORAGE_LOCATION_PLATFORM is a metadata value used for referencing the storage location for registration and file counts.
+STORAGE_LOCATION_KEY is the key location in the S3 bucket beneath the root to be used. This will be used for metadata registration and pulling data. The value can be an empty string if the top of the S3 bucket is being used and no '/' should be in the front of the key. 
 The SCORE_DB_BASE_LOCATION value will be the absolute path to score-db downloaded in step one to the specific level of the score_db_base.py script as show in the example. 
 
 ### **3. Update the cylc suite**
@@ -71,6 +82,14 @@ If necessary, information may need to be pre-registered into the database for yo
 
 To register values, update the appropriate function in *db-registration.py* and run the script using python3. Values which need to be updated by the user are flagged with a comment *#USER DEFINED VARIABLES* and closed with *#END USER DEFINED VARIABLES*.  
 
+Experiment metadata will need to be registered once before storing any other data connected to the experiment. Experiment name and wallclock start are used as references and are pulled from the .env file for consistency.
+
+Storage location metadata will need to registered when using a new bucket for the first time or a different key within a bucket for the first time, i.e. if changing any of the values referenced in the .env instead of the script.
+
+File type metadata will need to be registered if a different file type is being used for the file count script.
+
+Metric type metadata will need to be registered when harvesting new metrics, such as using the inc_logs script or when a new harvester functionality is added.
+
 Depending on which values need to be registered, the user must first comment/uncomment function calls in the main() function as found below: 
 
 ```
@@ -80,7 +99,6 @@ Depending on which values need to be registered, the user must first comment/unc
     register_file_type()
     register_metric_type()
 ```
-Comments are added by putting a *#* (hashtag) in front of the line of code. Comment out any functions which are *not* being used for registration prior to running the script. 
 
 In order to run the script, the anaconda3 module must be active. If needed, please see the steps to load modules in step 6. 
 
@@ -94,13 +112,13 @@ python3 db-registration.py ../.env-example
 
 ### **5. Connect score-db and score-hv**
 
-Once the score-db and score-hv packages are downloaded from step 1, score-db must be made aware of the location of score-hv. This can be done by running the bash script found in the top level of the score-db repository called score__db_utils.sh, if the repositories are in the same folder. Note, if running on the clusters, this call will also load the anaconda3 module. 
+Once the score-db and score-hv packages are downloaded from step 1, score-db must be made aware of the location of score-hv. This can be done by running the bash script found in the top level of the score-db repository called score_db_utils.sh, if the repositories are in the same folder. Note, if running on the clusters, this call will also load the anaconda3 module. 
 
 ```
 source score_db_utils.sh
 ```
 
-If the score-db and score-hv modules are not located in the same file, you must manually connect score-db and score-hv using the following code: 
+If the score-db and score-hv repositories are not located in the same directory, you must manually connect score-db and score-hv using the following code: 
 
 ```
 export SCORE_DB_HOME_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
@@ -140,6 +158,12 @@ If not calling the registration in the folder containing the suite.rc file, you 
 cylc register example-suite /path/to/suite
 ```
 
+After you register your suite, you can confirm the registration by running the 'validate' command and confirming the suite is valid for 7.9.3. 
+
+```
+cylc validate example-suite
+```
+
 ### **8. Run the suite**
 Once the configurations are complete, the suite can be run using cylc commands. For the full list of commands to use, see the Cylc documentation.
 
@@ -155,12 +179,37 @@ cylc mon example-suite
 ```
 
 ### **10. Handling failures**
-Some failures are expected in the design of the suite, particularly if files have not populated in the source storage location.
+Some failures are expected in the design of the suite, particularly if files have not populated in the source storage location. 
 
  If the storage location does not contain any files or if any of the files are less than 30 minutes old, the FILE CHECK task will purposely fail and retry in 1 hour. This will continue 168 times to allow files to populate over time as necessary before the suite will completely fail. 
 
 If one of the GET DATA tasks fails, they will also re-attempt the task in one hour for 168 times before failing the entire suite. If the calls to score-db fail, then the task will also fail. 
 
-If a task fails, the job.out and job.err file outputs in the cylc work output folders will contain print out data that can be useful in diagnosing additional issues. 
+If a task fails, the job.out and job.err file outputs in the cylc work output folders will contain print out data that can be useful in diagnosing additional issues. You can read the logs under the cylc-run directory under the name of the example-suite.
 
+On AWS cluster the cylc run directory is located on lustre:
+```
+cd /lustre/home/work/cylc-run/
+```
 
+For example, looking up the logs of the FILE_CHECK would be under:
+
+```
+cd /lustre/home/work/cylc-run/example-suite/log/job/CYCLE_TIME/FILE_CHECK/01
+cat job.out
+cat job.err
+```
+where CYCLE_TIME is the cycle you'd like to see such as 20050101T00.
+
+### **11. Kill the suite**
+If you need to stop the suite while it's running, you can call the cylc stop command. 
+
+```
+cylc stop example-suite
+```
+
+If you need the suite to stop immediately and stop any running tasks at the --now flags. One --now will stop after the task completes and two --now --now flags will interrupt the currently running task to stop immediately.
+
+```
+cylc stop --now --now example-suite
+```
