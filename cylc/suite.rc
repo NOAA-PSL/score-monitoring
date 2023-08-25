@@ -39,6 +39,7 @@
         MAIL_ADDRESS = {{ MAIL_ADDRESS }}
     [[parameters]]
         stats = file_count, inc_logs
+        daily_stats = global_precip
     
 [scheduling]
     initial cycle point = {{ INITIAL_CYCLE_POINT }}
@@ -48,7 +49,7 @@
     [[dependencies]]
         [[[T00]]]
             graph = """
-		        FILE_CHECK: succeed => STORE_DATA
+		        FILE_CHECK: succeed => STORE_DATA & STORE_DATA_DAILY
             """
         [[[T06]]]
             graph = """
@@ -110,7 +111,16 @@
              module load anaconda3	
 	     python3 $CYLC_SUITE_DEF_PATH/../scripts/db_${CYLC_TASK_PARAM_stats}.py $CYLC_TASK_CYCLE_POINT {{ ENV_PATH }}
     	"""
-
+    [[STORE_DATA_DAILY]]
+        [[[job]]]
+		execution retry delays = 168*PT1H # if job fails, wait one hour and try again
+    [[store_data_daily<daily_stats>]]
+        inherit=STORE_DATA_DAILY
+        script = """
+	     module use /contrib/home/builder/UFS-RNR-stack/modules
+             module load anaconda3	
+	     python3 $CYLC_SUITE_DEF_PATH/../scripts/db_${CYLC_TASK_PARAM_stats}.py $CYLC_TASK_CYCLE_POINT {{ ENV_PATH }}
+    	"""
     
 
     
