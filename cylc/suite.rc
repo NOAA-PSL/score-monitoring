@@ -108,7 +108,7 @@
         inherit=STORE_DATA
         script = """
 	     module use /contrib/home/builder/UFS-RNR-stack/modules
-             module load anaconda3	
+         module load anaconda3	
 	     python3 $CYLC_SUITE_DEF_PATH/../scripts/db_${CYLC_TASK_PARAM_stats}.py $CYLC_TASK_CYCLE_POINT {{ ENV_PATH }}
     	"""
     [[STORE_DATA_DAILY]]
@@ -118,8 +118,8 @@
         inherit=STORE_DATA_DAILY
         script = """
 	     module use /contrib/home/builder/UFS-RNR-stack/modules
-             module load anaconda3	
-	     python3 $CYLC_SUITE_DEF_PATH/../scripts/db_${CYLC_TASK_PARAM_stats}.py $CYLC_TASK_CYCLE_POINT {{ ENV_PATH }}
+         module load anaconda3	
+	     python3 $CYLC_SUITE_DEF_PATH/../scripts/db_${CYLC_TASK_PARAM_daily_stats}.py $CYLC_TASK_CYCLE_POINT {{ ENV_PATH }}
     	"""
     
 
