@@ -144,7 +144,7 @@ def generate_harvest_metrics_yaml(experiment_name, experiment_wallclock, hv_tran
         yaml.dump(body, outfile)
     return yaml_file_path
  
-def generate_metric_type_reg_yaml(name, measurement_type, units, stat_type, description):
+def generate_metric_type_reg_yaml(name, long_name, measurement_type, units, stat_type, description):
     yaml_file_path = os.path.join(PY_CURRENT_DIR, YAML_FILE_PREFIX + dt.datetime.now().strftime("%Y%m%d%H%M%S") + '-metric_type.yaml')
     
     body = {
@@ -152,10 +152,11 @@ def generate_metric_type_reg_yaml(name, measurement_type, units, stat_type, desc
         'method': 'PUT',
         'body' : {
             'name': name,
+            'long_name': long_name,
             'measurement_type': measurement_type,
             'measurement_units': units,
             'stat_type': stat_type,
-            'description': json.dumps({"type_description": description})
+            'description': description
         }
     }
 
