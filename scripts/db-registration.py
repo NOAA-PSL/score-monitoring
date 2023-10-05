@@ -71,14 +71,15 @@ def register_file_type():
 def register_metric_type():
     #USER DEFINED VARIABLES
     name = "metric_name"
+    long_name = "Long name of metric"
     measurement_type = "measurement_type"
     units = "measurement_units"
     stat_type = "stat_type"
-    description = "the description of the metric type"
+    description = json.dumps({"type_description": "description information"})
     #END USER DEFINED VARIABLES
 
     print(f'begin registering metric type: {name}')
-    yaml_file = db_yaml_generator.generate_metric_type_reg_yaml(name, measurement_type, units, stat_type, description)
+    yaml_file = db_yaml_generator.generate_metric_type_reg_yaml(name, long_name, measurement_type, units, stat_type, description)
     subprocess.run(["python3", os.getenv("SCORE_DB_BASE_LOCATION"), yaml_file])
     os.remove(yaml_file)
     print(f'end registering metric type')
