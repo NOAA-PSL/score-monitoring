@@ -1,5 +1,4 @@
-"""
-Copyright 2023 NOAA
+"""Copyright 2023 NOAA
 All rights reserved.
 
 This script is currently only applicable to REPLAY experiments due to the specific cloud based 
@@ -13,6 +12,7 @@ This script assumes that the statistics and variables provided are already regis
 This script relies on environment variables for the S3 bucket and the location of the score-db executable.
 Folder structure is assumed to be KEY/%Y/%M/CYCLE/logs.
 """
+
 import sys
 import boto3
 from botocore import UNSIGNED
@@ -28,16 +28,15 @@ import subprocess
 HOURS_PER_DAY = 24. # hours
 DA_WINDOW = 6. # hours
 
-#DICTIONARIES
 '''sample file list needed to harvest (Jan 1 1994) daily mean from a 6 hour DA cycle
-file_name_list = ['bfg_1994010100_fhr09_control.nc',
-                  'bfg_1994010106_fhr06_control.nc',
-                  'bfg_1994010106_fhr09_control.nc',
-                  'bfg_1994010112_fhr06_control.nc',
-                  'bfg_1994010112_fhr09_control.nc',
-                  'bfg_1994010118_fhr06_control.nc',
-                  'bfg_1994010118_fhr09_control.nc',
-                  'bfg_1994010200_fhr06_control.nc']
+file_name_list = ['bfg_1994010100_fhr09_control',
+                  'bfg_1994010106_fhr06_control',
+                  'bfg_1994010106_fhr09_control',
+                  'bfg_1994010112_fhr06_control',
+                  'bfg_1994010112_fhr09_control',
+                  'bfg_1994010118_fhr06_control',
+                  'bfg_1994010118_fhr09_control',
+                  'bfg_1994010200_fhr06_control']
 '''
 
 #stats and variables passed in for harvest
@@ -68,33 +67,44 @@ s3 = boto3.resource(
 
 bucket = s3.Bucket(os.getenv('STORAGE_LOCATION_BUCKET'))
 key = os.getenv('STORAGE_LOCATION_KEY')
-if key:
-    prefix = key + "/" + year + "/" + month + "/" + datetime_str + "/"
-else: 
-    prefix = year + "/" + month + "/" + datetime_str + "/"
 
+prefix = list()
 file_name_list = list()
 for i in range(int(HOURS_PER_DAY/DA_WINDOW)):
     """Number of loops is the number of DA cycles per day
     """
-    file_name_list.append(dt.datetime.strftime(
-                                        datetime_obj - dt.timedelta(hours =
-                                                  HOURS_PER_DAY - i * DA_WINDOW),
-                                        format = "bfg_%Y%m%d%H_fhr09_control.nc")
-    file_name_list.append(dt.datetime.strftime(
-                                        datetime_obj - dt.timedelta(hours =
-                                            HOURS_PER_DAY - (i + 1) * DA_WINDOW),
-                                        format = "bfg_%Y%m%d%H_fhr06_control.nc")
+    
+    time_delta_fhr09 = dt.timedelta(hours = HOURS_PER_DAY - i * DA_WINDOW)
+    time_delta_fhr06 = dt.timedelta(hours = HOURS_PER_DAY - (i + 1) * DA_WINDOW)
+    
+    if key:
+        prefix.append(dt.datetime.strftime(datetime_obj - time_delta_fhr09,
+                                           format = key + "/%Y/%m/%Y%m%d%H/"))
+        prefix.append(dt.datetime.strftime(datetime_obj - time_delta_fhr06,
+                                           format = key + "/%Y/%m/%Y%m%d%H/"))
+    else: 
+        prefix.append(dt.datetime.strftime(datetime_obj - time_delta_fhr09,
+                                           format = "%Y/%m/%Y%m%d%H/"))
+        prefix.append(dt.datetime.strftime(datetime_obj - time_delta_fhr06,
+                                           format = "%Y/%m/%Y%m%d%H/"))
+    
+    file_name_list.append(dt.datetime.strftime(datetime_obj - time_delta_fhr09,
+                                               format = 
+                                               "bfg_%Y%m%d%H_fhr09_control"))
+    
+    file_name_list.append(dt.datetime.strftime(datetime_obj - time_delta_fhr06,
+                                               format = 
+                                               "bfg_%Y%m%d%H_fhr06_control"))
 
 file_path_list = list()
-for file_name in file_name_list:
+for i, file_name in enumerate(file_name_list):
     file_path =  os.path.join(pathlib.Path(__file__).parent.resolve(),cycle_str + "-" + file_name)
     try:
-        bucket.download_file(prefix+file_name, file_path)
+        bucket.download_file(prefix[i] + file_name, file_path)
         file_path_list.append(file_path)
     except ClientError as err:
         if err.response['Error']['Code'] == "404":
-            print(f"File {file_name} not found at {prefix}. Moving on to the next file in list")
+            print(f"File {file_name} not found at {prefix[i]}. Moving on to the next file in list")
             print(err)
             #continue
             raise err
@@ -119,4 +129,4 @@ subprocess.run(["python3", os.getenv("SCORE_DB_BASE_LOCATION"), yaml_file], chec
 os.remove(yaml_file)
 for i, file_path_to_remove in enumerate(file_path_list):
     os.remove(file_path_to_remove)
-    print(f"Finished with file {file_name_list[i]} at {prefix}")
+    print(f"Finished with file {file_name_list[i]} at {prefix[i]}")
