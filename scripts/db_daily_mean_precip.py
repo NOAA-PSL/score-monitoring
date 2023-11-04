@@ -125,8 +125,12 @@ yaml_file = db_yaml_generator.generate_harvest_metrics_yaml(os.getenv('EXPERIMEN
 print("Calling score-db with yaml file: " + yaml_file + "for cycle: " + cycle_str)
 subprocess.run(["python3", os.getenv("SCORE_DB_BASE_LOCATION"), yaml_file], check=True)
 
-#remove yaml and downloaded file 
-os.remove(yaml_file)
+#remove yaml and downloaded files 
+try:
+    os.remove(yaml_file)
+except FileNotFoundError:
+    print('WARNING: FileNotFoundError raised during rm')
+
 for i, file_path_to_remove in enumerate(file_path_list):
     os.remove(file_path_to_remove)
     print(f"Finished with file {file_name_list[i]} at {prefix[i]}")
