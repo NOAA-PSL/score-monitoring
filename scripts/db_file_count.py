@@ -66,5 +66,11 @@ yaml_file = db_yaml_generator.generate_file_count_yaml(file_count, file_type, No
                                                        os.getenv('STORAGE_LOCATION_KEY'))
 
 print("Calling score-db with yaml file: " + yaml_file + "for cycle: " + cycle_str)
-subprocess.run(["python3", os.getenv("SCORE_DB_BASE_LOCATION"), yaml_file], check=True)
+run = subprocess.run(["python3", os.getenv("SCORE_DB_BASE_LOCATION"), yaml_file], check=True, check_output = True)
+stdout = run.stdout
+stderr = run.stderr
+print("standard out")
+print(stdout)
+print("standard err")
+print(stderr)
 os.remove(yaml_file)
