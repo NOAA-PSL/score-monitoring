@@ -67,13 +67,14 @@ yaml_file = db_yaml_generator.generate_file_count_yaml(file_count, file_type, No
 
 print("Calling score-db with yaml file: " + yaml_file + "for cycle: " + cycle_str)
 try:
-    run = subprocess.run(["python3", os.getenv("SCORE_DB_BASE_LOCATION"), yaml_file], check=True, capture_output = True)
+    run = subprocess.run(["python3", os.getenv("SCORE_DB_BASE_LOCATION"), yaml_file], check=True, capture_output = True, text=True)
     stdout = run.stdout
     stderr = run.stderr
     print("standard out")
     print(stdout)
     print("standard err")
     print(stderr)
+    print(stderr, file=sys.stderr)
 except subprocess.CalledProcessError as err:
     print("An error occurred while running score-db")
     print("err std out")
