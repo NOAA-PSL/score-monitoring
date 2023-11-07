@@ -40,8 +40,9 @@ file_name_list = ['bfg_1994010100_fhr09_control',
 '''
 
 #stats and variables passed in for harvest
-statistics = ['mean']
-variables = ['prateb_ave']
+statistics = ['mean', 'std']
+variables = ['soilm', 'tmp2m', 'prateb_ave'
+             ]
 
 print("Arg value: ")
 print(sys.argv[1])
