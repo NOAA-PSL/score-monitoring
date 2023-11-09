@@ -95,8 +95,26 @@ for file in file_list:
     yaml_file = db_yaml_generator.generate_harvest_metrics_yaml(os.getenv('EXPERIMENT_NAME'), os.getenv('EXPERIMENT_WALLCLOCK_START'),
                                                     'inc_logs', harvest_config)
     print("Calling score-db with yaml file: " + yaml_file + "for cycle: " + cycle_str)
-    subprocess.run(["python3", os.getenv("SCORE_DB_BASE_LOCATION"), yaml_file], check=True)
 
+    try:
+        run = subprocess.run(["python3", os.getenv("SCORE_DB_BASE_LOCATION"), yaml_file], check=True, capture_output = True, text=True)
+        stdout = str(run.stdout)
+        stderr = str(run.stderr)
+        print(stdout)
+        print(stderr, file=sys.stderr)
+        start_index = stdout.rfind("DbActionResponse")
+        if stdout.rfind("success=False", start_index) > 0: 
+            errors = stdout[stdout.rfind("errors="):]
+            print("score-db request Failed. see stderr for errors")
+            print("score-db returned error: " + errors, file=sys.stderr)
+            os.remove(file_path) #remove downloaded file to prevent clutter but leave yaml for debugging
+            raise RuntimeError("score-db returned an unsuccessful DbActionResponse with " + errors)
+    except subprocess.CalledProcessError as err:
+        print(err.stdout)
+        print(err.stderr, file=sys.stderr)
+        print("An error occurred within the subprocess running score-db that returned a non-zero exit code")
+        os.remove(file_path) #remove downloaded file to prevent clutter but leave yaml for debugging
+        raise err
     #remove yaml and downloaded file 
     os.remove(yaml_file)
     os.remove(file_path)
