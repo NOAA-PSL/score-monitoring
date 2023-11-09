@@ -79,8 +79,8 @@ try:
         print("score-db returned error: " + errors, file=sys.stderr)
         raise RuntimeError("score-db returned an unsuccessful DbActionResponse with " + errors)
 except subprocess.CalledProcessError as err:
-    print("An error occurred within the subprocess running score-db that returned a non-zero exit code")
     print(err.stdout)
     print(err.stderr, file=sys.stderr)
+    print("An error occurred within the subprocess running score-db that returned a non-zero exit code")
     raise err
 os.remove(yaml_file)
