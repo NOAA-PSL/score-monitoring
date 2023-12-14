@@ -125,8 +125,7 @@ for i, file_name in enumerate(file_name_list):
         file_path_list.append(file_path)
     except ClientError as err:
         if err.response['Error']['Code'] == "404":
-            print(f"File {file_name} not found at {prefix[i]}. Moving on to the 
-                  next file in list")
+            print(f"File {file_name} not found at {prefix[i]}. Moving on to the next file in list")
             print(err)
             raise err
         else:
