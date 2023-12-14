@@ -70,12 +70,12 @@ def register_file_type():
 #register the metric type
 def register_metric_type():
     #USER DEFINED VARIABLES
-    name = "std_prateb_ave"
-    long_name = "std bucket surface precipitation rate"
+    name = "minimum_prateb_ave"
+    long_name = "minimum bucket surface precipitation rate"
     measurement_type = "prateb_ave"
     units = "kg/m**2/s"
-    stat_type = "daily_std"
-    description = json.dumps({"type_description": "std bucket surface precipitation rate"})
+    stat_type = "daily_minimum"
+    description = json.dumps({"type_description": "minimum bucket surface precipitation rate"})
     #END USER DEFINED VARIABLES
 
     print(f'begin registering metric type: {name}')
