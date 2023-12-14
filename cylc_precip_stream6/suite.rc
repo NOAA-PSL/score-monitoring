@@ -28,7 +28,7 @@
 
 # parameters 
 {% set MAIL_ADDRESS = 'adam.schneider@noaa.gov' %}
-{% set INITIAL_CYCLE_POINT = '20200102T00' %}
+{% set INITIAL_CYCLE_POINT = '20200402T00' %}
 {% set FINAL_CYCLE_POINT = '20240101T00' %}
 {% set ENV_PATH = '../replay_monitoring_stream6.env' %}
 

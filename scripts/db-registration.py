@@ -21,8 +21,8 @@ import argparse
 #registers an experiment, datetimes are expected in format: "%Y-%m-%d %H:%M:%S"
 def register_experiment(experiment_configuration):
     #USER DEFINED VARIABLES
-    cycle_start = "2016-01-01 00:00:00"
-    cycle_end = "2016-01-31 00:00:00"
+    cycle_start = "2019-01-01 00:00:00"
+    cycle_end = "2020-01-01 00:00:00"
     owner_id = "score-monitoring.generated"
     group_id = "gsienkf"
     experiment_type = "EXAMPLE_REPLAY"
@@ -70,12 +70,12 @@ def register_file_type():
 #register the metric type
 def register_metric_type():
     #USER DEFINED VARIABLES
-    name = "metric_name"
-    long_name = "Long name of metric"
-    measurement_type = "measurement_type"
-    units = "measurement_units"
-    stat_type = "stat_type"
-    description = json.dumps({"type_description": "description information"})
+    name = "std_prateb_ave"
+    long_name = "std bucket surface precipitation rate"
+    measurement_type = "prateb_ave"
+    units = "kg/m**2/s"
+    stat_type = "daily_std"
+    description = json.dumps({"type_description": "std bucket surface precipitation rate"})
     #END USER DEFINED VARIABLES
 
     print(f'begin registering metric type: {name}')
@@ -98,9 +98,9 @@ def main():
     print(f"{args.input_env} environment loaded.")
 
     #USER SHOULD COMMENT / UNCOMMENT CALLS AS APPROPRIATE
-    register_experiment("USER DEFINED INPUT FOR EXPERIMENT DESCRIPTION")
-    register_storage_location()
-    register_file_type()
+    #register_experiment("testing of new harvesters for stream 5")
+    #register_storage_location()
+    #register_file_type()
     register_metric_type()
 
 if __name__ == "__main__":

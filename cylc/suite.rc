@@ -27,9 +27,9 @@
 	description = "perform statistics monitoring for replay experiments"
 
 # parameters 
-{% set MAIL_ADDRESS = 'jessica.knezha@noaa.gov' %}
-{% set INITIAL_CYCLE_POINT = '20090501T06' %}
-{% set FINAL_CYCLE_POINT = '20090503T18' %}
+{% set MAIL_ADDRESS = 'adam.schneider@noaa.gov' %}
+{% set INITIAL_CYCLE_POINT = '19940102T00' %}
+{% set FINAL_CYCLE_POINT = '19940103T00' %}
 {% set ENV_PATH = '../.env-test' %}
 
 [cylc]
@@ -39,7 +39,7 @@
         MAIL_ADDRESS = {{ MAIL_ADDRESS }}
     [[parameters]]
         stats = file_count, inc_logs
-        daily_stats = global_precip
+        daily_stats = daily_mean_precip
     
 [scheduling]
     initial cycle point = {{ INITIAL_CYCLE_POINT }}
