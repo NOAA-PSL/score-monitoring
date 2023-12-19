@@ -10,6 +10,7 @@ import pathlib
 import os
 import datetime as dt
 import json
+import numpy as np
 
 PY_CURRENT_DIR = pathlib.Path(__file__).parent.resolve()
 
@@ -127,7 +128,7 @@ def generate_file_count_yaml(count, file_type, time_valid, forecast_length, fold
     return yaml_file_path
 
 def generate_harvest_metrics_yaml(experiment_name, experiment_wallclock, hv_translator, harvest_config):
-    yaml_file_path = os.path.join(PY_CURRENT_DIR, YAML_FILE_PREFIX + dt.datetime.now().strftime("%Y%m%d%H%M%S") + '-harvest_metrics.yaml')
+    yaml_file_path = os.path.join(PY_CURRENT_DIR, YAML_FILE_PREFIX + dt.datetime.now().strftime("%Y%m%d%H%M%S") + '%d' % int(np.around(np.random.rand()*99999)) + '-harvest_metrics.yaml')
     
     body = {
         'db_request_name' : 'harvest_metrics',
