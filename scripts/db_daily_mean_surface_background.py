@@ -13,7 +13,7 @@ registered as metric types.
 
 This script relies on environment variables for the S3 bucket and the location
 of the score-db executable.
-Folder structure is assumed to be KEY/%Y/%M/CYCLE/logs.
+Folder structure is assumed to be KEY/%Y/%M/CYCLE.
 """
 
 import sys
@@ -30,19 +30,6 @@ import subprocess
 
 HOURS_PER_DAY = 24. # hours
 DA_WINDOW = 6. # hours
-
-'''sample file list needed to harvest (Jan 1 1994) daily mean from a 6 hour DA
-cycle
-
-file_name_list = ['bfg_1994010100_fhr09_control',
-                  'bfg_1994010106_fhr06_control',
-                  'bfg_1994010106_fhr09_control',
-                  'bfg_1994010112_fhr06_control',
-                  'bfg_1994010112_fhr09_control',
-                  'bfg_1994010118_fhr06_control',
-                  'bfg_1994010118_fhr09_control',
-                  'bfg_1994010200_fhr06_control']
-'''
 
 #stats and variables passed in for harvest
 statistics = ['mean', 'variance', 'minimum', 'maximum']
@@ -88,6 +75,17 @@ s3 = boto3.resource('s3', aws_access_key_id='', aws_secret_access_key='',
 bucket = s3.Bucket(os.getenv('STORAGE_LOCATION_BUCKET'))
 key = os.getenv('STORAGE_LOCATION_KEY')
 
+'''example file list needed to harvest (Jan 1 1994) daily mean from a 6 hour DA cycle:
+
+file_name_list = ['bfg_1994010100_fhr09_control',
+                  'bfg_1994010106_fhr06_control',
+                  'bfg_1994010106_fhr09_control',
+                  'bfg_1994010112_fhr06_control',
+                  'bfg_1994010112_fhr09_control',
+                  'bfg_1994010118_fhr06_control',
+                  'bfg_1994010118_fhr09_control',
+                  'bfg_1994010200_fhr06_control']
+'''
 prefix = list()
 file_name_list = list()
 for i in range(int(HOURS_PER_DAY/DA_WINDOW)):
