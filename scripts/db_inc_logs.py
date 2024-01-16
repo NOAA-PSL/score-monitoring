@@ -67,11 +67,14 @@ if key:
 else: 
     prefix = year + "/" + month + "/" + datetime_str + "/" + "logs/"
 
+work_dir = os.getenv('WORK_DIR')
+if work_dir is None:
+    work_dir = pathlib.Path(__file__).parent.resolve()
 
 #harvester is built to handle one file at a time so make calls per listed file 
 for file in file_list:
     #download file using unique name for each cycle 
-    file_path =  os.path.join(pathlib.Path(__file__).parent.resolve(),cycle_str + "-" + file)
+    file_path =  os.path.join(work_dir,cycle_str + "-" + file)
 
     try:
         bucket.download_file(prefix+file, file_path)
