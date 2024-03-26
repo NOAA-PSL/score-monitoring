@@ -21,7 +21,7 @@ import argparse
 #registers an experiment, datetimes are expected in format: "%Y-%m-%d %H:%M:%S"
 def register_experiment(experiment_configuration):
     #USER DEFINED VARIABLES
-    cycle_start = "1979-01-01 00:00:00"
+    cycle_start = "1994-01-01 00:00:00"
     cycle_end = "2019-01-01 00:00:00"
     owner_id = "score-monitoring.generated"
     group_id = "gsienkf"
@@ -41,7 +41,7 @@ def register_experiment(experiment_configuration):
 #register the storage location, utilizes environment variables
 def register_storage_location():
     #USER DEFINED VARIABLES
-    name = "reanalysis_bucket"
+    name = "replay_bucket"
     platform_region = "n/a"
     #END USER DEFINED VARIABLES
 
@@ -98,7 +98,7 @@ def main():
     print(f"{args.input_env} environment loaded.")
 
     #USER SHOULD COMMENT / UNCOMMENT CALLS AS APPROPRIATE
-    register_experiment("scout runs (GSI3DVar")
+    register_experiment("scout runs (GSI3DVar) replay observer diagnostic")
     register_storage_location()
     #register_file_type()
     #register_metric_type()
