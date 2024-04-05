@@ -114,10 +114,13 @@ for i in range(int(HOURS_PER_DAY/DA_WINDOW)):
                                                format = 
                                                "bfg_%Y%m%d%H_fhr06_control"))
 
+work_dir = os.getenv('WORK_DIR')
+if work_dir is None:
+    work_dir = pathlib.Path(__file__).parent.resolve()
+
 file_path_list = list()
 for i, file_name in enumerate(file_name_list):
-    file_path =  os.path.join(pathlib.Path(__file__).parent.resolve(),
-                              cycle_str + "-" + file_name)
+    file_path =  os.path.join(work_dir, cycle_str + "-" + file_name)
     try:
         bucket.download_file(prefix[i] + file_name, file_path)
         file_path_list.append(file_path)
