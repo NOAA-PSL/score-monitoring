@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 """Copyright 2023 NOAA
 All rights reserved.
 
@@ -42,14 +44,14 @@ supported.
 variables = [#'icetk', # sea ice thickness (m)
              #'lhtfl_ave', # surface latent heat flux (W m^-2)
              #'prate_ave', # surface precip rate (mm weq. s^-1)
-             'prateb_ave', # bucket surface precip rate (mm weq. s^-1)
+             #'prateb_ave', # bucket surface precip rate (mm weq. s^-1)
              #'pressfc', # surface pressure (Pa)
              #'snod', # surface snow depth (m)
              #'soil4', # liquid soil moisture at layer-4 (?)
              #'soilm', # total column soil moisture content (mm weq.)
              #'soilt4', # soil temperature unknown layer 4 (K)
              #'tg3', # deep soil temperature (K)
-             #'tmp2m', # 2m (surface air) temperature (K)
+             'tmp2m', # 2m (surface air) temperature (K)
              #'tmpsfc', # surface temperature (K)
              #'weasd', # surface snow water equivalent (mm weq.)
              ]
