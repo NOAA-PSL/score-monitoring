@@ -1,0 +1,76 @@
+#!Jinja2
+
+#===========================
+# $$$ CYLC SUITE DOCUMENTATION BLOCK
+
+# monitoring-stats :: cylc/suite.rc
+
+# Email: jessica.knezha@noaa.gov
+
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see
+# <http://www.gnu.org/licenses/>.
+
+# =========================================================================
+[meta]
+	title = "UFS-replay evaluation"
+	description = "Calculate statistics from the UFS-replay simulations"
+
+# parameters 
+{% set MAIL_ADDRESS = 'Adam.Schneider@noaa.gov' %}
+{% set INITIAL_CYCLE_POINT = '19930101T00' %}
+{% set FINAL_CYCLE_POINT = '19990101T00' %}
+{% set ENV_PATH = '../ufs_replay_eval.env' %}
+
+[task parameters]
+    daily_stats = daily_mean_surface_background
+
+[scheduler]
+    UTC mode = True
+    cycle point format = %Y%m%dT%H
+    [[mail]]
+        from = {{ MAIL_ADDRESS }}
+        to = {{ MAIL_ADDRESS }}
+
+    
+[scheduling]
+    initial cycle point = {{ INITIAL_CYCLE_POINT }}
+    final cycle point = {{ FINAL_CYCLE_POINT }}
+    runahead limit = P48
+    [[graph]]
+        R4/PT6H = "file_check => print_cycle_valid"
+        +P1D/PT6H = "file_check => store_data_daily"
+        
+[runtime]
+    [[root]]
+        #retry delays = 2*PT5M # Try again right away, then wait 5 minutes
+        [[[events]]]
+            failed handler = cylc email-task
+            submission failed handler = cylc email-task
+
+    [[file_check]]
+        script = """
+	    bucket_file_count.py $CYLC_TASK_CYCLE_POINT {{ ENV_PATH }}
+        """
+	[[[job]]]
+		execution retry delays = 168*PT1M # if job fails, wait one minute and try again
+    [[print_cycle_valid]]
+            script = "echo 'files found in bucket for $CYCLE_TASK_CYCLE_POINT'"
+    [[store_data_daily]]
+        [[[job]]]
+                execution retry delays = 168*PT1M # if job fails, wait one minute and try again
+    [[store_data_daily<daily_stats>]]
+        inherit=store_data_daily
+        script = """
+             db_${CYLC_TASK_PARAM_daily_stats}.py $CYLC_TASK_CYCLE_POINT {{ ENV_PATH }}
+        """

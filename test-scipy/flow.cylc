@@ -1,0 +1,20 @@
+[scheduler]
+    allow implicit tasks = True
+[scheduling]
+    [[graph]]
+        R1 = """
+        test_numpy & test_scipy => tests_complete
+        """
+[runtime]
+    [[test_numpy]]
+        execution time limit = PT6H
+        script = python -c "import numpy as np; np.test('full', verbose=3)"
+        [[[directives]]]
+            --nodes = 1
+            --mail-type=ALL
+    [[test_scipy]]
+        execution time limit = PT6H
+        script = python -c "import scipy; scipy.test('full', verbose=3)"
+        [[[directives]]]
+            --nodes = 1
+            --mail-type=ALL
