@@ -43,14 +43,14 @@ EXPERIMENT_NAME = 'EXAMPLE-EXPERIMENT-NAME'
 EXPERIMENT_WALLCLOCK_START = '2023-01-22 09:22:05'
 STORAGE_LOCATION_BUCKET = 's3-bucket'
 STORAGE_LOCATION_PLATFORM = 'aws_s3'
-STORAGE_LOCATION_KEY = 'location/key'
+STORAGE_LOCATION_KEY = 'location/date_format/'
 SCORE_DB_BASE_LOCATION = '/path/to/score-db/src/score_db_base.py'
 ```
 
 EXPERIMENT_NAME and EXPERIMENT_WALLCLOCK_START are user defined values which are used for registering experiments and then referencing that experiment when storing other data, including file counts and metrics. Once registered, these values need to stay consistent.
 STORAGE_LOCATION_BUCKET is the root name of the S3 bucket, this must match what is in AWS.
 STORAGE_LOCATION_PLATFORM is a metadata value used for referencing the storage location for registration and file counts.
-STORAGE_LOCATION_KEY is the key location in the S3 bucket beneath the root to be used. This will be used for metadata registration and pulling data. The value can be an empty string if the top of the S3 bucket is being used and no '/' should be in the front of the key. 
+STORAGE_LOCATION_KEY is the key location in the S3 bucket beneath the root to be used. This will be used for metadata registration and pulling data. The value can be an empty string if the top of the S3 bucket is being used and no '/' should be in the front of the key. It should include any year, month, and date string replacement values in the standard format such as %Y/%m/%Y%m%d%H.
 The SCORE_DB_BASE_LOCATION value will be the absolute path to score-db downloaded in step one to the specific level of the score_db_base.py script as show in the example. 
 
 ### **3. Update the cylc suite**

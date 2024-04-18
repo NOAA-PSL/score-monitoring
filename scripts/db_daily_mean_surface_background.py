@@ -13,7 +13,7 @@ registered as metric types.
 
 This script relies on environment variables for the S3 bucket and the location
 of the score-db executable.
-Folder structure is assumed to be KEY/%Y/%M/CYCLE.
+Folder structure is assumed to be BUCKET/KEY/files.
 """
 
 import sys
@@ -95,16 +95,10 @@ for i in range(int(HOURS_PER_DAY/DA_WINDOW)):
     time_delta_fhr09 = dt.timedelta(hours = HOURS_PER_DAY - i * DA_WINDOW)
     time_delta_fhr06 = dt.timedelta(hours = HOURS_PER_DAY - (i + 1) * DA_WINDOW)
     
-    if key:
-        prefix.append(dt.datetime.strftime(datetime_obj - time_delta_fhr09,
-                                           format = key + "/%Y/%m/%Y%m%d%H/"))
-        prefix.append(dt.datetime.strftime(datetime_obj - time_delta_fhr06,
-                                           format = key + "/%Y/%m/%Y%m%d%H/"))
-    else: 
-        prefix.append(dt.datetime.strftime(datetime_obj - time_delta_fhr09,
-                                           format = "%Y/%m/%Y%m%d%H/"))
-        prefix.append(dt.datetime.strftime(datetime_obj - time_delta_fhr06,
-                                           format = "%Y/%m/%Y%m%d%H/"))
+    prefix.append(dt.datetime.strftime(datetime_obj - time_delta_fhr09,
+                                        format = key))
+    prefix.append(dt.datetime.strftime(datetime_obj - time_delta_fhr06,
+                                        format = key))
     
     file_name_list.append(dt.datetime.strftime(datetime_obj - time_delta_fhr09,
                                                format = 

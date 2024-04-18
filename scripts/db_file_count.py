@@ -42,10 +42,8 @@ s3 = boto3.resource(
 
 bucket = s3.Bucket(os.getenv('STORAGE_LOCATION_BUCKET'))
 key = os.getenv('STORAGE_LOCATION_KEY')
-if key:
-    prefix = key + "/" + year + "/" + month + "/" + datetime_str + "/"
-else: 
-    prefix = year + "/" + month + "/" + datetime_str + "/"
+
+prefix = datetime_obj.strftime(key)
     
 file_type = 'all_files_example'
 
