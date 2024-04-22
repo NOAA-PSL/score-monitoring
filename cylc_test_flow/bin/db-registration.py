@@ -21,11 +21,11 @@ import argparse
 #registers an experiment, datetimes are expected in format: "%Y-%m-%d %H:%M:%S"
 def register_experiment(experiment_configuration):
     #USER DEFINED VARIABLES
-    cycle_start = "1994-01-01 00:00:00"
-    cycle_end = "2019-01-01 00:00:00"
+    cycle_start = "2016-01-01 00:00:00"
+    cycle_end = "2016-01-31 00:00:00"
     owner_id = "score-monitoring.generated"
     group_id = "gsienkf"
-    experiment_type = "scout_runs"
+    experiment_type = "EXAMPLE_REPLAY"
     platform = "pw_awv2"
     description = json.dumps({"experiment configuration": experiment_configuration})
     #END USER DEFINED VARIABLES
@@ -98,10 +98,10 @@ def main():
     print(f"{args.input_env} environment loaded.")
 
     #USER SHOULD COMMENT / UNCOMMENT CALLS AS APPROPRIATE
-    register_experiment("scout runs (GSI3DVar) replay observer diagnostic")
+    register_experiment("USER DEFINED INPUT FOR EXPERIMENT DESCRIPTION")
     register_storage_location()
-    #register_file_type()
-    #register_metric_type()
+    register_file_type()
+    register_metric_type()
 
 if __name__ == "__main__":
     main()
