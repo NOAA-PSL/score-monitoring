@@ -73,7 +73,7 @@ s3 = boto3.resource('s3', aws_access_key_id='', aws_secret_access_key='',
                     config=Config(signature_version=UNSIGNED))
 
 bucket = s3.Bucket(os.getenv('STORAGE_LOCATION_BUCKET'))
-key = os.getenv('STORAGE_LOCATION_KEY')
+key = os.getenv('STORAGE_LOCATION_KEY') + "/"
 
 '''example file list needed to harvest (Jan 1 1994) daily mean from a 6 hour DA cycle:
 
