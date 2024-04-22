@@ -61,9 +61,8 @@ s3 = boto3.resource(
 )
 
 bucket = s3.Bucket(os.getenv('STORAGE_LOCATION_BUCKET'))
-key = os.getenv('STORAGE_LOCATION_KEY')
 
-prefix = datetime_obj.strftime(key + "logs/")
+prefix = datetime_obj.strftime(os.getenv('STORAGE_LOCATION_KEY') + "logs/")
 
 work_dir = os.getenv('WORK_DIR')
 if work_dir is None:

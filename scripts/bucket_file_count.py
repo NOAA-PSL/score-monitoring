@@ -35,9 +35,8 @@ s3 = boto3.resource(
 )
 
 bucket = s3.Bucket(os.getenv('STORAGE_LOCATION_BUCKET'))
-key = os.getenv('STORAGE_LOCATION_KEY')
 
-prefix = datetime_obj.strftime(key)
+prefix = datetime_obj.strftime(os.getenv('STORAGE_LOCATION_KEY'))
 
 file_count = 0
 latest = dt.datetime(1, 1, 1, tzinfo=dt.timezone.utc)
