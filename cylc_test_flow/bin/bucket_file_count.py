@@ -6,7 +6,7 @@ All rights reserved.
 
 This script checks if files exist and are older than 30 minutes 
 for the given cycle in the S3 storage bucket provided in the environment variables.
-It assumes a folder structure of: KEY/%Y/%M/CYCLE
+It assumes a folder structure of: BUCKET/KEY/files
 """
 import sys
 import boto3
@@ -23,8 +23,6 @@ print(sys.argv[2])
 
 input_cycle = sys.argv[1]
 datetime_obj = dt.datetime.strptime(input_cycle, "%Y%m%dT%H")
-year = datetime_obj.strftime("%Y")
-month = datetime_obj.strftime("%m")
 datetime_str = datetime_obj.strftime("%Y%m%d%H")
 
 input_env = sys.argv[2]
@@ -39,11 +37,8 @@ s3 = boto3.resource(
 )
 
 bucket = s3.Bucket(os.getenv('STORAGE_LOCATION_BUCKET'))
-key = os.getenv('STORAGE_LOCATION_KEY')
-if key:
-    prefix = key + "/" + year + "/" + month + "/" + datetime_str + "/"
-else: 
-    prefix = year + "/" + month + "/" + datetime_str + "/"
+
+prefix = datetime_obj.strftime(os.getenv('STORAGE_LOCATION_KEY') + "/")
 
 file_count = 0
 latest = dt.datetime(1, 1, 1, tzinfo=dt.timezone.utc)
@@ -54,7 +49,7 @@ for file in files:
         latest = file.last_modified
 
 if file_count is 0:
-    raise Exception("no files found in bucket " + datetime_str)
+    raise Exception("no files found in bucket " + prefix)
 
 diff = dt.datetime.now(dt.timezone.utc) - latest 
 diff_minutes = diff.total_seconds() / 60

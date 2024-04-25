@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 """
 Copyright 2023 NOAA
 All rights reserved.
@@ -16,7 +18,6 @@ import pathlib
 import datetime as dt
 from dotenv import load_dotenv
 import subprocess
-
 
 print("Arg value: ")
 print(sys.argv[1])

@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 """
 Copyright 2023 NOAA
 All rights reserved.
@@ -16,7 +18,6 @@ import pathlib
 import datetime as dt
 from dotenv import load_dotenv
 import subprocess
-
 
 print("Arg value: ")
 print(sys.argv[1])
@@ -42,10 +43,8 @@ s3 = boto3.resource(
 
 bucket = s3.Bucket(os.getenv('STORAGE_LOCATION_BUCKET'))
 key = os.getenv('STORAGE_LOCATION_KEY')
-if key:
-    prefix = key + "/" + year + "/" + month + "/" + datetime_str + "/"
-else: 
-    prefix = year + "/" + month + "/" + datetime_str + "/"
+
+prefix = datetime_obj.strftime(os.getenv('STORAGE_LOCATION_KEY') + "/")
     
 file_type = 'all_files_example'
 

@@ -23,17 +23,17 @@
 
 # =========================================================================
 [meta]
-	title = "UFS-replay evaluation"
-	description = "Calculate statistics from the UFS-replay simulations"
+	title = "SFS reanalysis development: atmosphere-only scout runs"
+	description = "Calculate statistics from the SFS reanalysis scout runs"
 
 # parameters 
 {% set MAIL_ADDRESS = 'Adam.Schneider@noaa.gov' %}
-{% set INITIAL_CYCLE_POINT = '19930101T00' %}
-{% set FINAL_CYCLE_POINT = '19990101T00' %}
-{% set ENV_PATH = '../ufs_replay_eval.env' %}
+{% set INITIAL_CYCLE_POINT = '19790101T00' %}
+{% set FINAL_CYCLE_POINT = '19800101T00' %}
+{% set ENV_PATH = '/media/sfs_dev_darr/share/Adam.Schneider/score-monitor/scoutrun_monitoring.env' %}
 
 [task parameters]
-    daily_stats = daily_mean_surface_background
+    stats = file_count
 
 [scheduler]
     UTC mode = True
@@ -46,10 +46,9 @@
 [scheduling]
     initial cycle point = {{ INITIAL_CYCLE_POINT }}
     final cycle point = {{ FINAL_CYCLE_POINT }}
-    runahead limit = P48
+    runahead limit = P24
     [[graph]]
-        R4/PT6H = "file_check => print_cycle_valid"
-        +P1D/PT6H = "file_check => store_data_daily"
+        PT6H = "file_check => print_cycle_valid & store_data"
         
 [runtime]
     [[root]]
@@ -66,11 +65,11 @@
 		execution retry delays = 168*PT1M # if job fails, wait one minute and try again
     [[print_cycle_valid]]
             script = "echo 'files found in bucket for $CYCLE_TASK_CYCLE_POINT'"
-    [[store_data_daily]]
+    [[store_data]]
         [[[job]]]
                 execution retry delays = 168*PT1M # if job fails, wait one minute and try again
-    [[store_data_daily<daily_stats>]]
-        inherit=store_data_daily
+    [[store_data<stats>]]
+        inherit=store_data
         script = """
-             db_${CYLC_TASK_PARAM_daily_stats}.py $CYLC_TASK_CYCLE_POINT {{ ENV_PATH }}
+             db_${CYLC_TASK_PARAM_stats}.py $CYLC_TASK_CYCLE_POINT {{ ENV_PATH }}
         """
