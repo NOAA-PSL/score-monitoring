@@ -4,7 +4,7 @@ All rights reserved.
 
 This script counts the number of files in a given S3 bucket and saves the value in a database.
 This script relies on environment variables for the S3 bucket and the location of the score-db executable.
-Folder structure is assumed to be KEY/%Y/%M/CYCLE.
+It assumes a folder structure of: BUCKET/KEY/files.
 """
 import sys
 import boto3
@@ -42,10 +42,8 @@ s3 = boto3.resource(
 
 bucket = s3.Bucket(os.getenv('STORAGE_LOCATION_BUCKET'))
 key = os.getenv('STORAGE_LOCATION_KEY')
-if key:
-    prefix = key + "/" + year + "/" + month + "/" + datetime_str + "/"
-else: 
-    prefix = year + "/" + month + "/" + datetime_str + "/"
+
+prefix = datetime_obj.strftime(os.getenv('STORAGE_LOCATION_KEY') + "/")
     
 file_type = 'all_files_example'
 
