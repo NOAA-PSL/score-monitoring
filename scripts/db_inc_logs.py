@@ -11,7 +11,7 @@ the script. score-db makes the harvesting call, translates, and stores the data 
 This script assumes that the statistics and variables provided are already registered as metric types.
 
 This script relies on environment variables for the S3 bucket and the location of the score-db executable.
-Folder structure is assumed to be KEY/%Y/%M/CYCLE/logs.
+It assumes a folder structure of: BUCKET/KEY/files/logs.
 """
 import sys
 import boto3

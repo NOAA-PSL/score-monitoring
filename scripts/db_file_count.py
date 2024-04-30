@@ -4,7 +4,7 @@ All rights reserved.
 
 This script counts the number of files in a given S3 bucket and saves the value in a database.
 This script relies on environment variables for the S3 bucket and the location of the score-db executable.
-Folder structure is assumed to be KEY/%Y/%M/CYCLE.
+It assumes a folder structure of: BUCKET/KEY/files.
 """
 import sys
 import boto3
