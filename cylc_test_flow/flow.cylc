@@ -29,11 +29,12 @@
 # parameters 
 {% set MAIL_ADDRESS = 'Adam.Schneider@noaa.gov' %}
 {% set INITIAL_CYCLE_POINT = '19790101T00' %}
-{% set FINAL_CYCLE_POINT = '19800101T00' %}
+{% set FINAL_CYCLE_POINT = '19890101T00' %}
 {% set ENV_PATH = '/media/sfs_dev_darr/share/Adam.Schneider/score-monitor/scoutrun_monitoring.env' %}
 
 [task parameters]
-    stats = file_count
+    stats = file_count, gsi_obsfit
+    daily_stats = daily_mean_surface_background
 
 [scheduler]
     UTC mode = True
@@ -41,14 +42,18 @@
     [[mail]]
         from = {{ MAIL_ADDRESS }}
         to = {{ MAIL_ADDRESS }}
-
     
 [scheduling]
     initial cycle point = {{ INITIAL_CYCLE_POINT }}
     final cycle point = {{ FINAL_CYCLE_POINT }}
     runahead limit = P24
     [[graph]]
-        PT6H = "file_check => print_cycle_valid & store_data"
+        P1DT6H = """
+-            file_check => print_cycle_valid & store_data:succeed-all =>
+-        data_stored
+-        """
+        #+PT1D/P1D = """file_check[T00] & file_check[T06] & file_check[T12] &
+        #            file_check[T18] & file_check[+P1D/T00] => store_data_daily"""
         
 [runtime]
     [[root]]
@@ -64,7 +69,7 @@
 	[[[job]]]
 		execution retry delays = 168*PT1M # if job fails, wait one minute and try again
     [[print_cycle_valid]]
-            script = "echo 'files found in bucket for $CYCLE_TASK_CYCLE_POINT'"
+            script = "echo 'files found in bucket'" # for $CYCLE_TASK_CYCLE_POINT'"
     [[store_data]]
         [[[job]]]
                 execution retry delays = 168*PT1M # if job fails, wait one minute and try again
@@ -73,3 +78,7 @@
         script = """
              db_${CYLC_TASK_PARAM_stats}.py $CYLC_TASK_CYCLE_POINT {{ ENV_PATH }}
         """
+    [[data_stored]]
+-        script = """
+-             echo 'all data stored'
+-        """
