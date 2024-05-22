@@ -32,9 +32,9 @@ month = datetime_obj.strftime("%m")
 datetime_str = datetime_obj.strftime("%Y%m%d%H")
 cycle_str = datetime_obj.strftime("%Y-%m-%d %H:%M:%S")
 
-input_env_path = sys.argv[2]
-#env_path = os.path.join(pathlib.Path(__file__).parent.resolve(), input_env)
-load_dotenv(input_env_path)
+input_env = sys.argv[2]
+env_path = os.path.join(pathlib.Path(__file__).parent.parent.resolve(), input_env)
+load_dotenv(env_path)
 
 s3 = boto3.resource(
     's3',

@@ -25,9 +25,9 @@ input_cycle = sys.argv[1]
 datetime_obj = dt.datetime.strptime(input_cycle, "%Y%m%dT%H")
 datetime_str = datetime_obj.strftime("%Y%m%d%H")
 
-input_env_path = sys.argv[2]
-#env_path = os.path.join(pathlib.Path(__file__).parent.resolve(), input_env)
-load_dotenv(input_env_path)
+input_env = sys.argv[2]
+env_path = os.path.join(pathlib.Path(__file__).parent.parent.resolve(), input_env)
+load_dotenv(env_path)
 
 s3 = boto3.resource(
     's3',
