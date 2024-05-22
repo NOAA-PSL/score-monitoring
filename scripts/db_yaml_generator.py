@@ -12,7 +12,7 @@ import datetime as dt
 import json
 import numpy as np
 
-PY_CURRENT_DIR = pathlib.Path(__file__).parent.resolve()
+PY_CURRENT_DIR = os.getenv('CYLC_TASK_WORK_DIR')
 
 YAML_FILE_PREFIX = 'monitoring-yaml-'
 

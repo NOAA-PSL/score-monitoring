@@ -49,7 +49,7 @@ HarvestedData = namedtuple('HarvestedData', ['filenames',
                                              'longname'])
 
 def get_gridcell_area_data_path():
-    return os.path.join(Path(__file__).parent.parent.parent.parent.resolve(),
+    return os.path.join(Path(__file__).parent.parent.resolve(),
                         'data', 'gridcell-area' + 
                         '_noaa-ufs-gefsv13replay-pds' + 
                         '_bfg_control_1536x768_20231116.nc')

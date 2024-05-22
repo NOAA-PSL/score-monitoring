@@ -33,7 +33,7 @@
 {% set ENV_PATH = '/media/sfs_dev_darr/share/Adam.Schneider/score-monitor/scoutrun_monitoring.env' %}
 
 [task parameters]
-    stats = file_count, gsi_obsfit
+    stats = file_count#, gsi_obsfit
     daily_stats = daily_mean_surface_background
 
 [scheduler]
@@ -46,12 +46,12 @@
 [scheduling]
     initial cycle point = {{ INITIAL_CYCLE_POINT }}
     final cycle point = {{ FINAL_CYCLE_POINT }}
-    runahead limit = P24
+    runahead limit = P12
     [[graph]]
-        P1DT6H = """
--            file_check => print_cycle_valid & store_data:succeed-all =>
--        data_stored
--        """
+        T00,T06,T12,T18 = """
+            file_check => print_cycle_valid & store_data:succeed-all =>
+        data_stored
+        """
         #+PT1D/P1D = """file_check[T00] & file_check[T06] & file_check[T12] &
         #            file_check[T18] & file_check[+P1D/T00] => store_data_daily"""
         
@@ -79,6 +79,4 @@
              db_${CYLC_TASK_PARAM_stats}.py $CYLC_TASK_CYCLE_POINT {{ ENV_PATH }}
         """
     [[data_stored]]
--        script = """
--             echo 'all data stored'
--        """
+        script = "echo 'all data stored'"
