@@ -47,7 +47,7 @@
 [scheduling]
     initial cycle point = {{ INITIAL_CYCLE_POINT }}
     final cycle point = {{ FINAL_CYCLE_POINT }}
-    runahead limit = P12
+    runahead limit = P11
     [[graph]]
         T00,T06,T12,T18 = """
             file_check => store_data
@@ -58,7 +58,7 @@
 [runtime]
     [[root]]
         #retry delays = 2*PT5M # Try again right away, then wait 5 minutes
-        platform = batch_partition
+        #platform = batch_partition
         [[[events]]]
             mail events = submission failed, failed, retry
         [[[mail]]]
