@@ -1,0 +1,24 @@
+[scheduler]
+    allow implicit tasks = True
+    [[events]]
+        mail events = startup, shutdown, failed, retry
+    [[mail]]
+        to = Adam.Schneider@noaa.gov
+
+[scheduling]
+    [[graph]]
+        R1 = """
+        test_numpy & test_scipy => tests_complete
+        """
+[runtime]
+    [[test_numpy]]
+        execution time limit = PT6H
+        script = python -c "import numpy as np; np.test('full', verbose=3)"
+        [[[directives]]]
+            --nodes = 1
+    [[test_scipy]]
+        platform = batch_partition
+        execution time limit = PT6H
+        script = python -c "import scipy; scipy.test('full', verbose=3)"
+        [[[directives]]]
+            --nodes = 1

@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 """
 Copyright 2023 NOAA
 All rights reserved.
@@ -15,12 +17,13 @@ import os
 import pathlib
 import datetime as dt
 from dotenv import load_dotenv
-import subprocess
 
+import score_db_base
+import file_utils
 
-print("Arg value: ")
-print(sys.argv[1])
-print(sys.argv[2])
+#print("Arg value: ")
+#print(sys.argv[1])
+#print(sys.argv[2])
 
 input_cycle = sys.argv[1]
 datetime_obj = dt.datetime.strptime(input_cycle, "%Y%m%dT%H")
@@ -30,7 +33,7 @@ datetime_str = datetime_obj.strftime("%Y%m%d%H")
 cycle_str = datetime_obj.strftime("%Y-%m-%d %H:%M:%S")
 
 input_env = sys.argv[2]
-env_path = os.path.join(pathlib.Path(__file__).parent.resolve(), input_env)
+env_path = os.path.join(pathlib.Path(__file__).parent.parent.resolve(), input_env)
 load_dotenv(env_path)
 
 s3 = boto3.resource(
@@ -63,6 +66,8 @@ yaml_file = db_yaml_generator.generate_file_count_yaml(file_count, file_type, No
                                                        os.getenv('STORAGE_LOCATION_BUCKET'), os.getenv('STORAGE_LOCATION_PLATFORM'), 
                                                        os.getenv('STORAGE_LOCATION_KEY'))
 
+# validate configuration (yaml) file
+file_utils.is_valid_readable_file(yaml_file)
+# submit the score db request
 print("Calling score-db with yaml file: " + yaml_file + "for cycle: " + cycle_str)
-subprocess.run(["python3", os.getenv("SCORE_DB_BASE_LOCATION"), yaml_file], check=True)
-os.remove(yaml_file)
+score_db_base.handle_request(yaml_file)

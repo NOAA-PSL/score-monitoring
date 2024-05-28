@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 """
 Copyright 2023 NOAA
 All rights reserved.
@@ -15,16 +17,16 @@ from dotenv import load_dotenv
 import os
 import pathlib
 
-print("Arg value: ")
-print(sys.argv[1])
-print(sys.argv[2])
+#print("Arg value: ")
+#print(sys.argv[1])
+#print(sys.argv[2])
 
 input_cycle = sys.argv[1]
 datetime_obj = dt.datetime.strptime(input_cycle, "%Y%m%dT%H")
 datetime_str = datetime_obj.strftime("%Y%m%d%H")
 
 input_env = sys.argv[2]
-env_path = os.path.join(pathlib.Path(__file__).parent.resolve(), input_env)
+env_path = os.path.join(pathlib.Path(__file__).parent.parent.resolve(), input_env)
 load_dotenv(env_path)
 
 s3 = boto3.resource(
@@ -52,13 +54,13 @@ if file_count is 0:
 diff = dt.datetime.now(dt.timezone.utc) - latest 
 diff_minutes = diff.total_seconds() / 60
 
-print("minutes: ")
-print(diff_minutes) 
+#print("minutes: ")
+#print(diff_minutes) 
 if diff_minutes < 30:
     raise Exception("the latest file is more recent than 30 minutes, try again later")
 
-print("last modified:")
-print(latest)
+#print("last modified:")
+#print(latest)
 
 print("File count: ")
 print(file_count)
