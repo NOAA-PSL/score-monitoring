@@ -30,7 +30,7 @@ import score_db_base
 import file_utils
 
 #stats and variables passed in for harvest
-variables = ['use']
+#variables = ['use']
 statistics = ['bias_pre_corr', 'bias_post_corr', 'std']
 
 #print("Arg value: ")
@@ -70,7 +70,7 @@ except ClientError as err:
 #combo needs to be registered to be saved in db
 harvest_config = {'harvester_name': 'gsi_radiance_channel',
                      'filename': file_path,
-                     'variables': variables,
+                     #'variables': variables,
                      'statistics': statistics}
 yaml_file = db_yaml_generator.generate_harvest_metrics_yaml(
                                         os.getenv('EXPERIMENT_NAME'),
