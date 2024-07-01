@@ -30,8 +30,8 @@ import score_db_base
 import file_utils
 
 #stats and variables passed in for harvest
-variables = ()
-statistics = ('bias_pre_corr', 'bias_post_corr', 'std')
+#variables = ['use']
+statistics = ['bias_pre_corr', 'bias_post_corr', 'std']
 
 #print("Arg value: ")
 #print(sys.argv[1])
@@ -39,8 +39,6 @@ statistics = ('bias_pre_corr', 'bias_post_corr', 'std')
 
 input_cycle = sys.argv[1]
 datetime_obj = dt.datetime.strptime(input_cycle, "%Y%m%dT%H")
-year = datetime_obj.strftime("%Y")
-month = datetime_obj.strftime("%m")
 datetime_str = datetime_obj.strftime("%Y%m%d%H")
 cycle_str = datetime_obj.strftime("%Y-%m-%d %H:%M:%S")
 
@@ -52,13 +50,13 @@ s3 = boto3.resource('s3', aws_access_key_id='', aws_secret_access_key='',
                     config=Config(signature_version=UNSIGNED))
 
 bucket = s3.Bucket(os.getenv('STORAGE_LOCATION_BUCKET'))
-key = os.getenv('STORAGE_LOCATION_KEY') + "/"
-file_name = dt.datetime.strftime(datetime_obj, format = 'gsistats.%Y%m%d%h_control')
+prefix = datetime_obj.strftime(os.getenv('STORAGE_LOCATION_KEY') + "/")
+file_name = dt.datetime.strftime(datetime_obj, format = 'gsistats.%Y%m%d%H_control')
 
 work_dir = os.getenv('CYLC_TASK_WORK_DIR')
 file_path =  os.path.join(work_dir, file_name)
 try:
-    bucket.download_file(key + file_name, file_path)
+    bucket.download_file(prefix + file_name, file_path)
 except ClientError as err:
     if err.response['Error']['Code'] == "404":
         print(f"File {file_name} not found at {key}")
@@ -70,15 +68,16 @@ except ClientError as err:
 
 #harvest: build harvest config, build yaml, call subprocess, statistic/variable 
 #combo needs to be registered to be saved in db
-harvest_config = {'harvester_name': hv_registry.GSI_RADIANCE_CHANNEL,
+harvest_config = {'harvester_name': 'gsi_radiance_channel',
                      'filename': file_path,
-                     'variables': variables,
+                     #'variables': variables,
                      'statistics': statistics}
 yaml_file = db_yaml_generator.generate_harvest_metrics_yaml(
                                         os.getenv('EXPERIMENT_NAME'),
                                         os.getenv('EXPERIMENT_WALLCLOCK_START'),
                                         'gsi_radiance_channel',
-                                        harvest_config)
+                                        harvest_config,
+                                        is_array=True)
 # validate the configuration (yaml) file
 file_utils.is_valid_readable_file(yaml_file)
 # submit the score db request
