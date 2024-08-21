@@ -33,7 +33,8 @@
 {% set ENV_PATH = 'scoutrun_monitoring.env' %}
 
 [task parameters]
-    stats = file_count#, gsi_obsfit
+    #stats = file_count, gsi_obsfit
+    stats = gsi_obsfit
     daily_stats = daily_mean_surface_background
 
 [scheduler]
@@ -47,7 +48,7 @@
 [scheduling]
     initial cycle point = {{ INITIAL_CYCLE_POINT }}
     final cycle point = {{ FINAL_CYCLE_POINT }}
-    runahead limit = P11
+    runahead limit = P3
     [[graph]]
         T00,T06,T12,T18 = """
             file_check => store_data
