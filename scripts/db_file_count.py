@@ -18,8 +18,8 @@ import pathlib
 import datetime as dt
 from dotenv import load_dotenv
 
-import score_db_base
-import file_utils
+from score_db import score_db_base
+from score_db import file_utils
 
 #print("Arg value: ")
 #print(sys.argv[1])
