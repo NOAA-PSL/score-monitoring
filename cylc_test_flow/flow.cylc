@@ -29,7 +29,7 @@
 # parameters 
 {% set MAIL_ADDRESS = 'Adam.Schneider@noaa.gov' %}
 {% set INITIAL_CYCLE_POINT = '19790101T00' %}
-{% set FINAL_CYCLE_POINT = '19890101T00' %}
+{% set FINAL_CYCLE_POINT = '19790106T00' %}
 {% set ENV_PATH = 'scoutrun_monitoring.env' %}
 
 [task parameters]
@@ -59,7 +59,7 @@
 [runtime]
     [[root]]
         #retry delays = 2*PT5M # Try again right away, then wait 5 minutes
-        #platform = batch_partition
+        platform = batch_partition
         [[[events]]]
             mail events = submission failed, failed, retry
         [[[mail]]]
