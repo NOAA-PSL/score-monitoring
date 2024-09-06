@@ -30,8 +30,25 @@ from score_db import score_db_base
 from score_db import file_utils
 
 #stats and variables passed in for harvest
-#variables = ['use']
-statistics = ['bias_pre_corr', 'bias_post_corr', 'std']
+variables = ['var',
+             'varch_cld',
+             'use',
+             'ermax',
+             'b_rad',
+             'pg_rad',
+             'icld_det',
+             'icloud',
+             'iaeros',
+             #'bias_correction_coefficients'
+             ]
+statistics = ['nobs_used',
+              'nobs_tossed',
+              'variance',
+              'bias_pre_corr',
+              'bias_post_corr',
+              'penalty',
+              'sqrt_bias',
+              'std']
 
 #print("Arg value: ")
 #print(sys.argv[1])
@@ -68,14 +85,14 @@ except ClientError as err:
 
 #harvest: build harvest config, build yaml, call subprocess, statistic/variable 
 #combo needs to be registered to be saved in db
-harvest_config = {'harvester_name': 'gsi_radiance_channel',
+harvest_config = {'harvester_name': 'gsi_satellite_radiance_channel',
                      'filename': file_path,
-                     #'variables': variables,
+                     'variables': variables,
                      'statistics': statistics}
 yaml_file = db_yaml_generator.generate_harvest_metrics_yaml(
                                         os.getenv('EXPERIMENT_NAME'),
                                         os.getenv('EXPERIMENT_WALLCLOCK_START'),
-                                        'gsi_radiance_channel',
+                                        'gsi_satellite_radiance_channel',
                                         harvest_config,
                                         is_array=True)
 # validate the configuration (yaml) file
@@ -83,4 +100,9 @@ file_utils.is_valid_readable_file(yaml_file)
 # submit the score db request
 print("Calling score-db with yaml file: " + yaml_file + "for cycle: " +
       cycle_str)
-score_db_base.handle_request(yaml_file)
+
+response = score_db_base.handle_request(yaml_file)
+if not response.success:
+    print(response.message)
+    print(response.errors)
+    raise RuntimeError("score-db returned a failure message") #generic exception to tell cylc to stop running
