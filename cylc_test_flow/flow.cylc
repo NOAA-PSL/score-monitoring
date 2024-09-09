@@ -33,8 +33,9 @@
 {% set ENV_PATH = 'scoutrun_monitoring.env' %}
 
 [task parameters]
-    stats = file_count#, gsi_obsfit
-    daily_stats = daily_mean_surface_background
+    #stats = file_count
+    stats = gsi_obsfit
+    #daily_stats = daily_mean_surface_background
 
 [scheduler]
     UTC mode = True
@@ -47,7 +48,7 @@
 [scheduling]
     initial cycle point = {{ INITIAL_CYCLE_POINT }}
     final cycle point = {{ FINAL_CYCLE_POINT }}
-    runahead limit = P11
+    runahead limit = P23
     [[graph]]
         T00,T06,T12,T18 = """
             file_check => store_data
@@ -58,7 +59,7 @@
 [runtime]
     [[root]]
         #retry delays = 2*PT5M # Try again right away, then wait 5 minutes
-        #platform = batch_partition
+        platform = batch_partition
         [[[events]]]
             mail events = submission failed, failed, retry
         [[[mail]]]
