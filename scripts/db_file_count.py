@@ -6,7 +6,7 @@ All rights reserved.
 
 This script counts the number of files in a given S3 bucket and saves the value in a database.
 This script relies on environment variables for the S3 bucket and the location of the score-db executable.
-It assumes a folder structure of: BUCKET/KEY/files.
+Folder structure is assumed to be KEY/%Y/%M/CYCLE.
 """
 import sys
 import boto3
@@ -18,8 +18,8 @@ import pathlib
 import datetime as dt
 from dotenv import load_dotenv
 
-import score_db_base
-import file_utils
+from score_db import score_db_base
+from score_db import file_utils
 
 #print("Arg value: ")
 #print(sys.argv[1])
@@ -70,4 +70,8 @@ yaml_file = db_yaml_generator.generate_file_count_yaml(file_count, file_type, No
 file_utils.is_valid_readable_file(yaml_file)
 # submit the score db request
 print("Calling score-db with yaml file: " + yaml_file + "for cycle: " + cycle_str)
-score_db_base.handle_request(yaml_file)
+response = score_db_base.handle_request(yaml_file)
+if not response.success:
+    print(response.message)
+    print(response.errors)
+    raise RuntimeError("score-db returned a failure message") #generic exception to tell cylc to stop running 

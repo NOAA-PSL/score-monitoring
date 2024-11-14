@@ -18,6 +18,8 @@ import subprocess
 import json
 import argparse
 
+from score_db import score_db_base
+
 #registers an experiment, datetimes are expected in format: "%Y-%m-%d %H:%M:%S"
 def register_experiment(experiment_configuration):
     #USER DEFINED VARIABLES
@@ -48,7 +50,8 @@ def register_storage_location():
     print(f'begin registering storage location: {name}')
     yaml_file = db_yaml_generator.generate_storage_loc_reg_yaml(name, os.getenv('STORAGE_LOCATION_BUCKET'), os.getenv('STORAGE_LOCATION_KEY'), 
                                                                 os.getenv('STORAGE_LOCATION_PLATFORM'), platform_region)
-    subprocess.run(["python3", os.getenv("SCORE_DB_BASE_LOCATION"), yaml_file])
+    #subprocess.run(["python3", os.getenv("SCORE_DB_BASE_LOCATION"), yaml_file])
+    score_db_base.handle_request(yaml_file)
     os.remove(yaml_file)
     print(f'end registering storage location')
 
@@ -98,7 +101,7 @@ def main():
     print(f"{args.input_env} environment loaded.")
 
     #USER SHOULD COMMENT / UNCOMMENT CALLS AS APPROPRIATE
-    register_experiment("scout runs (GSI3DVar) 1979stream")
+    #register_experiment("scout runs (GSI3DVar) 1979stream")
     register_storage_location()
     #register_file_type()
     #register_metric_type()
