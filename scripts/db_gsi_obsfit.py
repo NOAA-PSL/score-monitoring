@@ -30,15 +30,15 @@ from score_db import score_db_base
 from score_db import file_utils
 
 #stats and variables passed in for harvest
-variables = ['var',
-             'varch_cld',
+variables = [#'var',
+             #'varch_cld',
              'use',
-             'ermax',
-             'b_rad',
-             'pg_rad',
-             'icld_det',
-             'icloud',
-             'iaeros',
+             #'ermax',
+             #'b_rad',
+             #'pg_rad',
+             #'icld_det',
+             #'icloud',
+             #'iaeros',
              #'bias_correction_coefficients'
              ]
 statistics = ['nobs_used',

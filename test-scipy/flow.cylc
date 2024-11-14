@@ -17,7 +17,7 @@
         [[[directives]]]
             --nodes = 1
     [[test_scipy]]
-        platform = batch_partition
+        #platform = batch_partition
         execution time limit = PT6H
         script = python -c "import scipy; scipy.test('full', verbose=3)"
         [[[directives]]]
