@@ -59,11 +59,20 @@ input_env = sys.argv[2]
 env_path = os.path.join(pathlib.Path(__file__).parent.parent.resolve(), input_env)
 load_dotenv(env_path)
 
-s3 = boto3.resource('s3', aws_access_key_id=AWS_ACCESS_KEY_ID, aws_secret_access_key=AWS_SECRET_ACCESS_KEY, config=Config(signature_version='s3v4'))
+try:
+    aws_access_key_id = os.getenv('AWS_ACCESS_KEY_ID')
+    aws_secret_access_key = os.getenv('AWS_SECRET_ACCESS_KEY')
+    file_name_format = os.getenv('FILE_NAME_FORMAT')
+except Exception as ex:
+    print('Error getting required information for AWS, the env file must include: AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, and FILE_NAME_FORMAT')
+    print(ex)
+    raise ex
+
+s3 = boto3.resource('s3', aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key, config=Config(signature_version='s3v4'))
 
 bucket = s3.Bucket(os.getenv('STORAGE_LOCATION_BUCKET'))
 prefix = datetime_obj.strftime(os.getenv('STORAGE_LOCATION_KEY') + "/")
-file_name = dt.datetime.strftime(datetime_obj, format = 'd5294_geosit_jan08.ana_stats.log.%Y%m%d_%Hz.txt')
+file_name = dt.datetime.strftime(datetime_obj, format = file_name_format)
 
 work_dir = os.getenv('CYLC_TASK_WORK_DIR')
 file_path =  os.path.join(work_dir, file_name)
