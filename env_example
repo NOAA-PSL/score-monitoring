@@ -3,3 +3,6 @@ EXPERIMENT_WALLCLOCK_START = '2023-01-22 09:22:05'
 STORAGE_LOCATION_BUCKET = 's3-bucket'
 STORAGE_LOCATION_PLATFORM = 'aws_s3'
 STORAGE_LOCATION_KEY = 'location/date_format/sub-directories' # no trailing "/"
+AWS_ACCESS_KEY_ID = ''
+AWS_SECRET_ACCESS_KEY = ''
+GSI_FIT_FILE_NAME_FORMAT = 'gsistats.%Y%m%d%H_control'
