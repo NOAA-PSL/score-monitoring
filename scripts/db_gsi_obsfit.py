@@ -69,9 +69,8 @@ if gsi_fit_file_name_format == '' or gsi_fit_file_name_format == None:
                      'environment configuration file')
     
 if aws_access_key_id == '' or aws_access_key_id == None:
-    if aws_secret_access_key == '' or aws_secret_access_key == None:
-        # move forward with unsigned request
-        s3_config_signature_version = UNSIGNED
+    # move forward with unsigned request
+    s3_config_signature_version = UNSIGNED
 else:
     s3_config_signature_version = 's3v4'
 

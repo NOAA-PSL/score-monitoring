@@ -73,8 +73,20 @@ input_env = sys.argv[2]
 env_path = os.path.join(pathlib.Path(__file__).parent.parent.resolve(), input_env)
 load_dotenv(env_path)
 
-s3 = boto3.resource('s3', aws_access_key_id='', aws_secret_access_key='',
-                    config=Config(signature_version=UNSIGNED))
+aws_access_key_id = os.getenv('AWS_ACCESS_KEY_ID')
+aws_secret_access_key = os.getenv('AWS_SECRET_ACCESS_KEY')
+    
+if aws_access_key_id == '' or aws_access_key_id == None:
+    # move forward with unsigned request
+    s3_config_signature_version = UNSIGNED
+else:
+    s3_config_signature_version = 's3v4'
+
+s3 = boto3.resource(
+    's3',
+    aws_access_key_id=aws_access_key_id,    
+    aws_secret_access_key=aws_secret_access_key, 
+    config=Config(signature_version=s3_config_signature_version))
 
 bucket = s3.Bucket(os.getenv('STORAGE_LOCATION_BUCKET'))
 key = os.getenv('STORAGE_LOCATION_KEY') + "/"
