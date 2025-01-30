@@ -50,10 +50,6 @@ statistics = ['nobs_used',
               'sqrt_bias',
               'std']
 
-#print("Arg value: ")
-#print(sys.argv[1])
-#print(sys.argv[2])
-
 input_cycle = sys.argv[1]
 datetime_obj = dt.datetime.strptime(input_cycle, "%Y%m%dT%H")
 datetime_str = datetime_obj.strftime("%Y%m%d%H")
@@ -63,12 +59,26 @@ input_env = sys.argv[2]
 env_path = os.path.join(pathlib.Path(__file__).parent.parent.resolve(), input_env)
 load_dotenv(env_path)
 
-s3 = boto3.resource('s3', aws_access_key_id='', aws_secret_access_key='',
-                    config=Config(signature_version=UNSIGNED))
+try:
+    aws_access_key_id = os.getenv('AWS_ACCESS_KEY_ID')
+    aws_secret_access_key = os.getenv('AWS_SECRET_ACCESS_KEY')
+    gsi_fit_file_name_format = os.getenv('GSI_FIT_FILE_NAME_FORMAT')
+except Exception as ex:
+    print('Error getting required information for AWS, the env file must '
+          'include: "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", and '
+          '"GSI_FIT_FILE_NAME_FORMAT"')
+    print(ex)
+    raise ex
+
+s3 = boto3.resource('s3',
+                    aws_access_key_id=aws_access_key_id,    
+                    aws_secret_access_key=aws_secret_access_key, 
+                    config=Config(signature_version='s3v4'))
 
 bucket = s3.Bucket(os.getenv('STORAGE_LOCATION_BUCKET'))
 prefix = datetime_obj.strftime(os.getenv('STORAGE_LOCATION_KEY') + "/")
-file_name = dt.datetime.strftime(datetime_obj, format = 'gsistats.%Y%m%d%H_control')
+file_name = dt.datetime.strftime(datetime_obj,
+                                 format = gsi_fit_file_name_format)
 
 work_dir = os.getenv('CYLC_TASK_WORK_DIR')
 file_path =  os.path.join(work_dir, file_name)
@@ -76,7 +86,7 @@ try:
     bucket.download_file(prefix + file_name, file_path)
 except ClientError as err:
     if err.response['Error']['Code'] == "404":
-        print(f"File {file_name} not found at {key}")
+        print(f"File {file_name} not found at {prefix}")
         print(err)
         raise err
     else:

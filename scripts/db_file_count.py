@@ -21,10 +21,6 @@ from dotenv import load_dotenv
 from score_db import score_db_base
 from score_db import file_utils
 
-#print("Arg value: ")
-#print(sys.argv[1])
-#print(sys.argv[2])
-
 input_cycle = sys.argv[1]
 datetime_obj = dt.datetime.strptime(input_cycle, "%Y%m%dT%H")
 year = datetime_obj.strftime("%Y")

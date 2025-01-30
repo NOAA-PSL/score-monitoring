@@ -27,10 +27,10 @@
 	description = "perform statistics monitoring for replay experiments"
 
 # parameters 
-{% set MAIL_ADDRESS = 'adam.schneider@noaa.gov' %}
-{% set INITIAL_CYCLE_POINT = '19790101T00' %}
-{% set FINAL_CYCLE_POINT = '20190101T00' %}
-{% set ENV_PATH = '../scoutrun_monitoring.env' %}
+{% set MAIL_ADDRESS = 'jessica.knezha@noaa.gov' %}
+{% set INITIAL_CYCLE_POINT = '20090501T06' %}
+{% set FINAL_CYCLE_POINT = '20090503T18' %}
+{% set ENV_PATH = '../.env-test' %}
 
 [cylc]
     UTC mode = True
@@ -38,8 +38,8 @@
     [[environment]]
         MAIL_ADDRESS = {{ MAIL_ADDRESS }}
     [[parameters]]
-        stats = file_count#, inc_logs
-        daily_stats = dummy#daily_mean_surface_background
+        stats = file_count, inc_logs
+        daily_stats = daily_mean_surface_background
     
 [scheduling]
     initial cycle point = {{ INITIAL_CYCLE_POINT }}
@@ -50,6 +50,7 @@
         [[[T00]]]
             graph = """
 		        FILE_CHECK: succeed => STORE_DATA
+                        FILE_CHECK: succeed => STORE_DATA_DAILY
             """
         [[[T06]]]
             graph = """

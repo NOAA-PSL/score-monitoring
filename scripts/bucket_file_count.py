@@ -17,10 +17,6 @@ from dotenv import load_dotenv
 import os
 import pathlib
 
-#print("Arg value: ")
-#print(sys.argv[1])
-#print(sys.argv[2])
-
 input_cycle = sys.argv[1]
 datetime_obj = dt.datetime.strptime(input_cycle, "%Y%m%dT%H")
 datetime_str = datetime_obj.strftime("%Y%m%d%H")
