@@ -59,21 +59,27 @@ input_env = sys.argv[2]
 env_path = os.path.join(pathlib.Path(__file__).parent.parent.resolve(), input_env)
 load_dotenv(env_path)
 
-try:
-    aws_access_key_id = os.getenv('AWS_ACCESS_KEY_ID')
-    aws_secret_access_key = os.getenv('AWS_SECRET_ACCESS_KEY')
-    gsi_fit_file_name_format = os.getenv('GSI_FIT_FILE_NAME_FORMAT')
-except Exception as ex:
-    print('Error getting required information for AWS, the env file must '
-          'include: "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", and '
-          '"GSI_FIT_FILE_NAME_FORMAT"')
-    print(ex)
-    raise ex
+aws_access_key_id = os.getenv('AWS_ACCESS_KEY_ID')
+aws_secret_access_key = os.getenv('AWS_SECRET_ACCESS_KEY')
+gsi_fit_file_name_format = os.getenv('GSI_FIT_FILE_NAME_FORMAT')
 
-s3 = boto3.resource('s3',
-                    aws_access_key_id=aws_access_key_id,    
-                    aws_secret_access_key=aws_secret_access_key, 
-                    config=Config(signature_version='s3v4'))
+if gsi_fit_file_name_format == '' or gsi_fit_file_name_format == None:
+    raise ValueError('Did not receive a GSI fit file format. Please '
+                     'specify a format for the GSI fit file in your '
+                     'environment configuration file')
+    
+if aws_access_key_id == '' or aws_access_key_id == None:
+    if aws_secret_access_key == '' or aws_secret_access_key == None:
+        # move forward with unsigned request
+        s3_config_signature_version = UNSIGNED
+else:
+    s3_config_signature_version = 's3v4'
+
+s3 = boto3.resource(
+    's3',
+    aws_access_key_id=aws_access_key_id,    
+    aws_secret_access_key=aws_secret_access_key, 
+    config=Config(signature_version=s3_config_signature_version))
 
 bucket = s3.Bucket(os.getenv('STORAGE_LOCATION_BUCKET'))
 prefix = datetime_obj.strftime(os.getenv('STORAGE_LOCATION_KEY') + "/")
