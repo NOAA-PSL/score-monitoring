@@ -28,7 +28,9 @@ import os
 import pathlib
 import datetime as dt
 from dotenv import load_dotenv
-import subprocess
+
+from score_db import score_db_base
+from score_db import file_utils
 
 HOURS_PER_DAY = 24. # hours
 DA_WINDOW = 6. # hours
@@ -68,7 +70,7 @@ datetime_str = datetime_obj.strftime("%Y%m%d%H")
 cycle_str = datetime_obj.strftime("%Y-%m-%d %H:%M:%S")
 
 input_env = sys.argv[2]
-env_path = os.path.join(pathlib.Path(__file__).parent.resolve(), input_env)
+env_path = os.path.join(pathlib.Path(__file__).parent.parent.resolve(), input_env)
 load_dotenv(env_path)
 
 s3 = boto3.resource('s3', aws_access_key_id='', aws_secret_access_key='',
@@ -140,10 +142,16 @@ yaml_file = db_yaml_generator.generate_harvest_metrics_yaml(
                                         os.getenv('EXPERIMENT_WALLCLOCK_START'),
                                         'daily_bfg',
                                         harvest_config)
+# validate configuration (yaml) file
+file_utils.is_valid_readable_file(yaml_file)
+# submit the score db request
 print("Calling score-db with yaml file: " + yaml_file + "for cycle: " +
       cycle_str)
-subprocess.run(["python3", os.getenv("SCORE_DB_BASE_LOCATION"), yaml_file],
-               check=True)
+response = score_db_base.handle_request(yaml_file)
+if not response.success:
+    print(response.message)
+    print(response.errors)
+    raise RuntimeError("score-db returned a failure message") #generic exception to tell cylc to stop running
 
 #remove yaml and downloaded files 
 try:
