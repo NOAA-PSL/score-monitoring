@@ -7,14 +7,14 @@ Development on this repo is ongoing and more features will be added. Currently,
 it is able to register database metadata, store all file counts for an aws s3 
 bucket, and harvest and store metrics from GSI analysis logs via cylc cycles. 
 
-This repo contains a cylc suite and python scripts. It is dependent on the 
+This repo contains a cylc workflow and python scripts. It is dependent on the 
 score-db and score-hv repositories, which have installable python packages.
 
 # Structure
 
-## Cylc Suite
-For the cylc suite, users should specify the parameters in a flow.cylc file 
-prior to runs configured to their use case. The cylc suite will cycle through a 
+## Cylc Workflow
+For the cylc workflow, users should specify the parameters in a flow.cylc file 
+prior to runs configured to their use case. The cylc workflow will cycle through a 
 given time period and run a file check in aws s3 (via python script) against 
 the bucket specified in the .env in the parameters. If the file check fails, 
 finds no files, or finds files are less than 30 minutes old, the cylc task will 
@@ -46,7 +46,7 @@ metadata in the register_metric_type() function and then comment out the
 register_experiment() and register_storage_location() functions from the main() 
 function "#register_experiment() and #register_storage_location()".
 
-# How To Run the Suite
+# How To Run a Workflow
 
 ## Setup
 
@@ -115,8 +115,19 @@ format codes (e.g., %Y/%m/%Y%m%d%H for the string formatted as
 provided at 
 [https://docs.python.org/3/library/datetime.html#strftime-and-strptime-format-codes](https://docs.python.org/3/library/datetime.html#strftime-and-strptime-format-codes).
 
-### **3. Update the cylc suite**
-The cylc suite has four pieces of information that the user should define: 
+### **3. Copy python scripts into workflow directory**
+The cylc workflow script calls other python scripts (stored in the scripts 
+directory), which contain lower level calls to score-hv and to score-db. To
+make a workflow aware of these scripts, first you need to copy them into a bin/ 
+folder under a workflow directory. The "install_scripts.sh" bash tool can
+be used to safely copy these files to a specified workflow directory.
+
+```
+./install_scripts.sh PATH-TO-WOFKLOW-DIR
+```
+
+### **4. Modify the cylc workflow**
+The cylc workflow script has four pieces of information that the user should define: 
 email, cycle times, .env-* file name, and (if desired) stats to run data 
 collection on. These values are found in (or just below) the parameters section 
 of the top of the *flow.cylc* file, which is located under a cylc workflow 
@@ -130,7 +141,7 @@ directory. An example workflow directory is provided at cylc8_test_flow.
 {% set ENV_PATH = '../.env-example' %}
 ```
 
-Update each of these values to be appropriate for your user and experiment. The 
+Modify each of these values to be appropriate for your user and experiment. The 
 email address is used to notify the user of task failures. The ENV_PATH value 
 should be relative to the locaion of the *flow.cylc* file, likely starting with 
 '../.env-*' if following the example pattern and location of .env-example. 
@@ -147,7 +158,7 @@ the cylc graph.
 	stats = file_count, gsi_obsfit
 ```
 
-### **4. Register relevant information in the database**
+### **5. Register relevant information in the database**
 
 If necessary, information may need to be pre-registered into the database for 
 your cylc suite to store values correctly. Values which must be pre-regsitered 
@@ -198,7 +209,7 @@ python db-registration.py ../.env-example
 
 ## Running a Workflow 
 
-### **7. Install the workflow** 
+### **6. Install the workflow** 
 
 Install a workflow by running the 'install' command after confirming the 
 flow.cylc script is valid. 
@@ -208,7 +219,7 @@ cylc validate PATH-TO-WORKFLOW-DIRECTORY
 cylc install PATH-TO-WORKFLOW-DIRECTORY
 ```
 
-### **8. Run the workflow**
+### **7. Run the workflow**
 Once installed, a workflow can be run using cylc commands. For the full list of 
 commands to use, see the Cylc documentation.
 
@@ -216,7 +227,7 @@ commands to use, see the Cylc documentation.
 cylc play WORKFLOW
 ```
 
-### **9. Monitor the workflow**
+### **8. Monitor the workflow**
 While a workflow is running, you have the option to monitor the process using 
 cylc's terminal user interface, or by checking the files in the job output 
 folders. 
@@ -225,7 +236,7 @@ folders.
 cylc tui WORKFLOW
 ```
 
-### **10. Handling failures**
+### **9. Handling failures**
 Some failures are expected in the design of a workflow, particularly if files 
 have not populated in the source storage location. 
 
@@ -251,7 +262,7 @@ cat job.err
 ```
 where CYCLE_TIME is the cycle you'd like to see such as 20050101T00.
 
-### **11. Stop the workflow**
+### **10. Stop the workflow**
 If you need to stop a workflow while it's running, you can call the cylc stop 
 command. 
 
@@ -259,7 +270,7 @@ command.
 cylc stop WORKFLOW
 ```
 
-If you need the suite to stop immediately and stop any running tasks at the 
+If you need a workflow to stop immediately and stop any running tasks at the 
 --now flags. One --now will stop after the task completes and two --now --now 
 flags will interrupt the currently running task to stop immediately.
 
