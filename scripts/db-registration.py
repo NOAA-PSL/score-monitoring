@@ -35,7 +35,7 @@ def register_experiment(experiment_configuration):
     print(f'begin registering experiment: {name}')
     yaml_file = db_yaml_generator.generate_exp_reg_yaml(name, os.getenv('EXPERIMENT_WALLCLOCK_START'), cycle_start, 
                                                         cycle_end, owner_id, group_id, experiment_type, platform, description)
-    score_db_base(yaml_file)
+    score_db_base.handle_request(yaml_file)
     os.remove(yaml_file)
     print(f'end registering experiment')
 
@@ -49,7 +49,7 @@ def register_storage_location():
     print(f'begin registering storage location: {name}')
     yaml_file = db_yaml_generator.generate_storage_loc_reg_yaml(name, os.getenv('STORAGE_LOCATION_BUCKET'), os.getenv('STORAGE_LOCATION_KEY'), 
                                                                 os.getenv('STORAGE_LOCATION_PLATFORM'), platform_region)
-    score_db_base(yaml_file)
+    score_db_base.handle_request(yaml_file)
     os.remove(yaml_file)
     print(f'end registering storage location')
 
@@ -64,7 +64,7 @@ def register_file_type():
     
     print(f'begin registering file type: {name}')
     yaml_file = db_yaml_generator.generate_file_type_reg_yaml(name, file_template, file_format, description)
-    score_db_base(yaml_file)
+    score_db_base.handle_request(yaml_file)
     os.remove(yaml_file)
     print(f'end registering file type')
 
@@ -81,7 +81,7 @@ def register_metric_type():
 
     print(f'begin registering metric type: {name}')
     yaml_file = db_yaml_generator.generate_metric_type_reg_yaml(name, long_name, measurement_type, units, stat_type, description)
-    score_db_base(yaml_file)
+    score_db_base.handle_request(yaml_file)
     os.remove(yaml_file)
     print(f'end registering metric type')
 
