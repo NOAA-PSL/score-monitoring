@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 """
 Copyright 2023 NOAA
 All rights reserved.
@@ -39,15 +41,10 @@ variables = ['o3mr_inc', 'sphum_inc', 'T_inc', 'u_inc', 'v_inc',
                                   'delp_inc', 'delz_inc', 'pt_inc', 's_inc', 'u_inc', 'v_inc', 'SSH',
                                   'Salinity', 'Temperature', 'Speed of Currents']
 
-
-print("Arg value: ")
-print(sys.argv[1])
-print(sys.argv[2])
-
 input_cycle = sys.argv[1]
 datetime_obj = dt.datetime.strptime(input_cycle, "%Y%m%dT%H")
-year = datetime_obj.strftime("%Y")
-month = datetime_obj.strftime("%m")
+#year = datetime_obj.strftime("%Y")
+#month = datetime_obj.strftime("%m")
 datetime_str = datetime_obj.strftime("%Y%m%d%H")
 cycle_str = datetime_obj.strftime("%Y-%m-%d %H:%M:%S")
 
@@ -55,31 +52,41 @@ input_env = sys.argv[2]
 env_path = os.path.join(pathlib.Path(__file__).parent.parent.resolve(), input_env)
 load_dotenv(env_path)
 
+aws_access_key_id = os.getenv('AWS_ACCESS_KEY_ID')
+aws_secret_access_key = os.getenv('AWS_SECRET_ACCESS_KEY')
+
+if aws_access_key_id == '' or aws_access_key_id == None:
+    # move forward with unsigned request
+    s3_config_signature_version = UNSIGNED
+else:
+    s3_config_signature_version = 's3v4'
+
 s3 = boto3.resource(
     's3',
-    aws_access_key_id='',
-    aws_secret_access_key='',
-    config=Config(signature_version=UNSIGNED)
-)
+    aws_access_key_id=aws_access_key_id,    
+    aws_secret_access_key=aws_secret_access_key, 
+    config=Config(signature_version=s3_config_signature_version))
 
 bucket = s3.Bucket(os.getenv('STORAGE_LOCATION_BUCKET'))
-
 prefix = datetime_obj.strftime(os.getenv('STORAGE_LOCATION_KEY') + "/logs/")
 
-work_dir = os.getenv('WORK_DIR')
+work_dir = os.getenv('CYLC_TASK_WORK_DIR')
+
+'''
 if work_dir is None:
     work_dir = pathlib.Path(__file__).parent.resolve()
+'''
 
 #harvester is built to handle one file at a time so make calls per listed file 
-for file in file_list:
+for file_name in file_list:
     #download file using unique name for each cycle 
-    file_path =  os.path.join(work_dir,cycle_str + "-" + file)
+    file_path =  os.path.join(work_dir, file_name)
 
     try:
-        bucket.download_file(prefix+file, file_path)
+        bucket.download_file(prefix+file_name, file_path)
     except ClientError as err:
         if err.response['Error']['Code'] == "404":
-            print(f"File {file} not found at {prefix}. Moving on to the next file in list")
+            print(f"File {file_name} not found at {prefix}. Moving on to the next file in list")
             print(err)
             continue
         else:
@@ -110,4 +117,4 @@ for file in file_list:
     #remove yaml and downloaded file 
     os.remove(yaml_file)
     os.remove(file_path)
-    print(f"Finished with file {file} at {prefix}") 
+    print(f"Finished with file {file_name} at {prefix}") 
