@@ -5,19 +5,25 @@ All rights reserved.
 Helper functions to generate yaml file inputs for score-db calls from other scripts.
 Dependent on environmnet variables necessary per yaml file.
 """
+
 import yaml 
 import pathlib
 import os
 import datetime as dt
 import json
-import numpy as np
-
-PY_CURRENT_DIR = os.getenv('CYLC_TASK_WORK_DIR')
+import random
 
 YAML_FILE_PREFIX = 'monitoring-yaml-'
 
+def get_work_dir():
+    if os.getenv('CYLC_TASK_WORK_DIR') is None:
+        work_dir = pathlib.Path(__file__).parent.resolve()
+    else:
+        work_dir = os.getenv('CYLC_TASK_WORK_DIR')
+    return work_dir
+
 def generate_exp_reg_yaml(experiment_name, experiment_wallclock, cycle_start, cycle_end, owner_id, group_id, experiment_type, platform, description):
-    yaml_file_path = os.path.join(PY_CURRENT_DIR, YAML_FILE_PREFIX + dt.datetime.now().strftime("%Y%m%d%H%M%S") + '-exp_reg.yaml')
+    yaml_file_path = os.path.join(get_work_dir(), YAML_FILE_PREFIX + dt.datetime.now().strftime("%Y%m%d%H%M%S") + '-exp_reg.yaml')
     
     body = {
         'db_request_name' : 'experiment',
@@ -41,7 +47,7 @@ def generate_exp_reg_yaml(experiment_name, experiment_wallclock, cycle_start, cy
     return yaml_file_path
 
 def generate_storage_loc_reg_yaml(name, bucket, key, platform, platform_region):
-    yaml_file_path = os.path.join(PY_CURRENT_DIR, YAML_FILE_PREFIX + dt.datetime.now().strftime("%Y%m%d%H%M%S") + '-storage_loc.yaml')
+    yaml_file_path = os.path.join(get_work_dir(), YAML_FILE_PREFIX + dt.datetime.now().strftime("%Y%m%d%H%M%S") + '-storage_loc.yaml')
 
     body = {
         'db_request_name' : 'storage_locations',
@@ -60,7 +66,7 @@ def generate_storage_loc_reg_yaml(name, bucket, key, platform, platform_region):
     return yaml_file_path
 
 def generate_file_type_reg_yaml(name, file_template, file_format, description):
-    yaml_file_path = os.path.join(PY_CURRENT_DIR, YAML_FILE_PREFIX + dt.datetime.now().strftime("%Y%m%d%H%M%S") + '-file_type.yaml')
+    yaml_file_path = os.path.join(get_work_dir(), YAML_FILE_PREFIX + dt.datetime.now().strftime("%Y%m%d%H%M%S") + '-file_type.yaml')
 
     body = {
         'db_request_name' : 'file_types',
@@ -78,7 +84,7 @@ def generate_file_type_reg_yaml(name, file_template, file_format, description):
     return yaml_file_path
 
 def generate_store_metrics_yaml(name, region, elevation, elevation_unit, value, time_valid, experiment_name, experiment_wallclock):
-    yaml_file_path = os.path.join(PY_CURRENT_DIR, YAML_FILE_PREFIX + dt.datetime.now().strftime("%Y%m%d%H%M%S") + '-store_metrics.yaml')
+    yaml_file_path = os.path.join(get_work_dir(), YAML_FILE_PREFIX + dt.datetime.now().strftime("%Y%m%d%H%M%S") + '-store_metrics.yaml')
     
     body = {
         'db_request_name' : 'expt_metrics',
@@ -103,7 +109,7 @@ def generate_store_metrics_yaml(name, region, elevation, elevation_unit, value, 
     return yaml_file_path
 
 def generate_file_count_yaml(count, file_type, time_valid, forecast_length, folder_path, cycle, expt_name, expt_wallclock, bucket, platform, key):
-    yaml_file_path = os.path.join(PY_CURRENT_DIR, YAML_FILE_PREFIX + dt.datetime.now().strftime("%Y%m%d%H%M%S") + '-file_count.yaml')
+    yaml_file_path = os.path.join(get_work_dir(), YAML_FILE_PREFIX + dt.datetime.now().strftime("%Y%m%d%H%M%S") + '-file_count.yaml')
 
     body = {
         'db_request_name': 'expt_file_counts',
@@ -128,7 +134,7 @@ def generate_file_count_yaml(count, file_type, time_valid, forecast_length, fold
     return yaml_file_path
 
 def generate_harvest_metrics_yaml(experiment_name, experiment_wallclock, hv_translator, harvest_config, is_array=False):
-    yaml_file_path = os.path.join(PY_CURRENT_DIR, YAML_FILE_PREFIX + dt.datetime.now().strftime("%Y%m%d%H%M%S") + '%d' % int(np.around(np.random.rand()*99999)) + '-harvest_metrics.yaml')
+    yaml_file_path = os.path.join(get_work_dir(), YAML_FILE_PREFIX + dt.datetime.now().strftime("%Y%m%d%H%M%S") + '%d' % random.randint(0, 99999) + '-harvest_metrics.yaml')
     
     body = {
         'db_request_name' : 'harvest_metrics',
@@ -147,7 +153,7 @@ def generate_harvest_metrics_yaml(experiment_name, experiment_wallclock, hv_tran
     return yaml_file_path
  
 def generate_metric_type_reg_yaml(name, long_name, measurement_type, units, stat_type, description):
-    yaml_file_path = os.path.join(PY_CURRENT_DIR, YAML_FILE_PREFIX + dt.datetime.now().strftime("%Y%m%d%H%M%S") + '-metric_type.yaml')
+    yaml_file_path = os.path.join(get_work_dir(), YAML_FILE_PREFIX + dt.datetime.now().strftime("%Y%m%d%H%M%S") + '-metric_type.yaml')
     
     body = {
         'db_request_name' : 'metric_types',

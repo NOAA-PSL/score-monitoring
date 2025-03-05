@@ -1,13 +1,14 @@
 #!/usr/bin/env python
 
 """
-Copyright 2023 NOAA
+Copyright 2025 NOAA
 All rights reserved.
 
 This script checks if files exist and are older than 30 minutes 
 for the given cycle in the S3 storage bucket provided in the environment variables.
 It assumes a folder structure of: BUCKET/KEY/files
 """
+
 import sys
 import boto3
 import datetime as dt
@@ -58,13 +59,8 @@ if file_count is 0:
 diff = dt.datetime.now(dt.timezone.utc) - latest 
 diff_minutes = diff.total_seconds() / 60
 
-#print("minutes: ")
-#print(diff_minutes) 
 if diff_minutes < 30:
     raise Exception("the latest file is more recent than 30 minutes, try again later")
-
-#print("last modified:")
-#print(latest)
 
 print("File count: ")
 print(file_count)

@@ -1,20 +1,24 @@
 #!/usr/bin/env python
 
 """
-Copyright 2023 NOAA
+Copyright 2025 NOAA
 All rights reserved.
 
-This script is currently only applicable to REPLAY experiments due to the specific cloud based 
-file names, formats, and harvester being used. 
+This script is currently only applicable to REPLAY experiments due to the
+specific log file names, formats, and harvester being used.
 
-This script calls database harvesting for the given files, statistics, and variables at the top of
-the script. score-db makes the harvesting call, translates, and stores the data as experiment metrics.
+This script calls database harvesting for the given files, statistics, and
+variables at the top of the script. score-db makes the harvesting call,
+translates, and stores the data as experiment metrics.
 
-This script assumes that the statistics and variables provided are already registered as metric types.
+This script assumes that the statistics and variables provided are already
+registered as metric types.
 
-This script relies on environment variables for the S3 bucket and the location of the score-db executable.
-Folder structure is assumed to be KEY/%Y/%M/CYCLE/logs.
+This script relies on environment variables for the S3 bucket and the location
+of the score-db executable. Folder structure is assumed to be
+KEY/%Y/%M/CYCLE/logs.
 """
+
 import sys
 import boto3
 from botocore import UNSIGNED
@@ -71,11 +75,6 @@ bucket = s3.Bucket(os.getenv('STORAGE_LOCATION_BUCKET'))
 prefix = datetime_obj.strftime(os.getenv('STORAGE_LOCATION_KEY') + "/logs/")
 
 work_dir = os.getenv('CYLC_TASK_WORK_DIR')
-
-'''
-if work_dir is None:
-    work_dir = pathlib.Path(__file__).parent.resolve()
-'''
 
 #harvester is built to handle one file at a time so make calls per listed file 
 for file_name in file_list:

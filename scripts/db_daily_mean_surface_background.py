@@ -1,10 +1,7 @@
 #!/usr/bin/env python
 
-"""Copyright 2023 NOAA
+"""Copyright 2025 NOAA
 All rights reserved.
-
-This script is currently only applicable to REPLAY experiments due to the
-specific cloud based file names, formats, and harvester being used. 
 
 This script calls database harvesting for the given files, statistics, and
 variables at the top of the script. score-db makes the harvesting call,
@@ -124,7 +121,7 @@ for i in range(int(HOURS_PER_DAY/DA_WINDOW)):
                                                format = 
                                                "bfg_%Y%m%d%H_fhr06_control"))
 
-work_dir = os.getenv('WORK_DIR')
+work_dir = os.getenv('CYLC_TASK_WORK_DIR')
 if work_dir is None:
     work_dir = pathlib.Path(__file__).parent.resolve()
 

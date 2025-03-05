@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-"""Copyright 2023 NOAA
+"""Copyright 2025 NOAA
 All rights reserved.
 
 This script calls database harvesting for the given files, statistics, and
@@ -11,8 +11,7 @@ This script assumes that the statistics and variables provided are already
 registered as metric types.
 
 This script relies on environment variables for the S3 bucket and the location
-of the score-db executable.
-Folder structure is assumed to be BUCKET/KEY/files.
+of the score-db executable. Folder structure is assumed to be BUCKET/KEY/files.
 """
 
 import sys
