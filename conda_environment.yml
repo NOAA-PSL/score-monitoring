@@ -1,0 +1,41 @@
+name: score-monitoring-default-env
+channels:
+  - conda-forge
+dependencies:
+  - boto3
+  - bottleneck
+  - cartopy
+  - cftime
+  - colorcet
+  - cylc-rose
+  - cylc-uiserver
+  - dask
+  - git
+  - h5netcdf
+  - hypothesis
+  - ipdb
+  - ipython
+  - iris
+  - meson
+  - metomi-rose
+  - mpi4py
+  - nc-time-axis
+  - nco
+  - numbagg
+  - pint
+  - pooch
+  - psycopg2
+  - pydap
+  - pytest
+  - python-dotenv
+  - scipy
+  - scipy-tests
+  - seaborn
+  - sparse
+  - sqlalchemy<2
+  - xarray
+  - zarr
+  - pip:
+    - pip==25.0.1
+    - score-db==0.0.1
+    - score-hv==0.2.0
