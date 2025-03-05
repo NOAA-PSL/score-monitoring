@@ -1,23 +1,53 @@
+# ============================================================================
+# $$$ CYLC SUITE DOCUMENTATION BLOCK
+# ============================================================================
+# Authors: Jessica Knezha (jessica.knezha@noaa.gov), Adam Schneider (adam.schneider@noaa.gov)
+# 
+# Description:
+# This Cylc workflow is a lightweight demonstration script designed to test
+# that Cylc is correctly importing the required environment. It includes tasks
+# that test the installation of numpy and scipy by running their respective
+# test suites. These tests are executed on the default platform
+# (e.g., background) and on the "batch_partition",
+# which should be properly configured in the global.cylc configuration file.
+# For more information on configuration, refer to:
+# https://cylc.github.io/cylc-doc/stable/html/reference/config/global.html
+#
+# ============================================================================
+# Workflow Overview:
+# - This suite imports numpy and scipy and runs the associated test suites
+#   to verify the correct environment setup.
+# - Tasks:
+#   - test_numpy: Tests the numpy installation.
+#   - test_scipy: Tests the scipy installation.
+# - Execution:
+#   - Tests run with a time limit of 6 hours.
+#   - test_scipy runs on the "batch_partition", which needs to be configured
+#     in the global configuration.
+#
+# ============================================================================
 [scheduler]
     allow implicit tasks = True
     [[events]]
         mail events = startup, shutdown, failed, retry
     [[mail]]
-        to = Adam.Schneider@noaa.gov
+        to = EMAIL_ADDRESS  # Replace EMAIL_ADDRESS with actual email
 
 [scheduling]
     [[graph]]
         R1 = """
         test_numpy & test_scipy => tests_complete
         """
+
 [runtime]
     [[test_numpy]]
         execution time limit = PT6H
         script = python -c "import numpy as np; np.test('full', verbose=3)"
         [[[directives]]]
             --nodes = 1
+
     [[test_scipy]]
-        platform = batch_partition
+        platform = batch_partition  # Ensure this partition is configured in global.cylc
         execution time limit = PT6H
         script = python -c "import scipy; scipy.test('full', verbose=3)"
         [[[directives]]]

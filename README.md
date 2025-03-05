@@ -22,6 +22,18 @@ fail and retry.  After the file check is done, additional tasks will run such
 as storing file counts or GSI statistics as specified in the suite graph and 
 stats parameters.
 
+**Additional Test Workflow:** As part of the validation process for the 
+environment setup, the suite includes a lightweight demonstration that tests 
+the correct importation and operation of numpy and scipy. This process runs 
+corresponding test suites on these libraries, ensuring the environment is 
+properly configured for scientific computing tasks.
+
+For example:
+
+test_numpy: Runs a numpy test suite to check the installation of numpy.
+test_scipy: Runs a scipy test suite to check the installation of scipy.
+Both tasks are executed as part of the overall Cylc workflow and are run with 
+a time limit of 6 hours.
 
 ## Python Scripts
 Most of the python scripts are called via the cylc suite, except the 
