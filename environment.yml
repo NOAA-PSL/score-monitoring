@@ -4,22 +4,19 @@ channels:
 dependencies:
   - boto3
   - bottleneck
-  - cartopy
   - cftime
-  - colorcet
+  - cylc-flow
   - cylc-rose
   - cylc-uiserver
   - dask
-  - git
+  - geoalchemy2
   - h5netcdf
   - hypothesis
-  - ipdb
-  - ipython
+  - python
   - iris
   - meson
   - metomi-rose
   - mpi4py
-  - nc-time-axis
   - nco
   - numbagg
   - pint
@@ -30,12 +27,10 @@ dependencies:
   - python-dotenv
   - scipy
   - scipy-tests
-  - seaborn
   - sparse
-  - sqlalchemy<2
+  - sqlalchemy=1.4.49
+  - sqlalchemy-utils
   - xarray
   - zarr
-  - pip:
-    - pip==25.0.1
-    - score-db==0.0.1
-    - score-hv==0.2.0
+  - pip
+  - pyyaml
