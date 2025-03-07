@@ -26,7 +26,11 @@ stats parameters.
 environment setup, the suite includes a lightweight demonstration that tests 
 the correct importation and operation of numpy and scipy. This process runs 
 corresponding test suites on these libraries, ensuring the environment is 
-properly configured for scientific computing tasks.
+properly configured for scientific computing tasks. These tests are executed 
+on the default platform (e.g., background) and on the "batch_partition",
+which should be properly configured in the global.cylc configuration file.
+For more information on configuration, refer to:
+https://cylc.github.io/cylc-doc/stable/html/reference/config/global.html
 
 For example:
 

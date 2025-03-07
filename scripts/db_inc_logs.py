@@ -47,8 +47,6 @@ variables = ['o3mr_inc', 'sphum_inc', 'T_inc', 'u_inc', 'v_inc',
 
 input_cycle = sys.argv[1]
 datetime_obj = dt.datetime.strptime(input_cycle, "%Y%m%dT%H")
-#year = datetime_obj.strftime("%Y")
-#month = datetime_obj.strftime("%m")
 datetime_str = datetime_obj.strftime("%Y%m%d%H")
 cycle_str = datetime_obj.strftime("%Y-%m-%d %H:%M:%S")
 
