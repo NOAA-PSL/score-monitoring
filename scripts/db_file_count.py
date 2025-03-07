@@ -1,11 +1,15 @@
+#!/usr/bin/env python
+
 """
-Copyright 2023 NOAA
+Copyright 2025 NOAA
 All rights reserved.
 
-This script counts the number of files in a given S3 bucket and saves the value in a database.
-This script relies on environment variables for the S3 bucket and the location of the score-db executable.
-It assumes a folder structure of: BUCKET/KEY/files.
+This script counts the number of files in a given S3 bucket and saves the
+value in a database. This script relies on environment variables for the S3
+bucket and the location of the score-db executable. Folder structure is
+assumed to be KEY/%Y/%M/CYCLE.
 """
+
 import sys
 import boto3
 from botocore import UNSIGNED
@@ -15,12 +19,9 @@ import os
 import pathlib
 import datetime as dt
 from dotenv import load_dotenv
-import subprocess
 
-
-print("Arg value: ")
-print(sys.argv[1])
-print(sys.argv[2])
+from score_db import score_db_base
+from score_db import file_utils
 
 input_cycle = sys.argv[1]
 datetime_obj = dt.datetime.strptime(input_cycle, "%Y%m%dT%H")
@@ -30,15 +31,23 @@ datetime_str = datetime_obj.strftime("%Y%m%d%H")
 cycle_str = datetime_obj.strftime("%Y-%m-%d %H:%M:%S")
 
 input_env = sys.argv[2]
-env_path = os.path.join(pathlib.Path(__file__).parent.resolve(), input_env)
+env_path = os.path.join(pathlib.Path(__file__).parent.parent.resolve(), input_env)
 load_dotenv(env_path)
+
+aws_access_key_id = os.getenv('AWS_ACCESS_KEY_ID')
+aws_secret_access_key = os.getenv('AWS_SECRET_ACCESS_KEY')
+    
+if aws_access_key_id == '' or aws_access_key_id == None:
+    # move forward with unsigned request
+    s3_config_signature_version = UNSIGNED
+else:
+    s3_config_signature_version = 's3v4'
 
 s3 = boto3.resource(
     's3',
-    aws_access_key_id='',
-    aws_secret_access_key='',
-    config=Config(signature_version=UNSIGNED)
-)
+    aws_access_key_id=aws_access_key_id,    
+    aws_secret_access_key=aws_secret_access_key, 
+    config=Config(signature_version=s3_config_signature_version))
 
 bucket = s3.Bucket(os.getenv('STORAGE_LOCATION_BUCKET'))
 key = os.getenv('STORAGE_LOCATION_KEY')
@@ -63,6 +72,12 @@ yaml_file = db_yaml_generator.generate_file_count_yaml(file_count, file_type, No
                                                        os.getenv('STORAGE_LOCATION_BUCKET'), os.getenv('STORAGE_LOCATION_PLATFORM'), 
                                                        os.getenv('STORAGE_LOCATION_KEY'))
 
+# validate configuration (yaml) file
+file_utils.is_valid_readable_file(yaml_file)
+# submit the score db request
 print("Calling score-db with yaml file: " + yaml_file + "for cycle: " + cycle_str)
-subprocess.run(["python3", os.getenv("SCORE_DB_BASE_LOCATION"), yaml_file], check=True)
-os.remove(yaml_file)
+response = score_db_base.handle_request(yaml_file)
+if not response.success:
+    print(response.message)
+    print(response.errors)
+    raise RuntimeError("score-db returned a failure message") #generic exception to tell cylc to stop running 

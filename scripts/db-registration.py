@@ -14,18 +14,19 @@ import sys
 import db_yaml_generator 
 import os
 from dotenv import load_dotenv
-import subprocess
 import json
 import argparse
+
+from score_db import score_db_base
 
 #registers an experiment, datetimes are expected in format: "%Y-%m-%d %H:%M:%S"
 def register_experiment(experiment_configuration):
     #USER DEFINED VARIABLES
-    cycle_start = "2016-01-01 00:00:00"
-    cycle_end = "2016-01-31 00:00:00"
+    cycle_start = "1979-01-01 00:00:00"
+    cycle_end = "2019-01-01 00:00:00"
     owner_id = "score-monitoring.generated"
     group_id = "gsienkf"
-    experiment_type = "EXAMPLE_REPLAY"
+    experiment_type = "scout_runs"
     platform = "pw_awv2"
     description = json.dumps({"experiment configuration": experiment_configuration})
     #END USER DEFINED VARIABLES
@@ -34,21 +35,21 @@ def register_experiment(experiment_configuration):
     print(f'begin registering experiment: {name}')
     yaml_file = db_yaml_generator.generate_exp_reg_yaml(name, os.getenv('EXPERIMENT_WALLCLOCK_START'), cycle_start, 
                                                         cycle_end, owner_id, group_id, experiment_type, platform, description)
-    subprocess.run(["python3", os.getenv("SCORE_DB_BASE_LOCATION"), yaml_file])
+    score_db_base.handle_request(yaml_file)
     os.remove(yaml_file)
     print(f'end registering experiment')
 
 #register the storage location, utilizes environment variables
 def register_storage_location():
     #USER DEFINED VARIABLES
-    name = "replay_bucket"
+    name = "scoutrun_2009stream"
     platform_region = "n/a"
     #END USER DEFINED VARIABLES
 
     print(f'begin registering storage location: {name}')
     yaml_file = db_yaml_generator.generate_storage_loc_reg_yaml(name, os.getenv('STORAGE_LOCATION_BUCKET'), os.getenv('STORAGE_LOCATION_KEY'), 
                                                                 os.getenv('STORAGE_LOCATION_PLATFORM'), platform_region)
-    subprocess.run(["python3", os.getenv("SCORE_DB_BASE_LOCATION"), yaml_file])
+    score_db_base.handle_request(yaml_file)
     os.remove(yaml_file)
     print(f'end registering storage location')
 
@@ -63,7 +64,7 @@ def register_file_type():
     
     print(f'begin registering file type: {name}')
     yaml_file = db_yaml_generator.generate_file_type_reg_yaml(name, file_template, file_format, description)
-    subprocess.run(["python3", os.getenv("SCORE_DB_BASE_LOCATION"), yaml_file])
+    score_db_base.handle_request(yaml_file)
     os.remove(yaml_file)
     print(f'end registering file type')
 
@@ -80,7 +81,7 @@ def register_metric_type():
 
     print(f'begin registering metric type: {name}')
     yaml_file = db_yaml_generator.generate_metric_type_reg_yaml(name, long_name, measurement_type, units, stat_type, description)
-    subprocess.run(["python3", os.getenv("SCORE_DB_BASE_LOCATION"), yaml_file])
+    score_db_base.handle_request(yaml_file)
     os.remove(yaml_file)
     print(f'end registering metric type')
 
@@ -98,10 +99,10 @@ def main():
     print(f"{args.input_env} environment loaded.")
 
     #USER SHOULD COMMENT / UNCOMMENT CALLS AS APPROPRIATE
-    register_experiment("USER DEFINED INPUT FOR EXPERIMENT DESCRIPTION")
+    #register_experiment("scout runs (GSI3DVar) 1979stream")
     register_storage_location()
-    register_file_type()
-    register_metric_type()
+    #register_file_type()
+    #register_metric_type()
 
 if __name__ == "__main__":
     main()

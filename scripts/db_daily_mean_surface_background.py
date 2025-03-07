@@ -1,8 +1,7 @@
-"""Copyright 2023 NOAA
-All rights reserved.
+#!/usr/bin/env python
 
-This script is currently only applicable to REPLAY experiments due to the
-specific cloud based file names, formats, and harvester being used. 
+"""Copyright 2025 NOAA
+All rights reserved.
 
 This script calls database harvesting for the given files, statistics, and
 variables at the top of the script. score-db makes the harvesting call,
@@ -26,7 +25,9 @@ import os
 import pathlib
 import datetime as dt
 from dotenv import load_dotenv
-import subprocess
+
+from score_db import score_db_base
+from score_db import file_utils
 
 HOURS_PER_DAY = 24. # hours
 DA_WINDOW = 6. # hours
@@ -42,14 +43,14 @@ supported.
 variables = [#'icetk', # sea ice thickness (m)
              #'lhtfl_ave', # surface latent heat flux (W m^-2)
              #'prate_ave', # surface precip rate (mm weq. s^-1)
-             'prateb_ave', # bucket surface precip rate (mm weq. s^-1)
+             #'prateb_ave', # bucket surface precip rate (mm weq. s^-1)
              #'pressfc', # surface pressure (Pa)
              #'snod', # surface snow depth (m)
              #'soil4', # liquid soil moisture at layer-4 (?)
              #'soilm', # total column soil moisture content (mm weq.)
              #'soilt4', # soil temperature unknown layer 4 (K)
              #'tg3', # deep soil temperature (K)
-             #'tmp2m', # 2m (surface air) temperature (K)
+             'tmp2m', # 2m (surface air) temperature (K)
              #'tmpsfc', # surface temperature (K)
              #'weasd', # surface snow water equivalent (mm weq.)
              ]
@@ -66,11 +67,23 @@ datetime_str = datetime_obj.strftime("%Y%m%d%H")
 cycle_str = datetime_obj.strftime("%Y-%m-%d %H:%M:%S")
 
 input_env = sys.argv[2]
-env_path = os.path.join(pathlib.Path(__file__).parent.resolve(), input_env)
+env_path = os.path.join(pathlib.Path(__file__).parent.parent.resolve(), input_env)
 load_dotenv(env_path)
 
-s3 = boto3.resource('s3', aws_access_key_id='', aws_secret_access_key='',
-                    config=Config(signature_version=UNSIGNED))
+aws_access_key_id = os.getenv('AWS_ACCESS_KEY_ID')
+aws_secret_access_key = os.getenv('AWS_SECRET_ACCESS_KEY')
+    
+if aws_access_key_id == '' or aws_access_key_id == None:
+    # move forward with unsigned request
+    s3_config_signature_version = UNSIGNED
+else:
+    s3_config_signature_version = 's3v4'
+
+s3 = boto3.resource(
+    's3',
+    aws_access_key_id=aws_access_key_id,    
+    aws_secret_access_key=aws_secret_access_key, 
+    config=Config(signature_version=s3_config_signature_version))
 
 bucket = s3.Bucket(os.getenv('STORAGE_LOCATION_BUCKET'))
 key = os.getenv('STORAGE_LOCATION_KEY') + "/"
@@ -108,7 +121,7 @@ for i in range(int(HOURS_PER_DAY/DA_WINDOW)):
                                                format = 
                                                "bfg_%Y%m%d%H_fhr06_control"))
 
-work_dir = os.getenv('WORK_DIR')
+work_dir = os.getenv('CYLC_TASK_WORK_DIR')
 if work_dir is None:
     work_dir = pathlib.Path(__file__).parent.resolve()
 
@@ -138,10 +151,16 @@ yaml_file = db_yaml_generator.generate_harvest_metrics_yaml(
                                         os.getenv('EXPERIMENT_WALLCLOCK_START'),
                                         'daily_bfg',
                                         harvest_config)
+# validate configuration (yaml) file
+file_utils.is_valid_readable_file(yaml_file)
+# submit the score db request
 print("Calling score-db with yaml file: " + yaml_file + "for cycle: " +
       cycle_str)
-subprocess.run(["python3", os.getenv("SCORE_DB_BASE_LOCATION"), yaml_file],
-               check=True)
+response = score_db_base.handle_request(yaml_file)
+if not response.success:
+    print(response.message)
+    print(response.errors)
+    raise RuntimeError("score-db returned a failure message") #generic exception to tell cylc to stop running
 
 #remove yaml and downloaded files 
 try:
