@@ -23,8 +23,8 @@
 
 # =========================================================================
 [meta]
-	title = "SFS reanalysis development: atmosphere-only scout runs"
-	description = "Calculate statistics from the SFS reanalysis scout runs"
+	title = "SFS reanalysis development: scout runs and UFS-replay extensions"
+	description = "Calculate statistics from the SFS reanalysis scout runs and UFS-replay extensions"
 
 # parameters 
 {% set MAIL_ADDRESS = '<EMAIL_ADDRESS>@noaa.gov' %}
@@ -34,7 +34,7 @@
 
 [task parameters]
     stats = file_count, gsi_obsfit
-    #daily_stats = daily_mean_surface_background
+    daily_stats = daily_mean_surface_background, daily_mean_surface_analysis
 
 [scheduler]
     UTC mode = True
@@ -49,12 +49,19 @@
     final cycle point = {{ FINAL_CYCLE_POINT }}
     runahead limit = P3
     [[graph]]
+        # Run file_check for each cycle point (T00, T06, T12, T18) for the current day
         T00,T06,T12,T18 = """
-            file_check => store_data
+            file_check[T00] => store_data[T00]
+            file_check[T06] => store_data[T06]
+            file_check[T12] => store_data[T12]
+            file_check[T18] => store_data[T18]
         """
-        #+PT1D/P1D = """file_check[T00] & file_check[T06] & file_check[T12] &
-        #            file_check[T18] & file_check[+P1D/T00] => store_data_daily"""
-        
+
+        # Run store_data_daily once all file_check tasks for the current day (T00, T06, T12, T18)
+        # and the file_check for T00 of the next day have completed
+        +PT1D/T00 = """file_check[T00] & file_check[T06] & file_check[T12] & file_check[T18] &
+                        file_check[+P1D/T00] => store_data_daily"""
+
 [runtime]
     [[root]]
         #retry delays = 2*PT5M # Try again right away, then wait 5 minutes
@@ -79,6 +86,15 @@
         inherit=store_data
         script = """
              db_${CYLC_TASK_PARAM_stats}.py $CYLC_TASK_CYCLE_POINT {{ ENV_PATH }}
+        """
+    [[store_data_daily]]
+        [[[job]]]
+            execution retry delays = 168*PTM # if job fails, wait one minute and try again
+            
+    [[store_data_daily<daily_stats>]]
+        inherit=store_data_daily
+        script = """
+            db_${CYLC_TASK_PARAM_daily_stats}.py $CYLC_TASK_CYCLE_POINT {{ ENV_PATH }}
         """
     [[data_stored]]
         script = "echo 'all data stored'"

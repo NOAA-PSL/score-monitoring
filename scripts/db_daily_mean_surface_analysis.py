@@ -42,15 +42,11 @@ below. Commented out variables could be uncommented to generate gridcell
 weighted statistics but are in development and are currently not fully
 supported.
 """
-variables = ['dlwrf_ave',   # surface downward longwave flux (W/m**2)
-             'dswrf_ave',   # averaged surface downward shortwave flux (W/m**2)#'icetk', # sea ice thickness (m)
-             'lhtfl_ave',   # surface latent heat flux (W/m**2)             
-             'netef_ave',   # surface energy balance (W/m**2)
-             'netrf_avetoa',# top of atmosphere net radiative flux (SW and LW) (W/m**2)
+variables = [#'icetk', # sea ice thickness (m)
+             'lhtfl_ave', # surface latent heat flux (W m^-2)
              #'prate_ave', # surface precip rate (mm weq. s^-1)
              'prateb_ave', # bucket surface precip rate (mm weq. s^-1)
              'pressfc', # surface pressure (Pa)
-             'shtfl_ave',   # surface sensible heat flux (W/m**2)
              #'snod', # surface snow depth (m)
              #'soil4', # liquid soil moisture at layer-4 (?)
              #'soilm', # total column soil moisture content (mm weq.)
@@ -58,8 +54,6 @@ variables = ['dlwrf_ave',   # surface downward longwave flux (W/m**2)
              #'tg3', # deep soil temperature (K)
              'tmp2m', # 2m (surface air) temperature (K)
              #'tmpsfc', # surface temperature (K)
-             'ulwrf_ave',   # surface upward longwave flux (W/m**2)
-             'uswrf_ave',   # averaged surface upward shortwave flux (W/m**2)
              #'weasd', # surface snow water equivalent (mm weq.)
              ]
 
@@ -94,14 +88,14 @@ key = os.getenv('STORAGE_LOCATION_KEY') + "/"
 
 '''example file list needed to harvest (Jan 1 1994) daily mean from a 6 hour DA cycle:
 
-file_name_list = ['bfg_1994010100_fhr09_control',
-                  'bfg_1994010106_fhr06_control',
-                  'bfg_1994010106_fhr09_control',
-                  'bfg_1994010112_fhr06_control',
-                  'bfg_1994010112_fhr09_control',
-                  'bfg_1994010118_fhr06_control',
-                  'bfg_1994010118_fhr09_control',
-                  'bfg_1994010200_fhr06_control']
+file_name_list = ['bfg_1994010106_fhr03_control',
+                  'bfg_1994010112_fhr00_control',
+                  'bfg_1994010112_fhr03_control',
+                  'bfg_1994010118_fhr00_control',
+                  'bfg_1994010118_fhr03_control',
+                  'bfg_1994010200_fhr00_control',
+                  'bfg_1994010200_fhr03_control',
+                  'bfg_1994010206_fhr00_control']
 '''
 prefix = list()
 file_name_list = list()
@@ -109,21 +103,21 @@ for i in range(int(HOURS_PER_DAY/DA_WINDOW)):
     """Number of loops is the number of DA cycles per day
     """
     
-    time_delta_fhr09 = dt.timedelta(hours = HOURS_PER_DAY - i * DA_WINDOW)
-    time_delta_fhr06 = dt.timedelta(hours = HOURS_PER_DAY - (i + 1) * DA_WINDOW)
+    time_delta_fhr03 = dt.timedelta(hours = HOURS_PER_DAY - (i + 1) * DA_WINDOW)
+    time_delta_fhr00 = dt.timedelta(hours = HOURS_PER_DAY - (i + 2) * DA_WINDOW)
     
-    prefix.append(dt.datetime.strftime(datetime_obj - time_delta_fhr09,
+    prefix.append(dt.datetime.strftime(datetime_obj - time_delta_fhr03,
                                         format = key))
-    prefix.append(dt.datetime.strftime(datetime_obj - time_delta_fhr06,
+    prefix.append(dt.datetime.strftime(datetime_obj - time_delta_fhr00,
                                         format = key))
     
-    file_name_list.append(dt.datetime.strftime(datetime_obj - time_delta_fhr09,
+    file_name_list.append(dt.datetime.strftime(datetime_obj - time_delta_fhr03,
                                                format = 
-                                               "bfg_%Y%m%d%H_fhr09_control"))
+                                               "bfg_%Y%m%d%H_fhr03_control"))
     
-    file_name_list.append(dt.datetime.strftime(datetime_obj - time_delta_fhr06,
+    file_name_list.append(dt.datetime.strftime(datetime_obj - time_delta_fhr00,
                                                format = 
-                                               "bfg_%Y%m%d%H_fhr06_control"))
+                                               "bfg_%Y%m%d%H_fhr00_control"))
 
 work_dir = os.getenv('CYLC_TASK_WORK_DIR')
 if work_dir is None:
@@ -131,7 +125,7 @@ if work_dir is None:
 
 file_path_list = list()
 for i, file_name in enumerate(file_name_list):
-    file_path = os.path.join(work_dir, file_name)
+    file_path =  os.path.join(work_dir, file_name)
     try:
         bucket.download_file(prefix[i] + file_name, file_path)
         file_path_list.append(file_path)
@@ -155,9 +149,11 @@ yaml_file = db_yaml_generator.generate_harvest_metrics_yaml(
                                         os.getenv('EXPERIMENT_WALLCLOCK_START'),
                                         'daily_bfg',
                                         harvest_config)
-# validate configuration (yaml) file
+
+# validate the configuration (yaml) file
 file_utils.is_valid_readable_file(yaml_file)
-# submit the score db request
+
+# submit the score-db request
 print("Calling score-db with yaml file: " + yaml_file + "for cycle: " +
       cycle_str)
 
@@ -167,13 +163,3 @@ if not DEBUG:
         print(response.message)
         print(response.errors)
         raise RuntimeError("score-db returned a failure message") #generic exception to tell cylc to stop running
-
-    #remove yaml and downloaded files 
-    try:
-        os.remove(yaml_file)
-    except FileNotFoundError:
-        print('WARNING: FileNotFoundError raised during rm')
-
-    for i, file_path_to_remove in enumerate(file_path_list):
-        os.remove(file_path_to_remove)
-        print(f"Finished with file {file_name_list[i]} at {prefix[i]}")

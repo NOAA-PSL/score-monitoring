@@ -111,12 +111,14 @@ yaml_file = db_yaml_generator.generate_harvest_metrics_yaml(
                                         is_array=True)
 # validate the configuration (yaml) file
 file_utils.is_valid_readable_file(yaml_file)
+
 # submit the score db request
 print("Calling score-db with yaml file: " + yaml_file + "for cycle: " +
       cycle_str)
 
-response = score_db_base.handle_request(yaml_file)
-if not response.success:
-    print(response.message)
-    print(response.errors)
-    raise RuntimeError("score-db returned a failure message") #generic exception to tell cylc to stop running
+if not DEBUG:
+    response = score_db_base.handle_request(yaml_file)
+    if not response.success:
+        print(response.message)
+        print(response.errors)
+        raise RuntimeError("score-db returned a failure message") #generic exception to tell cylc to stop running
