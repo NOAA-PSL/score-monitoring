@@ -63,6 +63,7 @@ year = datetime_obj.strftime("%Y")
 month = datetime_obj.strftime("%m")
 datetime_str = datetime_obj.strftime("%Y%m%d%H")
 cycle_str = datetime_obj.strftime("%Y-%m-%d %H:%M:%S")
+datetime_obj_plus12h = datetime_obj + dt.timedelta(hours=12)
 
 input_env = sys.argv[2]
 env_path = os.path.join(pathlib.Path(__file__).parent.parent.resolve(), input_env)
@@ -106,16 +107,16 @@ for i in range(int(HOURS_PER_DAY/DA_WINDOW)):
     time_delta_fhr03 = dt.timedelta(hours = HOURS_PER_DAY - (i + 1) * DA_WINDOW)
     time_delta_fhr00 = dt.timedelta(hours = HOURS_PER_DAY - (i + 2) * DA_WINDOW)
     
-    prefix.append(dt.datetime.strftime(datetime_obj - time_delta_fhr03,
+    prefix.append(dt.datetime.strftime(datetime_obj_plus12h - time_delta_fhr03,
                                         format = key))
-    prefix.append(dt.datetime.strftime(datetime_obj - time_delta_fhr00,
+    prefix.append(dt.datetime.strftime(datetime_obj_plus12h - time_delta_fhr00,
                                         format = key))
     
-    file_name_list.append(dt.datetime.strftime(datetime_obj - time_delta_fhr03,
+    file_name_list.append(dt.datetime.strftime(datetime_obj_plus12h - time_delta_fhr03,
                                                format = 
                                                "bfg_%Y%m%d%H_fhr03_control"))
     
-    file_name_list.append(dt.datetime.strftime(datetime_obj - time_delta_fhr00,
+    file_name_list.append(dt.datetime.strftime(datetime_obj_plus12h - time_delta_fhr00,
                                                format = 
                                                "bfg_%Y%m%d%H_fhr00_control"))
 

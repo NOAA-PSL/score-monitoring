@@ -69,6 +69,8 @@ year = datetime_obj.strftime("%Y")
 month = datetime_obj.strftime("%m")
 datetime_str = datetime_obj.strftime("%Y%m%d%H")
 cycle_str = datetime_obj.strftime("%Y-%m-%d %H:%M:%S")
+# Move to the next day by adding one day
+datetime_obj_plus12h = datetime_obj + dt.timedelta(hours=12)
 
 input_env = sys.argv[2]
 env_path = os.path.join(pathlib.Path(__file__).parent.parent.resolve(), input_env)
@@ -107,21 +109,20 @@ prefix = list()
 file_name_list = list()
 for i in range(int(HOURS_PER_DAY/DA_WINDOW)):
     """Number of loops is the number of DA cycles per day
-    """
-    
+    """ 
     time_delta_fhr09 = dt.timedelta(hours = HOURS_PER_DAY - i * DA_WINDOW)
     time_delta_fhr06 = dt.timedelta(hours = HOURS_PER_DAY - (i + 1) * DA_WINDOW)
     
-    prefix.append(dt.datetime.strftime(datetime_obj - time_delta_fhr09,
+    prefix.append(dt.datetime.strftime(datetime_obj_plus12h - time_delta_fhr09,
                                         format = key))
-    prefix.append(dt.datetime.strftime(datetime_obj - time_delta_fhr06,
+    prefix.append(dt.datetime.strftime(datetime_obj_plus12h - time_delta_fhr06,
                                         format = key))
     
-    file_name_list.append(dt.datetime.strftime(datetime_obj - time_delta_fhr09,
+    file_name_list.append(dt.datetime.strftime(datetime_obj_plus12h - time_delta_fhr09,
                                                format = 
                                                "bfg_%Y%m%d%H_fhr09_control"))
     
-    file_name_list.append(dt.datetime.strftime(datetime_obj - time_delta_fhr06,
+    file_name_list.append(dt.datetime.strftime(datetime_obj_plus12h - time_delta_fhr06,
                                                format = 
                                                "bfg_%Y%m%d%H_fhr06_control"))
 

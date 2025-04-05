@@ -28,6 +28,8 @@ from dotenv import load_dotenv
 from score_db import score_db_base
 from score_db import file_utils
 
+DEBUG=True
+
 #stats and variables passed in for harvest
 variables = [#'var',
              #'varch_cld',
