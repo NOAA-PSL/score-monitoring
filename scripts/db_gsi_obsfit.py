@@ -28,8 +28,6 @@ from dotenv import load_dotenv
 from score_db import score_db_base
 from score_db import file_utils
 
-DEBUG=True
-
 #stats and variables passed in for harvest
 variables = [#'var',
              #'varch_cld',
@@ -113,14 +111,12 @@ yaml_file = db_yaml_generator.generate_harvest_metrics_yaml(
                                         is_array=True)
 # validate the configuration (yaml) file
 file_utils.is_valid_readable_file(yaml_file)
-
 # submit the score db request
 print("Calling score-db with yaml file: " + yaml_file + "for cycle: " +
       cycle_str)
 
-if not DEBUG:
-    response = score_db_base.handle_request(yaml_file)
-    if not response.success:
-        print(response.message)
-        print(response.errors)
-        raise RuntimeError("score-db returned a failure message") #generic exception to tell cylc to stop running
+response = score_db_base.handle_request(yaml_file)
+if not response.success:
+    print(response.message)
+    print(response.errors)
+    raise RuntimeError("score-db returned a failure message") #generic exception to tell cylc to stop running
