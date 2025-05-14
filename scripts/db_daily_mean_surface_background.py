@@ -32,8 +32,6 @@ from score_db import file_utils
 HOURS_PER_DAY = 24. # hours
 DA_WINDOW = 6. # hours
 
-DEBUG=True
-
 #stats and variables passed in for harvest
 statistics = ['mean', 'variance', 'minimum', 'maximum']
 
@@ -162,19 +160,18 @@ file_utils.is_valid_readable_file(yaml_file)
 print("Calling score-db with yaml file: " + yaml_file + "for cycle: " +
       cycle_str)
 
-if not DEBUG:
-    response = score_db_base.handle_request(yaml_file)
-    if not response.success:
-        print(response.message)
-        print(response.errors)
-        raise RuntimeError("score-db returned a failure message") #generic exception to tell cylc to stop running
+response = score_db_base.handle_request(yaml_file)
+if not response.success:
+    print(response.message)
+    print(response.errors)
+    raise RuntimeError("score-db returned a failure message") #generic exception to tell cylc to stop running
 
-    #remove yaml and downloaded files 
-    try:
-        os.remove(yaml_file)
-    except FileNotFoundError:
-        print('WARNING: FileNotFoundError raised during rm')
+#remove yaml and downloaded files 
+try:
+    os.remove(yaml_file)
+except FileNotFoundError:
+    print('WARNING: FileNotFoundError raised during rm')
 
-    for i, file_path_to_remove in enumerate(file_path_list):
-        os.remove(file_path_to_remove)
-        print(f"Finished with file {file_name_list[i]} at {prefix[i]}")
+for i, file_path_to_remove in enumerate(file_path_list):
+    os.remove(file_path_to_remove)
+    print(f"Finished with file {file_name_list[i]} at {prefix[i]}")
