@@ -32,8 +32,6 @@ from score_db import file_utils
 HOURS_PER_DAY = 24. # hours
 DA_WINDOW = 6. # hours
 
-DEBUG=True
-
 #stats and variables passed in for harvest
 statistics = ['mean', 'variance', 'minimum', 'maximum']
 
@@ -158,9 +156,8 @@ file_utils.is_valid_readable_file(yaml_file)
 print("Calling score-db with yaml file: " + yaml_file + "for cycle: " +
       cycle_str)
 
-if not DEBUG:
-    response = score_db_base.handle_request(yaml_file)
-    if not response.success:
-        print(response.message)
-        print(response.errors)
-        raise RuntimeError("score-db returned a failure message") #generic exception to tell cylc to stop running
+response = score_db_base.handle_request(yaml_file)
+if not response.success:
+    print(response.message)
+    print(response.errors)
+    raise RuntimeError("score-db returned a failure message") #generic exception to tell cylc to stop running
