@@ -146,7 +146,8 @@ for i, file_name in enumerate(file_name_list):
 #harvest: build harvest config, build yaml, call subprocess, statistic/variable 
 #combo needs to be registered to be saved in db
 harvest_config = {'harvester_name': 'daily_bfg',
-                  'filenames': file_path_list, 
+                  'filenames': file_path_list,
+                  'segment': 'background',
                   'statistic': statistics,
                   'variable': variables,}
 yaml_file = db_yaml_generator.generate_harvest_metrics_yaml(
