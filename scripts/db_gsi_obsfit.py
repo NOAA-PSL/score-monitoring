@@ -67,6 +67,7 @@ load_dotenv(env_path)
 aws_access_key_id = os.getenv('AWS_ACCESS_KEY_ID')
 aws_secret_access_key = os.getenv('AWS_SECRET_ACCESS_KEY')
 gsi_fit_file_name_format = os.getenv('GSI_FIT_FILE_NAME_FORMAT')
+gsi_fit_file_key = os.getenv('GSI_FIT_FILE_KEY')
 
 if gsi_fit_file_name_format == '' or gsi_fit_file_name_format == None:
     raise ValueError('Did not receive a GSI fit file format. Please '
@@ -86,7 +87,12 @@ s3 = boto3.resource(
     config=Config(signature_version=s3_config_signature_version))
 
 bucket = s3.Bucket(os.getenv('STORAGE_LOCATION_BUCKET'))
-prefix = datetime_obj.strftime(os.getenv('STORAGE_LOCATION_KEY') + "/")
+
+if gsi_fit_file_key == '' or gsi_fit_file_key == None:
+    prefix = datetime_obj.strftime(os.getenv('STORAGE_LOCATION_KEY') + "/")
+else:
+    prefix = datetime_obj.strftime(os.getenv('STORAGE_LOCATION_KEY') + "/" + gsi_fit_file_key + "/")
+
 file_name = dt.datetime.strftime(datetime_obj,
                                  format = gsi_fit_file_name_format)
 
