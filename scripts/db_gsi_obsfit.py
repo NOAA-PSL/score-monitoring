@@ -28,10 +28,6 @@ from dotenv import load_dotenv
 from score_db import score_db_base
 from score_db import file_utils
 
-def get_ensemble_member(ensemble_member='control'):
-    #TODO: implement method to retrieve ensemble member dynamically
-    return ensemble_member
-
 #stats and variables passed in for harvest
 variables = [#'var',
              #'varch_cld',
@@ -58,8 +54,6 @@ datetime_obj = dt.datetime.strptime(input_cycle, "%Y%m%dT%H")
 datetime_str = datetime_obj.strftime("%Y%m%d%H")
 cycle_str = datetime_obj.strftime("%Y-%m-%d %H:%M:%S")
 
-ensemble_member = get_ensemble_member()
-
 input_env = sys.argv[2]
 env_path = os.path.join(pathlib.Path(__file__).parent.parent.resolve(), input_env)
 load_dotenv(env_path)
@@ -67,6 +61,7 @@ load_dotenv(env_path)
 aws_access_key_id = os.getenv('AWS_ACCESS_KEY_ID')
 aws_secret_access_key = os.getenv('AWS_SECRET_ACCESS_KEY')
 gsi_fit_file_name_format = os.getenv('GSI_FIT_FILE_NAME_FORMAT')
+gsi_fit_file_key = os.getenv('GSI_FIT_FILE_KEY')
 
 if gsi_fit_file_name_format == '' or gsi_fit_file_name_format == None:
     raise ValueError('Did not receive a GSI fit file format. Please '
@@ -86,12 +81,17 @@ s3 = boto3.resource(
     config=Config(signature_version=s3_config_signature_version))
 
 bucket = s3.Bucket(os.getenv('STORAGE_LOCATION_BUCKET'))
-prefix = datetime_obj.strftime(os.getenv('STORAGE_LOCATION_KEY') + "/")
+
+if gsi_fit_file_key == '' or gsi_fit_file_key == None:
+    prefix = datetime_obj.strftime(os.getenv('STORAGE_LOCATION_KEY') + "/")
+else:
+    prefix = datetime_obj.strftime(os.getenv('STORAGE_LOCATION_KEY') + "/" + gsi_fit_file_key + "/")
+
 file_name = dt.datetime.strftime(datetime_obj,
                                  format = gsi_fit_file_name_format)
 
 work_dir = os.getenv('CYLC_TASK_WORK_DIR')
-file_path =  os.path.join(work_dir, f'gsistats.{datetime_str}_{ensemble_member}')
+file_path =  os.path.join(work_dir, file_name)
 try:
     bucket.download_file(prefix + file_name, file_path)
 except ClientError as err:
