@@ -52,12 +52,7 @@ load_dotenv(env_path)
 
 aws_access_key_id = os.getenv('AWS_ACCESS_KEY_ID')
 aws_secret_access_key = os.getenv('AWS_SECRET_ACCESS_KEY')
-soca_diags_dir_name_format = os.getenv('SOCA_DIAGS_DIR_NAME_FORMAT')
-
-if soca_diags_dir_name_format == '' or soca_diags_dir_name_format == None:
-    raise ValueError('Did not receive a SOCA diags directory format. Please '
-                     'specify the AWS path to the SOCA diag files in your '
-                     'environment configuration file')
+soca_diags_key = os.getenv('SOCA_DIAGS_KEY')
     
 if aws_access_key_id == '' or aws_access_key_id == None:
     # move forward with unsigned request
@@ -72,7 +67,11 @@ s3 = boto3.resource(
     config=Config(signature_version=s3_config_signature_version))
 
 bucket = s3.Bucket(os.getenv('STORAGE_LOCATION_BUCKET'))
-prefix = datetime_obj.strftime(os.getenv('STORAGE_LOCATION_KEY') + "/")
+
+if soca_diags_key == '' or soca_diags_key == None:
+    prefix = datetime_obj.strftime(os.getenv('STORAGE_LOCATION_KEY') + "/")
+else:
+    prefix = datetime_obj.strftime(os.getenv('STORAGE_LOCATION_KEY') + "/" + soca_diags_key + "/")
 
 #dir_name = dt.datetime.strftime(datetime_obj,
 #                                 format = soca_diags_dir_name_format)
