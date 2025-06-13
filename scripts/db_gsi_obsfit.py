@@ -28,6 +28,10 @@ from dotenv import load_dotenv
 from score_db import score_db_base
 from score_db import file_utils
 
+def get_ensemble_member(ensemble_member='control'):
+    #TODO: implement method to retrieve ensemble member dynamically
+    return ensemble_member
+
 #stats and variables passed in for harvest
 variables = [#'var',
              #'varch_cld',
@@ -53,6 +57,8 @@ input_cycle = sys.argv[1]
 datetime_obj = dt.datetime.strptime(input_cycle, "%Y%m%dT%H")
 datetime_str = datetime_obj.strftime("%Y%m%d%H")
 cycle_str = datetime_obj.strftime("%Y-%m-%d %H:%M:%S")
+
+ensemble_member = get_ensemble_member()
 
 input_env = sys.argv[2]
 env_path = os.path.join(pathlib.Path(__file__).parent.parent.resolve(), input_env)
@@ -91,7 +97,7 @@ file_name = dt.datetime.strftime(datetime_obj,
                                  format = gsi_fit_file_name_format)
 
 work_dir = os.getenv('CYLC_TASK_WORK_DIR')
-file_path =  os.path.join(work_dir, file_name)
+file_path =  os.path.join(work_dir, f'gsistats.{datetime_str}_{ensemble_member}')
 try:
     bucket.download_file(prefix + file_name, file_path)
 except ClientError as err:
