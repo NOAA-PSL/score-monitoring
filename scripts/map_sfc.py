@@ -108,14 +108,6 @@ class SurfaceMapper(object):
         for file_path_idx, file_path in enumerate(self.dest_file_path):
             base, ext = os.path.splitext(file_path)
             self.rgr_file_path.append(f"{base}_rgr{ext}")
-            cmd = [
-            "ncremap",
-            "-v", f"{self.lw_var},{self.sw_var}", # variables
-            "-R", "--rgr", f"lat_nm_in={self.lat_var}", "--rgr", f"lon_nm_in={self.lon_var}",
-            "-d", f"{file_path}", # data file
-            f"{file_path}", # input file
-            f"{self.rgr_file_path[file_path_idx]}" # output file
-            ]
             cmd = f"ncremap -v {self.lw_var},{self.sw_var} -R '--rgr lat_nm_in={self.lat_var} --rgr lon_nm_in={self.lon_var}' -d {file_path} {file_path} {self.rgr_file_path[file_path_idx]}"
  
             subprocess.run(cmd, check=True, shell=True)
@@ -130,15 +122,62 @@ class SurfaceMapper(object):
                                                            calendar=time.calendar),
                                          "%Y%m%dT%H")
 
-            ax = plt.axes(projection=ccrs.Mercator(central_longitude=180.))
-            
             lw_vals = (EARTH_RADIUS * rootgrp.variables['area'][:] *
                           rootgrp.variables[self.lw_var][0,:,:])
+            lw_max_val = np.ma.max(lw_vals)
+            
             sw_vals = (EARTH_RADIUS * rootgrp.variables['area'][:] *
                        rootgrp.variables[self.sw_var][0,:,:])
-            lw_max_val = np.ma.max(lw_vals)
-            lw_min_val = np.ma.min(lw_vals)
+            sw_max_val = np.ma.max(sw_vals)
+            
+            sw_dark_vals = np.ma.masked_where(sw_vals > 0.01 * sw_max_val,
+                                              sw_vals)
+            np.ma.masked_where(sw_dark_vals == 0, sw_dark_vals, copy=False)
+            
+            ax = plt.axes(projection=ccrs.Mercator(central_longitude=180.))
 
+            ax.pcolormesh(rootgrp.variables[self.lon_var][:],
+                          rootgrp.variables[self.lat_var][:],
+                          sw_vals,
+                          cmap=cc.cm.CET_L1,
+                          vmin=0,
+                          vmax=0.1*sw_max_val,
+                          shading='gouraud',
+                          rasterized=True,
+                          zorder=0,
+                          transform=ccrs.Mercator(central_longitude=180.,
+                                                  min_latitude=-90.,
+                                                  max_latitude=90.)
+            )
+            
+            ax.pcolormesh(rootgrp.variables[self.lon_var][:],
+                          rootgrp.variables[self.lat_var][:],
+                          sw_dark_vals,
+                          cmap=cc.cm.CET_L5,
+                          shading='gouraud',
+                          rasterized=True,
+                          zorder=1,
+                          transform=ccrs.Mercator(central_longitude=180.,
+                                                  min_latitude=-90.,
+                                                  max_latitude=90.)
+                                                  
+            ax.pcolormesh(rootgrp.variables[self.lon_var][:],
+                          rootgrp.variables[self.lat_var][:],
+                          lw_vals,
+                          cmap=cc.cm.CET_L8,
+                          shading='gouraud',
+                          rasterized=True,
+                          alpha=0.1,
+                          zorder=3,
+                          transform=ccrs.Mercator(central_longitude=180.,
+                                                  min_latitude=-90.,
+                                                  max_latitude=90.)
+            )
+                                                  
+            
+            
+            
+            '''
             ax.pcolormesh(rootgrp.variables[self.lon_var][:],
                           rootgrp.variables[self.lat_var][:],
                           np.ma.masked_where(sw_vals > 0, lw_vals),
@@ -154,24 +193,8 @@ class SurfaceMapper(object):
                                                   max_latitude=90.)
             )
 
-            sw_max_val = np.ma.max(sw_vals)
 
-            #sw_bright_vals = np.ma.masked_where(sw_vals < 0.1 * sw_max_val, sw_vals)
-            sw_mid_vals = np.ma.masked_where(sw_vals > 0.10 * sw_max_val,
-                                             sw_vals)
-            #np.ma.masked_where(sw_mid_vals <= 0.01 * sw_max_val, sw_mid_vals, copy=False)
-            sw_dark_vals = np.ma.masked_where(sw_vals > 0.001*sw_max_val, sw_vals)
             
-            ax.pcolormesh(rootgrp.variables[self.lon_var][:],
-                          rootgrp.variables[self.lat_var][:],
-                          sw_dark_vals,
-                          cmap=cc.cm.CET_L5,
-                          shading='nearest',
-                          rasterized=True, alpha = 0.2,
-                          zorder=2, edgecolors='face',
-                          transform=ccrs.Mercator(central_longitude=180.,
-                                                  min_latitude=-90.,
-                                                  max_latitude=90.)
             )
             ax.pcolormesh(rootgrp.variables[self.lon_var][:],
                           rootgrp.variables[self.lat_var][:],
@@ -187,19 +210,7 @@ class SurfaceMapper(object):
                                                   max_latitude=90.)
             )
 
-            ax.pcolormesh(rootgrp.variables[self.lon_var][:],
-                          rootgrp.variables[self.lat_var][:],
-                          sw_vals,
-                          cmap=cc.cm.CET_L1,
-                          vmin=0,
-                          shading='nearest',
-                          rasterized=True,
-                          zorder=0, edgecolors='face',
-                          transform=ccrs.Mercator(central_longitude=180.,
-                                                  min_latitude=-90.,
-                                                  max_latitude=90.)
-            )
-
+            '''
             plt.savefig(os.path.join(self.work_dir, f'fv3sfc_{time_str}.png'),
                         dpi=300)
         
