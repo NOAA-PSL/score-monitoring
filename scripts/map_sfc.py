@@ -117,11 +117,13 @@ class SurfaceMapper(object):
         for file_path in self.rgr_file_path:
             rootgrp = Dataset(file_path)
             time = rootgrp.variables['time']
-            time_str = datetime.strftime(cftime.num2pydate(time[0],
-                                                           units=time.units,
-                                                           calendar=time.calendar),
+            time_dt = cftime.num2pydate(time[0],
+                                        units=time.units,
+                                        calendar=time.calendar)
+            time_str = datetime.strftime(time_dt,
                                          "%Y%m%dT%H")
-
+            time_label = datetime.strftime(time_dt,
+                                           "%Y-%m-%d %H:%M:%S")
             lw_vals = (EARTH_RADIUS * rootgrp.variables['area'][:] *
                           rootgrp.variables[self.lw_var][0,:,:])
             lw_max_val = np.ma.max(lw_vals)
@@ -130,18 +132,22 @@ class SurfaceMapper(object):
                        rootgrp.variables[self.sw_var][0,:,:])
             sw_max_val = np.ma.max(sw_vals)
             
-            sw_dark_vals = np.ma.masked_where(sw_vals > 0.01 * sw_max_val,
+            sw_dark_vals = np.ma.masked_where(sw_vals > 0.0005 * sw_max_val,
                                               sw_vals)
             np.ma.masked_where(sw_dark_vals == 0, sw_dark_vals, copy=False)
             
-            ax = plt.axes(projection=ccrs.Mercator(central_longitude=180.))
+            ax = plt.axes(projection=ccrs.Mercator(central_longitude=180.,
+                                                   #min_latitude=-70.,
+                                                   #max_latitude=70.
+                                                   )
+            )
 
             ax.pcolormesh(rootgrp.variables[self.lon_var][:],
                           rootgrp.variables[self.lat_var][:],
                           sw_vals,
-                          cmap=cc.cm.CET_L1,
+                          cmap=cc.cm.CET_CBL3,
                           vmin=0,
-                          vmax=0.1*sw_max_val,
+                          vmax=0.25*sw_max_val,
                           shading='gouraud',
                           rasterized=True,
                           zorder=0,
@@ -154,20 +160,22 @@ class SurfaceMapper(object):
                           rootgrp.variables[self.lat_var][:],
                           sw_dark_vals,
                           cmap=cc.cm.CET_L5,
+                          #vmin=0,
+                          #vmax=0.003333*sw_max_val,
                           shading='gouraud',
                           rasterized=True,
                           zorder=1,
                           transform=ccrs.Mercator(central_longitude=180.,
                                                   min_latitude=-90.,
                                                   max_latitude=90.)
-                                                  
+            )                                      
             ax.pcolormesh(rootgrp.variables[self.lon_var][:],
                           rootgrp.variables[self.lat_var][:],
-                          lw_vals,
+                          np.ma.masked_where(sw_vals > 0, lw_vals),
                           cmap=cc.cm.CET_L8,
                           shading='gouraud',
                           rasterized=True,
-                          alpha=0.1,
+                          alpha=0.2,
                           zorder=3,
                           transform=ccrs.Mercator(central_longitude=180.,
                                                   min_latitude=-90.,
@@ -211,6 +219,7 @@ class SurfaceMapper(object):
             )
 
             '''
+            plt.title(time_label, fontsize=12, fontname='Noto Serif CJK JP', color='black')
             plt.savefig(os.path.join(self.work_dir, f'fv3sfc_{time_str}.png'),
                         dpi=300)
         

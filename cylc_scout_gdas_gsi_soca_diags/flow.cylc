@@ -1,0 +1,102 @@
+#!Jinja2
+
+#===========================
+# $$$ CYLC SUITE DOCUMENTATION BLOCK
+
+# monitoring-stats :: cylc/suite.rc
+
+# Email: jessica.knezha@noaa.gov, adam.schneider@noaa.gov
+
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see
+# <http://www.gnu.org/licenses/>.
+
+# =========================================================================
+[meta]
+	title = "SFS reanalysis development: scout runs and UFS-replay extensions"
+	description = "Calculate statistics from the SFS reanalysis scout runs and UFS-replay extensions"
+
+# parameters 
+{% set MAIL_ADDRESS = 'Adam.Schneider@noaa.gov' %}
+{% set INITIAL_CYCLE_POINT = '19790101T12' %}
+{% set FINAL_CYCLE_POINT = '20250930T18' %}
+{% set ENV_PATH = 'weakly_coupled_scoutrun_monitoring.env' %}
+
+[task parameters]
+    stats = file_count, gsi_obsfit, soca_obsfit    
+    daily_firstguess_stats = daily_mean_surface_background
+    daily_analysis_stats = daily_mean_surface_analysis
+
+[scheduler]
+    UTC mode = True
+    cycle point format = %Y%m%dT%H
+    [[events]]
+        mail events = startup, shutdown
+    [[mail]]
+        to = {{ MAIL_ADDRESS }}
+    
+[scheduling]
+    initial cycle point = {{ INITIAL_CYCLE_POINT }}
+    final cycle point = {{ FINAL_CYCLE_POINT }}
+    runahead limit = P0
+    [[graph]]
+        # File check dependencies for each cycle point (T00, T06, T18) for the current day
+        T00, T06, T12, T18 = """
+            file_check => store_data & fv3gfs_sfc_mapper
+        """
+
+[runtime]
+    [[root]]
+        #platform = batch_partition
+        [[[events]]]
+            mail events = submission failed, failed, retry
+        [[[mail]]]
+            to = {{ MAIL_ADDRESS }}
+
+    [[file_check]]
+        script = """
+	    bucket_file_count.py $CYLC_TASK_CYCLE_POINT {{ ENV_PATH }}
+        """
+	execution retry delays = 240*PT30M # if job fails, wait 30 minutes and try again
+    [[print_cycle_valid]]
+            script = "echo 'files found in bucket'" # for $CYCLE_TASK_CYCLE_POINT'"
+    [[store_data]]
+        execution retry delays = 60*PT1M # if job fails, wait one minute and try again
+    [[store_data<stats>]]
+        inherit=store_data
+        script = """
+             db_${CYLC_TASK_PARAM_stats}.py $CYLC_TASK_CYCLE_POINT {{ ENV_PATH }}
+        """
+    [[store_data_daily_fg]]
+        execution retry delays = 60*PT1M # if job fails, wait one minute and try again
+    [[store_data_daily_an]]
+        execution retry delays = 60*PT1M # if job fails, wait one minute and try again
+            
+    [[store_data_daily_fg<daily_firstguess_stats>]]
+        inherit=store_data_daily_fg
+        script = """
+            db_${CYLC_TASK_PARAM_daily_firstguess_stats}.py $CYLC_TASK_CYCLE_POINT {{ ENV_PATH }}
+        """
+    [[store_data_daily_an<daily_analysis_stats>]]
+        inherit=store_data_daily_an
+        script = """
+            db_${CYLC_TASK_PARAM_daily_analysis_stats}.py $CYLC_TASK_CYCLE_POINT {{ ENV_PATH }}
+        """
+
+    [[data_stored]]
+        script = "echo 'all data stored'"
+
+    [[fv3gfs_sfc_mapper]]
+        script = """
+            map_sfc.py $CYLC_TASK_CYCLE_POINT {{ ENV_PATH }}
+        """
