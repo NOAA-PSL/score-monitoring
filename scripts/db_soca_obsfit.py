@@ -78,10 +78,10 @@ else:
 
 work_dir = os.getenv('CYLC_TASK_WORK_DIR')
 file_path_list = list()
-for obj in bucket.objects.filter(Prefix=prefix):
-    file_path_list.append(os.path.join(work_dir, obj.key))
+for obj_idx, obj in enumerate(bucket.objects.filter(Prefix=prefix)):
+    file_path_list.append(os.path.join(work_dir, os.path.basename(obj.key)))
     try:
-        bucket.download_file(obj.key, file_path)
+        bucket.download_file(obj.key, file_path_list[obj_idx])
     except ClientError as err:
         if err.response['Error']['Code'] == "404":
             print(f"File {file_name} not found at {prefix}")
@@ -94,7 +94,7 @@ for obj in bucket.objects.filter(Prefix=prefix):
 #harvest: build harvest config, build yaml, call subprocess, statistic/variable 
 #combo needs to be registered to be saved in db
 harvest_config = {'harvester_name': score_hv_harvester,
-                     'filename': file_path_list,
+                     'filenames': file_path_list,
                      'variables': variables,
                      'statistics': statistics}
 yaml_file = db_yaml_generator.generate_harvest_metrics_yaml(
