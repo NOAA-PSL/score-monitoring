@@ -242,7 +242,7 @@ def put_these_data():
                       #'ssu': 3,
                       #'tmi':9 # NASA,
                       #'imgr':4,
-                      'cdt':None,
+                      'ctd':None,
                       'xbt': None
                   }
     for instrument, num_channels in my_instruments.items():
@@ -398,7 +398,7 @@ def put_these_data2():
                           description=None)
 
 def put_these_data3():
-    my_instruments = ['cdt', 'xbt']
+    my_instruments = ['ctd', 'xbt']
     my_stats = ['rms',
                 'mean',
                 'median',
@@ -410,7 +410,7 @@ def put_these_data3():
     groups = ('ObsValue','oman','ombg', 'ObsError')
 
     for instrument in my_instruments:
-        if instrument == ' cdt':
+        if instrument == ' ctd':
             long_name = 'conductivity, temperature, and depth'
         elif instrument == 'xbt':
             long_name = 'expendable bathythermograph'
