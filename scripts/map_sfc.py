@@ -29,7 +29,8 @@ SHARE_DATA_FILE = 'fv3sfc.nc'
 class SurfaceMapper(object):
     """Handles retrieval, processing, accumulation, and visualization of FV3 surface radiation data.
     """
-    def __init__(self, input_cycle, input_env, integrate=True):
+    def __init__(self, input_cycle, input_env, integrate=True,
+                 luminosity_scalar=0.25):
         """
         Initialize the SurfaceMapper.
 
@@ -44,6 +45,7 @@ class SurfaceMapper(object):
         self.work_dir = os.getenv('CYLC_TASK_WORK_DIR')
         self.share_dir = os.getenv('CYLC_WORKFLOW_SHARE_DIR')
         self.integrate = integrate
+        self.luminosity_scalar = luminosity_scalar
         
         self.parse_datetime(input_cycle)
         self.get_bucket()
@@ -119,7 +121,8 @@ class SurfaceMapper(object):
                            fv3atm_lw_var = 'ulwrf',
                            fv3atm_sw_var = 'uswrf',
                            fv3atm_sw_ave_var = 'uswrf_ave',
-                           fv3atm_lw_ave_var = 'ulwrf_ave'
+                           fv3atm_lw_ave_var = 'ulwrf_ave',
+                           fv3atm_land_mask = 'land'
                            ):
         """Regrid and clean downloaded NetCDF surface files using `ncremap`.
 
@@ -137,15 +140,16 @@ class SurfaceMapper(object):
         self.sw_var =fv3atm_sw_var
         self.lw_ave_var = fv3atm_lw_ave_var
         self.sw_ave_var =fv3atm_sw_ave_var
+        self.land_mask = 'land'
         
         self.rgr_file_path = list()
         for file_path_idx, file_path in enumerate(self.dest_file_path):
             base, ext = os.path.splitext(file_path)
             self.rgr_file_path.append(f"{base}_rgr{ext}")
             if self.integrate:
-                cmd = f"ncremap -v {self.lw_var},{self.sw_var},{self.lw_ave_var},{self.sw_ave_var} -R '--rgr lat_nm_in={self.lat_var} --rgr lon_nm_in={self.lon_var}' -d {file_path} {file_path} {self.rgr_file_path[file_path_idx]}"
+                cmd = f"ncremap -v {self.lw_var},{self.sw_var},{self.lw_ave_var},{self.sw_ave_var},{self.land_mask} -R '--rgr lat_nm_in={self.lat_var} --rgr lon_nm_in={self.lon_var}' -d {file_path} {file_path} {self.rgr_file_path[file_path_idx]}"
             else:
-                cmd = f"ncremap -v {self.lw_var},{self.sw_var} -R '--rgr lat_nm_in={self.lat_var} --rgr lon_nm_in={self.lon_var}' -d {file_path} {file_path} {self.rgr_file_path[file_path_idx]}"
+                cmd = f"ncremap -v {self.lw_var},{self.sw_var},{self.land_mask} -R '--rgr lat_nm_in={self.lat_var} --rgr lon_nm_in={self.lon_var}' -d {file_path} {file_path} {self.rgr_file_path[file_path_idx]}"
  
             subprocess.run(cmd, check=True, shell=True)
             os.remove(file_path)
@@ -190,9 +194,10 @@ class SurfaceMapper(object):
         ax.pcolormesh(lon,
                       lat,
                       sw_vals,
-                      cmap=cc.cm.CET_CBL3,
+                      #cmap=cc.cm.CET_CBL3,
+                      cmap=cc.cm.CET_L1,
                       vmin=0,
-                      vmax=0.25*sw_max_val,
+                      vmax=self.luminosity_scalar*sw_max_val,
                       shading='nearest',
                       rasterized=True,
                       zorder=0,
@@ -209,7 +214,7 @@ class SurfaceMapper(object):
                       #vmax=0.003333*sw_max_val,
                       shading='nearest',
                       rasterized=True,
-                      zorder=1,
+                      zorder=2,
                       transform=ccrs.Mercator(central_longitude=180.,
                                               min_latitude=-90.,
                                               max_latitude=90.)
@@ -226,6 +231,8 @@ class SurfaceMapper(object):
                                               min_latitude=-90.,
                                               max_latitude=90.)
         )
+        
+        return ax
                                                               
     def view_surface(self):
         """Generate and save plots for each processed NetCDF file.
@@ -244,19 +251,81 @@ class SurfaceMapper(object):
             lon = rootgrp.variables[self.lon_var][:]
             lat = rootgrp.variables[self.lat_var][:]
             
+            land_mask = rootgrp.variables[self.land_mask][0,:,:]
+            
             lw_vals = (EARTH_RADIUS * rootgrp.variables['area'][:] *
                           rootgrp.variables[self.lw_var][0,:,:])
             lw_max_val = np.ma.max(lw_vals)
             
             sw_vals = (EARTH_RADIUS * rootgrp.variables['area'][:] *
                        rootgrp.variables[self.sw_var][0,:,:])
+                       
             sw_max_val = np.ma.max(sw_vals)
             
             sw_dark_vals = np.ma.masked_where(sw_vals > 0.0005 * sw_max_val,
                                               sw_vals)
             np.ma.masked_where(sw_dark_vals == 0, sw_dark_vals, copy=False)
         
-            self.map_surface(lon, lat, sw_vals, sw_max_val, sw_dark_vals, lw_vals)
+            ax = self.map_surface(lon, lat, sw_vals, sw_max_val, sw_dark_vals, lw_vals)
+            
+            sw_vals_sea = np.ma.masked_where(land_mask != 0, sw_vals)
+            np.ma.masked_where(sw_vals_sea < 0.05 * self.luminosity_scalar * sw_max_val,
+                               sw_vals_sea, copy=False)
+            np.ma.masked_where(sw_vals_sea > 0.95 * self.luminosity_scalar * sw_max_val,
+                               sw_vals_sea, copy=False)
+            
+            ax.pcolormesh(lon,
+                          lat,
+                          sw_vals_sea,
+                          cmap=cc.cm.CET_CBL3,
+                          vmin=0.05*self.luminosity_scalar*sw_max_val,
+                          vmax=0.95*self.luminosity_scalar*sw_max_val,
+                          shading='nearest',
+                          rasterized=True,
+                          zorder=1,
+                          transform=ccrs.Mercator(central_longitude=180.,
+                                                  min_latitude=-90.,
+                                                  max_latitude=90.)
+            )
+            
+            sw_vals_land = np.ma.masked_where(land_mask != 1 ,sw_vals)
+            np.ma.masked_where(sw_vals_land < 0.65 * self.luminosity_scalar * sw_max_val,
+                               sw_vals_land, copy=False)
+            np.ma.masked_where(sw_vals_land > 0.9 * self.luminosity_scalar * sw_max_val,
+                               sw_vals_land, copy=False)
+            ax.pcolormesh(lon,
+                          lat,
+                          sw_vals_land),
+                          cmap=cc.cm.CET_L11,
+                          vmin=0.65*self.luminosity_scalar*sw_max_val,
+                          vmax=0.9*self.luminosity_scalar*sw_max_val,
+                          shading='nearest',
+                          rasterized=True,
+                          zorder=1,
+                          transform=ccrs.Mercator(central_longitude=180.,
+                                                  min_latitude=-90.,
+                                                  max_latitude=90.)
+            )
+            
+            sw_vals_ice = np.ma.masked_where(land_mask != 2 ,sw_vals)
+            np.ma.masked_where(sw_vals_ice < 0.05 * self.luminosity_scalar * sw_max_val,
+                               sw_vals_ice, copy=False)
+            np.ma.masked_where(sw_vals_ice > 0.95 * self.luminosity_scalar * sw_max_val,
+                               sw_vals_ice, copy=False)
+            
+            ax.pcolormesh(lon,
+                          lat,
+                          sw_vals_ice,
+                          cmap=cc.cm.CET_CBTL3,
+                          vmin=0.05*self.luminosity_scalar*sw_max_val,
+                          vmax=0.95*self.luminosity_scalar*sw_max_val,
+                          shading='nearest',
+                          rasterized=True,
+                          zorder=1,
+                          transform=ccrs.Mercator(central_longitude=180.,
+                                                  min_latitude=-90.,
+                                                  max_latitude=90.)
+            )
             
             plt.title(time_label, fontsize=12, fontname='Noto Serif CJK JP', color='black')
             plt.savefig(os.path.join(self.work_dir, f'fv3sfc_{time_str}.png'),
