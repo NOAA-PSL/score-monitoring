@@ -51,8 +51,8 @@ class SurfaceMapper(object):
         self.clean_output_files()
         if self.integrate:
             self.update_running_total_file(os.path.join(self.share_dir, SHARE_DATA_FILE),
-                                           var_list=[self.fv3atm_sw_ave_var,
-                                                     self.fv3atm_lw_ave_var],
+                                           var_list=[self.sw_ave_var,
+                                                     self.lw_ave_var],
                                            time_var='time')
 
     def parse_datetime(self, input_cycle):
@@ -261,6 +261,7 @@ class SurfaceMapper(object):
             plt.title(time_label, fontsize=12, fontname='Noto Serif CJK JP', color='black')
             plt.savefig(os.path.join(self.work_dir, f'fv3sfc_{time_str}.png'),
                         dpi=300)
+            plt.close()
         
             rootgrp.close()
             
@@ -289,8 +290,9 @@ class SurfaceMapper(object):
     
         self.map_surface(lon, lat, sw_ave_vals, sw_ave_max_val, sw_ave_dark_vals, lw_ave_vals)
         
-        plt.savefig(os.path.join(self.work_dir, f'fv3sfc.png'),
+        plt.savefig(os.path.join(self.share_dir, f'fv3sfc.png'),
                     dpi=300)
+        plt.close()
     
         rootgrp.close()
 
