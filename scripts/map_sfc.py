@@ -55,7 +55,11 @@ class SurfaceMapper(object):
         if self.integrate:
             self.update_running_total_file(os.path.join(self.share_dir, SHARE_DATA_FILE),
                                            var_list=[self.sw_ave_var,
-                                                     self.lw_ave_var],
+                                                     self.lw_ave_var,
+                                                     self.lw_ave_var_cstoa,
+                                                     self.sw_ave_var_cstoa,
+                                                     self.lw_ave_var_toa,
+                                                     self.sw_ave_var_toa],
                                            time_var='time')
 
     def parse_datetime(self, input_cycle):
@@ -123,7 +127,11 @@ class SurfaceMapper(object):
                            fv3atm_sw_var = 'uswrf',
                            fv3atm_sw_ave_var = 'uswrf_ave',
                            fv3atm_lw_ave_var = 'ulwrf_ave',
-                           fv3atm_land_mask = 'land'
+                           fv3atm_land_mask = 'land',
+                           fv3cstoa_lw_ave_var = 'csulftoa',
+                           fv3cstoa_sw_ave_var = 'csusftoa',
+                           fv3toa_lw_ave_var = 'ulwrf_avetoa',
+                           fv3toa_sw_ave_var = 'uswrf_avetoa',
                            ):
         """Regrid and clean downloaded NetCDF surface files using `ncremap`.
 
@@ -143,12 +151,18 @@ class SurfaceMapper(object):
         self.sw_ave_var =fv3atm_sw_ave_var
         self.land_mask = 'land'
         
+        # top of atmosphere variables
+        self.lw_ave_var_cstoa = fv3cstoa_lw_ave_var
+        self.sw_ave_var_cstoa = fv3cstoa_sw_ave_var
+        self.lw_ave_var_toa = fv3toa_lw_ave_var
+        self.sw_ave_var_toa = fv3toa_sw_ave_var
+        
         self.rgr_file_path = list()
         for file_path_idx, file_path in enumerate(self.dest_file_path):
             base, ext = os.path.splitext(file_path)
             self.rgr_file_path.append(f"{base}_rgr{ext}")
             if self.integrate:
-                cmd = f"ncremap -v {self.lw_var},{self.sw_var},{self.lw_ave_var},{self.sw_ave_var},{self.land_mask} -R '--rgr lat_nm_in={self.lat_var} --rgr lon_nm_in={self.lon_var}' -d {file_path} {file_path} {self.rgr_file_path[file_path_idx]}"
+                cmd = f"ncremap -v {self.lw_var},{self.sw_var},{self.lw_ave_var},{self.sw_ave_var},{self.land_mask},{self.lw_ave_var_cstoa},{self.sw_ave_var_cstoa},{self.lw_ave_var_toa},{self.sw_ave_var_toa} -R '--rgr lat_nm_in={self.lat_var} --rgr lon_nm_in={self.lon_var}' -d {file_path} {file_path} {self.rgr_file_path[file_path_idx]}"
             else:
                 cmd = f"ncremap -v {self.lw_var},{self.sw_var},{self.land_mask} -R '--rgr lat_nm_in={self.lat_var} --rgr lon_nm_in={self.lon_var}' -d {file_path} {file_path} {self.rgr_file_path[file_path_idx]}"
  
@@ -365,12 +379,51 @@ class SurfaceMapper(object):
         plt.close()
     
         rootgrp.close()
+    
+    def view_toa_ave(self, clearsky=False):
+        """Generate and save a plot of the accumulated average TOA radiation.
+        """
+        rootgrp = Dataset(os.path.join(self.share_dir, SHARE_DATA_FILE))
+        
+        lon = rootgrp.variables[self.lon_var][:]
+        lat = rootgrp.variables[self.lat_var][:]
+        
+        if clearsky:
+            lw_varname = self.lw_ave_var_cstoa
+            sw_varname = self.sw_ave_var_cstoa
+            figname = 'fv3toa_cs.png'
+        else:
+            lw_varname = self.lw_ave_var_toa
+            sw_varname = self.sw_ave_var_toa
+            figname = 'fv3toa.png'
+        
+        lw_ave_vals = (EARTH_RADIUS * rootgrp.variables['area'][:] *
+                       rootgrp.variables[lw_varname][0,:,:])
+        lw_ave_max_val = np.ma.max(lw_ave_vals)
+        
+        sw_ave_vals = (EARTH_RADIUS * rootgrp.variables['area'][:] *
+                       rootgrp.variables[sw_varname][0,:,:])
+        sw_ave_max_val = np.ma.max(sw_ave_vals)
+        
+        sw_ave_dark_vals = np.ma.masked_where(sw_ave_vals > 0.0005 * sw_ave_max_val,
+                                              sw_ave_vals)
+        np.ma.masked_where(sw_ave_dark_vals == 0, sw_ave_dark_vals, copy=False)
+    
+        self.map_surface(lon, lat, sw_ave_vals, sw_ave_max_val, sw_ave_dark_vals, lw_ave_vals)
+        
+        plt.savefig(os.path.join(self.share_dir, figname),
+                    dpi=300)
+        plt.close()
+    
+        rootgrp.close()
 
 def run():
     """Run the SurfaceMapper with command-line arguments.
     """
     surface_mapper = SurfaceMapper(sys.argv[1], sys.argv[2])
     surface_mapper.view_surface()
+    surface_mapper.view_toa_ave()
+    surface_mapper.view_toa_ave(clearsky=True)
 
 def main():
     """Main entry point.
