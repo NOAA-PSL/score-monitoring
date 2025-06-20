@@ -30,7 +30,8 @@ class SurfaceMapper(object):
     """Handles retrieval, processing, accumulation, and visualization of FV3 surface radiation data.
     """
     def __init__(self, input_cycle, input_env, integrate=True,
-                 luminosity_scalar=0.25):
+                 sw_exposure=0.7 # 0 to 1
+                 ):
         """
         Initialize the SurfaceMapper.
 
@@ -45,7 +46,7 @@ class SurfaceMapper(object):
         self.work_dir = os.getenv('CYLC_TASK_WORK_DIR')
         self.share_dir = os.getenv('CYLC_WORKFLOW_SHARE_DIR')
         self.integrate = integrate
-        self.luminosity_scalar = luminosity_scalar
+        self.luminosity_scalar = 1 - sw_exposure
         
         self.parse_datetime(input_cycle)
         self.get_bucket()
@@ -225,7 +226,7 @@ class SurfaceMapper(object):
                       cmap=cc.cm.CET_L8,
                       shading='nearest',
                       rasterized=True,
-                      alpha=0.2,
+                      alpha=0.5,
                       zorder=3,
                       transform=ccrs.Mercator(central_longitude=180.,
                                               min_latitude=-90.,
@@ -289,16 +290,16 @@ class SurfaceMapper(object):
             )
             
             sw_vals_land = np.ma.masked_where(land_mask != 1 ,sw_vals)
-            np.ma.masked_where(sw_vals_land < 0.65 * self.luminosity_scalar * sw_max_val,
+            np.ma.masked_where(sw_vals_land < 0.6 * self.luminosity_scalar * sw_max_val,
                                sw_vals_land, copy=False)
-            np.ma.masked_where(sw_vals_land > 0.9 * self.luminosity_scalar * sw_max_val,
+            np.ma.masked_where(sw_vals_land > 0.85 * self.luminosity_scalar * sw_max_val,
                                sw_vals_land, copy=False)
             ax.pcolormesh(lon,
                           lat,
-                          sw_vals_land),
-                          cmap=cc.cm.CET_L11,
-                          vmin=0.65*self.luminosity_scalar*sw_max_val,
-                          vmax=0.9*self.luminosity_scalar*sw_max_val,
+                          sw_vals_land,
+                          cmap=cc.cm.CET_L10,
+                          vmin=0.6*self.luminosity_scalar*sw_max_val,
+                          vmax=0.85*self.luminosity_scalar*sw_max_val,
                           shading='nearest',
                           rasterized=True,
                           zorder=1,
