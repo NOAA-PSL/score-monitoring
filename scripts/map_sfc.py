@@ -40,11 +40,11 @@ class SurfaceMapper(object):
         """
         load_dotenv(os.path.join(pathlib.Path(__file__).parent.parent.resolve(), input_env))
 
+        self.initial_cycle_point = os.getenv("CYLC_WORKFLOW_INITIAL_CYCLE_POINT")
         self.parse_datetime(input_cycle)
         self.get_bucket()
         self.work_dir = os.getenv('CYLC_TASK_WORK_DIR')
         self.share_dir = os.getenv('CYLC_WORKFLOW_SHARE_DIR')
-        self.initial_cycle_point = os.getenv("CYLC_WORKFLOW_INITIAL_CYCLE_POINT")
         
         self.download_output_files()
         self.clean_output_files()
