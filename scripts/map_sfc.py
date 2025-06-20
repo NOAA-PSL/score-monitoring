@@ -1,9 +1,11 @@
 #!/usr/bin/env python
 
-"""
+"""Script to download FV3 surface data from an S3 bucket, process it,
+optionally accumulate averages, and render surface radiation maps.
 """
 
 import sys
+import shutil
 from datetime import datetime
 from dotenv import load_dotenv
 import os
@@ -22,29 +24,48 @@ import numpy as np
 import colorcet as cc
 
 EARTH_RADIUS = 6.37 * 10**6 # meters
+SHARE_DATA_FILE = 'fv3sfc.nc'
 
 class SurfaceMapper(object):
-    def __init__(self, input_cycle, input_env):
+    """Handles retrieval, processing, accumulation, and visualization of FV3 surface radiation data.
+    """
+    def __init__(self, input_cycle, input_env, integrate=True):
         """
+        Initialize the SurfaceMapper.
+
+        Args:
+            input_cycle (str): Cycle time in YYYYMMDDTHH format.
+            input_env (str): Path to .env file relative to script's parent directory.
+            integrate (bool): Whether to accumulate running totals across cycles.
         """
         load_dotenv(os.path.join(pathlib.Path(__file__).parent.parent.resolve(), input_env))
 
         self.parse_datetime(input_cycle)
         self.get_bucket()
         self.work_dir = os.getenv('CYLC_TASK_WORK_DIR')
+        self.share_dir = os.getenv('CYLC_WORKFLOW_SHARE_DIR')
+        self.initial_cycle_point = os.getenv("CYLC_WORKFLOW_INITIAL_CYCLE_POINT")
         
         self.download_output_files()
         self.clean_output_files()
+        
+        self.integrate = integrate
+        if self.integrate:
+            self.update_running_total_file(os.path.join(self.share_dir, SHARE_DATA_FILE),
+                                           var_list=[self.fv3atm_sw_ave_var,
+                                                     self.fv3atm_lw_ave_var],
+                                           time_var='time')
 
     def parse_datetime(self, input_cycle):
-        """
+        """Parse and store input cycle datetime information.
         """
         self.datetime_obj = datetime.strptime(input_cycle, "%Y%m%dT%H")
         self.datetime_str = self.datetime_obj.strftime("%Y%m%d%H")
         self.cycle_str = self.datetime_obj.strftime("%Y-%m-%d %H:%M:%S")
+        self.initial_cycle_point_datetime_obj = datetime.strptime(self.initial_cycle_point, "%Y%m%dT%H")
 
     def get_bucket(self):
-        """
+        """Initialize an S3 bucket resource using credentials from environment or unsigned access.
         """
         aws_access_key_id = os.getenv('AWS_ACCESS_KEY_ID')
         aws_secret_access_key = os.getenv('AWS_SECRET_ACCESS_KEY')
@@ -65,7 +86,7 @@ class SurfaceMapper(object):
         self.bucket = s3.Bucket(os.getenv('STORAGE_LOCATION_BUCKET'))
         
     def download_output_files(self):
-        """
+        """Download surface files (e.g. flux output) from the S3 bucket to the working directory.
         """
         fv3atm_file_key = os.getenv('FV3ATM_FILE_KEY')
         fv3sfc_file_name = os.getenv('FV3SFC_FILE_NAME')
@@ -98,22 +119,118 @@ class SurfaceMapper(object):
                            fv3atm_lat_var = 'grid_yt',
                            fv3atm_lw_var = 'ulwrf',
                            fv3atm_sw_var = 'uswrf',
+                           fv3atm_sw_ave_var = 'uswrf_ave',
+                           fv3atm_lw_ave_var = 'ulwrf_ave'
                            ):
+        """Regrid and clean downloaded NetCDF surface files using `ncremap`.
+
+        Args:
+            fv3atm_lon_var (str): Name of longitude variable.
+            fv3atm_lat_var (str): Name of latitude variable.
+            fv3atm_lw_var (str): Longwave flux variable.
+            fv3atm_sw_var (str): Shortwave flux variable.
+            fv3atm_sw_ave_var (str): Averaged shortwave flux variable.
+            fv3atm_lw_ave_var (str): Averaged longwave flux variable.
+        """
         self.lon_var = fv3atm_lon_var
         self.lat_var = fv3atm_lat_var
         self.lw_var = fv3atm_lw_var
         self.sw_var =fv3atm_sw_var
+        self.lw_ave_var = fv3atm_lw_ave_var
+        self.sw_ave_var =fv3atm_sw_ave_var
         
         self.rgr_file_path = list()
         for file_path_idx, file_path in enumerate(self.dest_file_path):
             base, ext = os.path.splitext(file_path)
             self.rgr_file_path.append(f"{base}_rgr{ext}")
-            cmd = f"ncremap -v {self.lw_var},{self.sw_var} -R '--rgr lat_nm_in={self.lat_var} --rgr lon_nm_in={self.lon_var}' -d {file_path} {file_path} {self.rgr_file_path[file_path_idx]}"
+            if self.integrate:
+                cmd = f"ncremap -v {self.lw_var},{self.sw_var},{self.lw_ave_var},{self.sw_ave_var} -R '--rgr lat_nm_in={self.lat_var} --rgr lon_nm_in={self.lon_var}' -d {file_path} {file_path} {self.rgr_file_path[file_path_idx]}"
+            else:
+                cmd = f"ncremap -v {self.lw_var},{self.sw_var} -R '--rgr lat_nm_in={self.lat_var} --rgr lon_nm_in={self.lon_var}' -d {file_path} {file_path} {self.rgr_file_path[file_path_idx]}"
  
             subprocess.run(cmd, check=True, shell=True)
             os.remove(file_path)
-                
+
+    def update_running_total_file(self, total_file_path, var_list, time_var='time'):
+        """Accumulate specified variables over time into a persistent NetCDF file.
+
+        Args:
+            total_file_path (str): Path to persistent NetCDF output.
+            var_list (list): List of variable names to accumulate.
+            time_var (str): Name of the time variable in the NetCDF file.
+        """
+        for file_path in self.rgr_file_path:
+            with Dataset(file_path) as ds:
+                time = ds.variables[time_var]
+                time_dt = cftime.num2pydate(time[0], units=time.units, calendar=time.calendar)
+
+            if time_dt == self.initial_cycle_point_datetime_obj or not os.path.exists(total_file_path):
+                shutil.copy(file_path, total_file_path)
+            else:
+                with Dataset(file_path) as src, Dataset(total_file_path, 'r+') as dst:
+                    for var_name in var_list:
+                        dst.variables[var_name][:] += src.variables[var_name][:]
+
+    def map_surface(self, lon, lat, sw_vals, sw_max_val, sw_dark_vals, lw_vals):
+        """Render a surface radiation plot with shortwave and longwave components.
+
+        Args:
+            lon (ndarray): Longitudes.
+            lat (ndarray): Latitudes.
+            sw_vals (ndarray): Shortwave flux values.
+            sw_max_val (float): Maximum shortwave flux value for scaling.
+            sw_dark_vals (ndarray): Masked shortwave values for highlighting.
+            lw_vals (ndarray): Longwave flux values.
+        """
+        ax = plt.axes(projection=ccrs.Mercator(central_longitude=180.,
+                                               #min_latitude=-70.,
+                                               #max_latitude=70.
+                                               )
+        )
+
+        ax.pcolormesh(lon,
+                      lat,
+                      sw_vals,
+                      cmap=cc.cm.CET_CBL3,
+                      vmin=0,
+                      vmax=0.25*sw_max_val,
+                      shading='nearest',
+                      rasterized=True,
+                      zorder=0,
+                      transform=ccrs.Mercator(central_longitude=180.,
+                                              min_latitude=-90.,
+                                              max_latitude=90.)
+        )
+        
+        ax.pcolormesh(lon,
+                      lat,
+                      sw_dark_vals,
+                      cmap=cc.cm.CET_L5,
+                      #vmin=0,
+                      #vmax=0.003333*sw_max_val,
+                      shading='nearest',
+                      rasterized=True,
+                      zorder=1,
+                      transform=ccrs.Mercator(central_longitude=180.,
+                                              min_latitude=-90.,
+                                              max_latitude=90.)
+        )                                      
+        ax.pcolormesh(lon,
+                      lat,
+                      np.ma.masked_where(sw_vals > 0, lw_vals),
+                      cmap=cc.cm.CET_L8,
+                      shading='nearest',
+                      rasterized=True,
+                      alpha=0.2,
+                      zorder=3,
+                      transform=ccrs.Mercator(central_longitude=180.,
+                                              min_latitude=-90.,
+                                              max_latitude=90.)
+        )
+                                                              
     def view_surface(self):
+        """Generate and save plots for each processed NetCDF file.
+        """
         for file_path in self.rgr_file_path:
             rootgrp = Dataset(file_path)
             time = rootgrp.variables['time']
@@ -124,6 +241,10 @@ class SurfaceMapper(object):
                                          "%Y%m%dT%H")
             time_label = datetime.strftime(time_dt,
                                            "%Y-%m-%d %H:%M:%S")
+            
+            lon = rootgrp.variables[self.lon_var][:]
+            lat = rootgrp.variables[self.lat_var][:]
+            
             lw_vals = (EARTH_RADIUS * rootgrp.variables['area'][:] *
                           rootgrp.variables[self.lw_var][0,:,:])
             lw_max_val = np.ma.max(lw_vals)
@@ -135,103 +256,54 @@ class SurfaceMapper(object):
             sw_dark_vals = np.ma.masked_where(sw_vals > 0.0005 * sw_max_val,
                                               sw_vals)
             np.ma.masked_where(sw_dark_vals == 0, sw_dark_vals, copy=False)
+        
+            self.map_surface(lon, lat, sw_vals, sw_max_val, sw_dark_vals, lw_vals)
             
-            ax = plt.axes(projection=ccrs.Mercator(central_longitude=180.,
-                                                   #min_latitude=-70.,
-                                                   #max_latitude=70.
-                                                   )
-            )
-
-            ax.pcolormesh(rootgrp.variables[self.lon_var][:],
-                          rootgrp.variables[self.lat_var][:],
-                          sw_vals,
-                          cmap=cc.cm.CET_CBL3,
-                          vmin=0,
-                          vmax=0.25*sw_max_val,
-                          shading='gouraud',
-                          rasterized=True,
-                          zorder=0,
-                          transform=ccrs.Mercator(central_longitude=180.,
-                                                  min_latitude=-90.,
-                                                  max_latitude=90.)
-            )
-            
-            ax.pcolormesh(rootgrp.variables[self.lon_var][:],
-                          rootgrp.variables[self.lat_var][:],
-                          sw_dark_vals,
-                          cmap=cc.cm.CET_L5,
-                          #vmin=0,
-                          #vmax=0.003333*sw_max_val,
-                          shading='gouraud',
-                          rasterized=True,
-                          zorder=1,
-                          transform=ccrs.Mercator(central_longitude=180.,
-                                                  min_latitude=-90.,
-                                                  max_latitude=90.)
-            )                                      
-            ax.pcolormesh(rootgrp.variables[self.lon_var][:],
-                          rootgrp.variables[self.lat_var][:],
-                          np.ma.masked_where(sw_vals > 0, lw_vals),
-                          cmap=cc.cm.CET_L8,
-                          shading='gouraud',
-                          rasterized=True,
-                          alpha=0.2,
-                          zorder=3,
-                          transform=ccrs.Mercator(central_longitude=180.,
-                                                  min_latitude=-90.,
-                                                  max_latitude=90.)
-            )
-                                                  
-            
-            
-            
-            '''
-            ax.pcolormesh(rootgrp.variables[self.lon_var][:],
-                          rootgrp.variables[self.lat_var][:],
-                          np.ma.masked_where(sw_vals > 0, lw_vals),
-                          cmap=cc.cm.CET_L8,
-                          shading='nearest',
-                          rasterized=True,
-                          vmax=lw_max_val,
-                          vmin=lw_min_val,
-                          alpha=0.2,
-                          zorder=3, edgecolors='face',
-                          transform=ccrs.Mercator(central_longitude=180.,
-                                                  min_latitude=-90.,
-                                                  max_latitude=90.)
-            )
-
-
-            
-            )
-            ax.pcolormesh(rootgrp.variables[self.lon_var][:],
-                          rootgrp.variables[self.lat_var][:],
-                          sw_mid_vals,
-                          cmap=cc.cm.CET_L15,
-                          vmin=0,
-                          vmax=0.44*sw_max_val,
-                          shading='nearest',
-                          rasterized=True,
-                          zorder=1, edgecolors='face',
-                          transform=ccrs.Mercator(central_longitude=180.,
-                                                  min_latitude=-90.,
-                                                  max_latitude=90.)
-            )
-
-            '''
             plt.title(time_label, fontsize=12, fontname='Noto Serif CJK JP', color='black')
             plt.savefig(os.path.join(self.work_dir, f'fv3sfc_{time_str}.png'),
                         dpi=300)
         
             rootgrp.close()
+            
+        if self.integrate:
+            self.view_surface_ave()
+    
+    def view_surface_ave(self):
+        """Generate and save a plot of the accumulated average surface radiation.
+        """
+        rootgrp = Dataset(os.path.join(self.share_dir, SHARE_DATA_FILE))
+        
+        lon = rootgrp.variables[self.lon_var][:]
+        lat = rootgrp.variables[self.lat_var][:]
+        
+        lw_ave_vals = (EARTH_RADIUS * rootgrp.variables['area'][:] *
+                       rootgrp.variables[self.lw_ave_var][0,:,:])
+        lw_ave_max_val = np.ma.max(lw_ave_vals)
+        
+        sw_ave_vals = (EARTH_RADIUS * rootgrp.variables['area'][:] *
+                       rootgrp.variables[self.sw_ave_var][0,:,:])
+        sw_ave_max_val = np.ma.max(sw_ave_vals)
+        
+        sw_ave_dark_vals = np.ma.masked_where(sw_ave_vals > 0.0005 * sw_ave_max_val,
+                                              sw_ave_vals)
+        np.ma.masked_where(sw_ave_dark_vals == 0, sw_ave_dark_vals, copy=False)
+    
+        self.map_surface(lon, lat, sw_ave_vals, sw_ave_max_val, sw_ave_dark_vals, lw_ave_vals)
+        
+        plt.savefig(os.path.join(self.work_dir, f'fv3sfc.png'),
+                    dpi=300)
+    
+        rootgrp.close()
 
 def run():
-    """
+    """Run the SurfaceMapper with command-line arguments.
     """
     surface_mapper = SurfaceMapper(sys.argv[1], sys.argv[2])
     surface_mapper.view_surface()
 
 def main():
+    """Main entry point.
+    """
     run()
 
 if __name__=='__main__':
