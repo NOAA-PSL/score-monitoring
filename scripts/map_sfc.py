@@ -240,7 +240,7 @@ class SurfaceMapper(object):
                       cmap=cc.cm.CET_L8,
                       shading='nearest',
                       rasterized=True,
-                      alpha=0.5,
+                      alpha=0.667,
                       zorder=3,
                       transform=ccrs.Mercator(central_longitude=180.,
                                               min_latitude=-90.,
@@ -302,7 +302,7 @@ class SurfaceMapper(object):
                                                   min_latitude=-90.,
                                                   max_latitude=90.)
             )
-            
+            '''
             sw_vals_land = np.ma.masked_where(land_mask != 1 ,sw_vals)
             np.ma.masked_where(sw_vals_land < 0.6 * self.luminosity_scalar * sw_max_val,
                                sw_vals_land, copy=False)
@@ -321,7 +321,7 @@ class SurfaceMapper(object):
                                                   min_latitude=-90.,
                                                   max_latitude=90.)
             )
-            
+            '''
             sw_vals_ice = np.ma.masked_where(land_mask != 2 ,sw_vals)
             np.ma.masked_where(sw_vals_ice < 0.05 * self.luminosity_scalar * sw_max_val,
                                sw_vals_ice, copy=False)
