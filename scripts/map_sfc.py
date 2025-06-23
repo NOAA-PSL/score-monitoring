@@ -216,9 +216,7 @@ class SurfaceMapper(object):
                       shading='nearest',
                       rasterized=True,
                       zorder=0,
-                      transform=ccrs.Mercator(central_longitude=180.,
-                                              min_latitude=-90.,
-                                              max_latitude=90.)
+                      transform=ccrs.PlateCarree()
         )
         
         ax.pcolormesh(lon,
@@ -230,9 +228,7 @@ class SurfaceMapper(object):
                       shading='nearest',
                       rasterized=True,
                       zorder=2,
-                      transform=ccrs.Mercator(central_longitude=180.,
-                                              min_latitude=-90.,
-                                              max_latitude=90.)
+                      transform=ccrs.PlateCarree()
         )                                      
         ax.pcolormesh(lon,
                       lat,
@@ -242,9 +238,7 @@ class SurfaceMapper(object):
                       rasterized=True,
                       alpha=0.667,
                       zorder=3,
-                      transform=ccrs.Mercator(central_longitude=180.,
-                                              min_latitude=-90.,
-                                              max_latitude=90.)
+                      transform=ccrs.PlateCarree()
         )
         
         return ax
@@ -298,9 +292,7 @@ class SurfaceMapper(object):
                           shading='nearest',
                           rasterized=True,
                           zorder=1,
-                          transform=ccrs.Mercator(central_longitude=180.,
-                                                  min_latitude=-90.,
-                                                  max_latitude=90.)
+                          transform=ccrs.PlateCarree()
             )
             '''
             sw_vals_land = np.ma.masked_where(land_mask != 1 ,sw_vals)
@@ -317,9 +309,7 @@ class SurfaceMapper(object):
                           shading='nearest',
                           rasterized=True,
                           zorder=1,
-                          transform=ccrs.Mercator(central_longitude=180.,
-                                                  min_latitude=-90.,
-                                                  max_latitude=90.)
+                          transform=ccrs.PlateCarree()
             )
             '''
             sw_vals_ice = np.ma.masked_where(land_mask != 2 ,sw_vals)
@@ -337,9 +327,7 @@ class SurfaceMapper(object):
                           shading='nearest',
                           rasterized=True,
                           zorder=1,
-                          transform=ccrs.Mercator(central_longitude=180.,
-                                                  min_latitude=-90.,
-                                                  max_latitude=90.)
+                          transform=ccrs.PlateCarree()
             )
             
             plt.title(time_label, fontsize=12, fontname='Noto Serif CJK JP', color='black')
@@ -420,10 +408,10 @@ class SurfaceMapper(object):
                         dpi=300)
             plt.close()
         
-    def map_soca_obs(self, soca_obs_dir='store_data_soca_obs_fit'):
+    def map_soca_obs(self, soca_obs_dir='store_data_soca_obsfit'):
         """
         """
-        soca_obs_path = pathlib.Path(os.path.join(self.work_dir, soca_obs_dir))
+        soca_obs_path = pathlib.Path(self.work_dir).parent / soca_obs_dir
         soca_diag_files = list(soca_obs_path.glob('*.nc')) + list(soca_obs_path.glob('*.nc4'))
         
         ax = self.view_toa_ave(clearsky=True, return_ax=True)
@@ -435,7 +423,7 @@ class SurfaceMapper(object):
             
             lats = meta_grp.variables['latitude'][:]
             lons = meta_grp.variables['longitude'][:]
-            for var, vals in ombg_grp.variables.items():
+            for var, ombg in ombg_grp.variables.items():
                 
                 if var=='waterTemperature':
                     marker='o'
@@ -444,13 +432,11 @@ class SurfaceMapper(object):
                     marker = '+'
                     obsvals = obsvalue_grp[var][:]
                     
-                relative_errs = -vals / obsvals
+                relative_errs = (-1 * ombg[:]) / obsvals
                 
                 sc = ax.scatter(x=lons, y=lats, c=relative_errs, edgecolors='black',
                                label=var, vmin=-0.025, vmax=0.025,
-                               transform=ccrs.Mercator(central_longitude=180.,
-                                                       min_latitude=-90.,
-                                                       max_latitude=90.),
+                               transform=ccrs.PlateCarree(),
                                zorder=4,
                                cmap=cc.cm.CET_D9)
 
