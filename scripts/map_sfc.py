@@ -380,7 +380,7 @@ class SurfaceMapper(object):
     
         rootgrp.close()
     
-    def view_toa_ave(self, clearsky=False):
+    def view_toa_ave(self, clearsky=False, return_ax=False):
         """Generate and save a plot of the accumulated average TOA radiation.
         """
         rootgrp = Dataset(os.path.join(self.share_dir, SHARE_DATA_FILE))
@@ -409,14 +409,60 @@ class SurfaceMapper(object):
                                               sw_ave_vals)
         np.ma.masked_where(sw_ave_dark_vals == 0, sw_ave_dark_vals, copy=False)
     
-        self.map_surface(lon, lat, sw_ave_vals, sw_ave_max_val, sw_ave_dark_vals, lw_ave_vals)
+        ax = self.map_surface(lon, lat, sw_ave_vals, sw_ave_max_val, sw_ave_dark_vals, lw_ave_vals)
         
-        plt.savefig(os.path.join(self.share_dir, figname),
+        rootgrp.close()
+            
+        if return_ax:
+            return ax
+        else:
+            plt.savefig(os.path.join(self.share_dir, figname),
+                        dpi=300)
+            plt.close()
+        
+    def map_soca_obs(self, soca_obs_dir='store_data_soca_obs_fit'):
+        """
+        """
+        soca_obs_path = pathlib.Path(os.path.join(self.work_dir, soca_obs_dir))
+        soca_diag_files = list(soca_obs_path.glob('*.nc')) + list(soca_obs_path.glob('*.nc4'))
+        
+        ax = self.view_toa_ave(clearsky=True, return_ax=True)
+        for soca_diag_file in soca_diag_files:
+            rootgrp = Dataset(soca_diag_file)
+            meta_grp = rootgrp.groups['MetaData']
+            ombg_grp = rootgrp.groups['ombg']
+            obsvalue_grp = rootgrp.groups['ObsValue']
+            
+            lats = meta_grp.variables['latitude'][:]
+            lons = meta_grp.variables['longitude'][:]
+            for var, vals in ombg_grp.variables.items():
+                
+                if var=='waterTemperature':
+                    marker='o'
+                    obsvals = obsvalue_grp[var][:] + 273.15
+                else:
+                    marker = '+'
+                    obsvals = obsvalue_grp[var][:]
+                    
+                relative_errs = -vals / obsvals
+                
+                sc = ax.scatter(x=lons, y=lats, c=relative_errs, edgecolors='black',
+                               label=var, vmin=-0.025, vmax=0.025,
+                               transform=ccrs.Mercator(central_longitude=180.,
+                                                       min_latitude=-90.,
+                                                       max_latitude=90.),
+                               zorder=4,
+                               cmap=cc.cm.CET_D9)
+
+        rootgrp.close()
+        ax.legend(loc='lower left')
+        cbar = plt.colorbar(sc, ax=ax, orientation='vertical')
+        cbar.set_label('relative error', fontsize=12, fontname='Noto Serif CJK JP', color='black')
+        plt.title(self.cycle_str, fontsize=12, fontname='Noto Serif CJK JP', color='black')
+        plt.savefig(os.path.join(self.work_dir, f'gdas_analysis_ocean_diags.png'),
                     dpi=300)
         plt.close()
-    
-        rootgrp.close()
-
+        
 def run():
     """Run the SurfaceMapper with command-line arguments.
     """
@@ -424,6 +470,7 @@ def run():
     surface_mapper.view_surface()
     surface_mapper.view_toa_ave()
     surface_mapper.view_toa_ave(clearsky=True)
+    surface_mapper.map_soca_obs()
 
 def main():
     """Main entry point.
