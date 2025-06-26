@@ -242,8 +242,10 @@ def put_these_data():
                       #'ssu': 3,
                       #'tmi':9 # NASA,
                       #'imgr':4,
-                      'ctd':None,
-                      'xbt': None
+                      #'ctd':None,
+                      #'xbt': None,
+                      'mbt': None,
+                      'osd': None,
                   }
     for instrument, num_channels in my_instruments.items():
         register_instrument_meta(instrument, num_channels)
@@ -269,9 +271,9 @@ def put_these_sats():
     #"NOAA 19": {"sat_id": 719, "short_name": "n19"},
     #"NOAA 20": {"sat_id": 720, "short_name": "n20"},
     #"NOAA 21": {"sat_id": 721, "short_name": "n21"},
-    #"METOP-1": {"sat_id": 3, "short_name": "metop-b"},
-    #"METOP-2": {"sat_id": 4, "short_name": "metop-a"},
-    #"METOP-3": {"sat_id": 5, "short_name": "metop-c"},
+    "MetOp-B": {"sat_id": 3, "short_name": "metop-b"},
+    "MetOp-A": {"sat_id": 4, "short_name": "metop-a"},
+    "MetOp-C": {"sat_id": 5, "short_name": "metop-c"},
     #"METOP-1 (Metop-A": {"sat_id": 4, "short_name": "metop-b"},
     #"METOP-2 (Metop-B": {"sat_id": 3, "short_name": "metop-a"},
     #"METOP-3 (Metop-C": {"sat_id": 5, "short_name": "metop-c"},
@@ -312,8 +314,8 @@ def put_these_sats():
     #"DMSP 16": {"sat_id": 249, "short_name": "f16"},
     #"DMSP17": {"sat_id": 285, "short_name": "f17"},
     #"DMSP18": {"sat_id": 286, "short_name": "f18"},
-    "DMSP19": {"sat_id": 39630, "short_name": "f19"},
-    "DMSP20": {"sat_id": 41705, "short_name": "f20"},
+    #"DMSP19": {"sat_id": 39630, "short_name": "f19"},
+    #"DMSP20": {"sat_id": 41705, "short_name": "f20"},
     #"CHAMP": {"sat_id": 41, "short_name": "CHAMP"},
     #"COSMIC-1": {"sat_id": 740, "short_name": "COSMIC-1"},
     #"COSMIC-2": {"sat_id": 741, "short_name": "COSMIC-2"},
@@ -398,7 +400,10 @@ def put_these_data2():
                           description=None)
 
 def put_these_data3():
-    my_instruments = ['ctd', 'xbt']
+    my_instruments = [#'ctd', 'xbt',
+                      'mbt',
+                      'osd'
+                      ]
     my_stats = ['rms',
                 'mean',
                 'median',
@@ -414,6 +419,10 @@ def put_these_data3():
             long_name = 'conductivity, temperature, and depth'
         elif instrument == 'xbt':
             long_name = 'expendable bathythermograph'
+        elif instrument == 'mbt':
+            long_name = 'Mechanical bathyhermograph'
+        elif instrument == 'osd':
+            long_name = "ocean station data"
         else:
             long_name = None
         for stat in my_stats:
