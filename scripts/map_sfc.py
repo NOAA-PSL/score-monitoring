@@ -408,7 +408,7 @@ class SurfaceMapper(object):
                         dpi=300)
             plt.close()
         
-    def map_soca_obs(self, soca_obs_dir='store_data_soca_obsfit', max_size=150):
+    def map_soca_obs(self, soca_obs_dir='store_data_soca_obsfit', max_size=100):
         """
         """
         soca_obs_path = pathlib.Path(self.work_dir).parent / soca_obs_dir
@@ -438,6 +438,7 @@ class SurfaceMapper(object):
                 sc = ax.scatter(x=lons, y=lats, c=relative_errs, edgecolors='black',
                                label=var, vmin=-0.025, vmax=0.025,
                                s=np.clip(max_size / (depths + 0.01), 5, max_size),
+                               alpha=0.9,
                                transform=ccrs.PlateCarree(),
                                zorder=4,
                                cmap=cc.cm.CET_D9)
