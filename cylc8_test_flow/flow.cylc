@@ -33,7 +33,7 @@
 {% set ENV_PATH = 'scoutrun_monitoring.env' %}
 
 [task parameters]
-    stats = file_count, gsi_obsfit
+    stats = file_count, gsi_conv_obsfit, gsi_obsfit
     #daily_stats = daily_mean_surface_background
 
 [scheduler]
