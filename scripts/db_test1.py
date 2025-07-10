@@ -271,8 +271,8 @@ def put_these_sats():
     "NOAA-19": {"sat_id": 719, "short_name": "n19"},
     "NOAA-20": {"sat_id": 720, "short_name": "n20"},
     "NOAA-21": {"sat_id": 721, "short_name": "n21"},
-    "MetOp-A": {"sat_id": 3, "short_name": "metop-a"},
-    "MetOp-B": {"sat_id": 4, "short_name": "metop-b"},
+    "MetOp-A": {"sat_id": 4, "short_name": "metop-a"},
+    "MetOp-B": {"sat_id": 3, "short_name": "metop-b"},
     "MetOp-C": {"sat_id": 5, "short_name": "metop-c"},
     "Aqua": {"sat_id": 784, "short_name": "aqua"},
     "Suomi NPP": {"sat_id": 224, "short_name": "npp"},
@@ -397,7 +397,7 @@ def put_these_data2():
                           description=None)
 
 def put_these_data3():
-    my_instruments = [#'ctd', 'xbt',
+    my_instruments = ['ctd', 'xbt',
                       'mbt',
                       'osd'
                       ]
@@ -413,13 +413,13 @@ def put_these_data3():
 
     for instrument in my_instruments:
         if instrument == ' ctd':
-            long_name = 'conductivity, temperature, and depth'
+            long_name = 'conductivity, temperature, and depth (CTD)'
         elif instrument == 'xbt':
-            long_name = 'expendable bathythermograph'
+            long_name = 'expendable bathythermograph (XBT)'
         elif instrument == 'mbt':
-            long_name = 'Mechanical bathyhermograph'
+            long_name = 'mechanical bathyhermograph (MBT)'
         elif instrument == 'osd':
-            long_name = "ocean station data"
+            long_name = "ocean station data (OSD)"
         else:
             long_name = None
         for stat in my_stats:
@@ -428,11 +428,11 @@ def put_these_data3():
                     name = f"{stat}_{var}_{instrument}_{group}"
                     put_scalar_metric_type(
                         name,
-                        'water temperature',
+                        var,
                         instrument_meta_name=instrument,
                         obs_platform='ship',
                         long_name=long_name,
-                        measurement_units='C', stat_type=stat,
+                        measurement_units=None, stat_type=stat,
                         description=None
                     )
 
