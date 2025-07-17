@@ -408,7 +408,7 @@ class SurfaceMapper(object):
                         dpi=300)
             plt.close()
         
-    def map_soca_obs(self, soca_obs_dir='store_data_soca_obsfit'):
+    def map_soca_obs(self, soca_obs_dir='store_data_soca_obsfit', max_size=100):
         """
         """
         soca_obs_path = pathlib.Path(self.work_dir).parent / soca_obs_dir
@@ -423,6 +423,7 @@ class SurfaceMapper(object):
             
             lats = meta_grp.variables['latitude'][:]
             lons = meta_grp.variables['longitude'][:]
+            depths = meta_grp.variables['depth'][:]
             for var, ombg in ombg_grp.variables.items():
                 
                 if var=='waterTemperature':
@@ -436,11 +437,13 @@ class SurfaceMapper(object):
                 
                 sc = ax.scatter(x=lons, y=lats, c=relative_errs, edgecolors='black',
                                label=var, vmin=-0.025, vmax=0.025,
+                               s=np.clip(max_size / (depths + 0.01), 5, max_size),
+                               alpha=0.9,
                                transform=ccrs.PlateCarree(),
                                zorder=4,
                                cmap=cc.cm.CET_D9)
 
-        rootgrp.close()
+            rootgrp.close()
         ax.legend(loc='lower left')
         cbar = plt.colorbar(sc, ax=ax, orientation='vertical')
         cbar.set_label('relative error', fontsize=12, fontname='Noto Serif CJK JP', color='black')
