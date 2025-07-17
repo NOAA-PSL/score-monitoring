@@ -443,7 +443,7 @@ class SurfaceMapper(object):
                                zorder=4,
                                cmap=cc.cm.CET_D9)
 
-        rootgrp.close()
+            rootgrp.close()
         ax.legend(loc='lower left')
         cbar = plt.colorbar(sc, ax=ax, orientation='vertical')
         cbar.set_label('relative error', fontsize=12, fontname='Noto Serif CJK JP', color='black')
