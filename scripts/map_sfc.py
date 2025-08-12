@@ -18,6 +18,7 @@ from botocore.client import Config
 from botocore.errorfactory import ClientError
 import cartopy.crs as ccrs
 from matplotlib import pyplot as plt
+import matplotlib.ticker as mticker
 from netCDF4 import Dataset
 import cftime
 import numpy as np
@@ -25,6 +26,10 @@ import colorcet as cc
 
 EARTH_RADIUS = 6.37 * 10**6 # meters
 SHARE_DATA_FILE = 'fv3sfc.nc'
+
+FONTNAME = 'Noto Serif CJK JP'
+FONTSIZE = 10
+FONTCOLOR = 'black'
 
 class SurfaceMapper(object):
     """Handles retrieval, processing, accumulation, and visualization of FV3 surface radiation data.
@@ -69,6 +74,7 @@ class SurfaceMapper(object):
         self.datetime_str = self.datetime_obj.strftime("%Y%m%d%H")
         self.cycle_str = self.datetime_obj.strftime("%Y-%m-%d %H:%M:%S")
         self.initial_cycle_point_datetime_obj = datetime.strptime(self.initial_cycle_point, "%Y%m%dT%H")
+        self.initial_cycle_point_str = self.initial_cycle_point_datetime_obj.strftime("%Y-%m-%d %H:%M:%S")
 
     def get_bucket(self):
         """Initialize an S3 bucket resource using credentials from environment or unsigned access.
@@ -206,6 +212,14 @@ class SurfaceMapper(object):
                                                )
         )
 
+        gl = ax.gridlines(draw_labels=True, linewidth=0.5, color='#A2A4A3', alpha=1.0, linestyle=':')
+        gl.xlocator = mticker.FixedLocator(np.arange(-180, 181, 30))
+        gl.ylocator = mticker.FixedLocator(np.arange(-90, 91, 15))
+        gl.top_labels = False
+        gl.right_labels = False
+        gl.xlabel_style = {'fontname': FONTNAME, 'fontsize': FONTSIZE, 'color': FONTCOLOR}
+        gl.ylabel_style = {'fontname': FONTNAME, 'fontsize': FONTSIZE, 'color': FONTCOLOR}
+
         ax.pcolormesh(lon,
                       lat,
                       sw_vals,
@@ -330,7 +344,7 @@ class SurfaceMapper(object):
                           transform=ccrs.PlateCarree()
             )
             
-            plt.title(time_label, fontsize=12, fontname='Noto Serif CJK JP', color='black')
+            plt.title(time_label, fontsize=FONTSIZE, fontname=FONTNAME, color=FONTCOLOR)
             plt.savefig(os.path.join(self.work_dir, f'fv3sfc_{time_str}.png'),
                         dpi=300)
             plt.close()
@@ -362,6 +376,8 @@ class SurfaceMapper(object):
     
         self.map_surface(lon, lat, sw_ave_vals, sw_ave_max_val, sw_ave_dark_vals, lw_ave_vals)
         
+        plt.title(f'start: {self.initial_cycle_point_str}; end: {self.cycle_str}',
+                  fontsize=FONTSIZE, fontname=FONTNAME, color=FONTCOLOR)
         plt.savefig(os.path.join(self.share_dir, f'fv3sfc.png'),
                     dpi=300)
         plt.close()
@@ -404,6 +420,8 @@ class SurfaceMapper(object):
         if return_ax:
             return ax
         else:
+            plt.title(f'start: {self.initial_cycle_point_str}; end: {self.cycle_str}',
+                  fontsize=FONTSIZE, fontname=FONTNAME, color=FONTCOLOR)
             plt.savefig(os.path.join(self.share_dir, figname),
                         dpi=300)
             plt.close()
@@ -415,6 +433,7 @@ class SurfaceMapper(object):
         soca_diag_files = list(soca_obs_path.glob('*.nc')) + list(soca_obs_path.glob('*.nc4'))
         
         ax = self.view_toa_ave(clearsky=True, return_ax=True)
+        soca_obs_exist = False
         for soca_diag_file in soca_diag_files:
             rootgrp = Dataset(soca_diag_file)
             meta_grp = rootgrp.groups['MetaData']
@@ -435,21 +454,28 @@ class SurfaceMapper(object):
                     
                 relative_errs = (-1 * ombg[:]) / obsvals
                 
-                sc = ax.scatter(x=lons, y=lats, c=relative_errs, edgecolors='black',
+                sc = ax.scatter(x=lons, y=lats, c=relative_errs, edgecolors=FONTCOLOR,
                                label=var, vmin=-0.025, vmax=0.025,
                                s=np.clip(max_size / (depths + 0.01), 5, max_size),
                                alpha=0.9,
                                transform=ccrs.PlateCarree(),
                                zorder=4,
                                cmap=cc.cm.CET_D9)
+                soca_obs_exist = True
 
             rootgrp.close()
-        ax.legend(loc='lower left')
-        cbar = plt.colorbar(sc, ax=ax, orientation='vertical')
-        cbar.set_label('relative error', fontsize=12, fontname='Noto Serif CJK JP', color='black')
-        plt.title(self.cycle_str, fontsize=12, fontname='Noto Serif CJK JP', color='black')
-        plt.savefig(os.path.join(self.work_dir, f'gdas_analysis_ocean_diags.png'),
+        
+        if soca_obs_exist:
+            ax.legend(loc='lower left')
+            cbar = plt.colorbar(sc, ax=ax, orientation='vertical')
+            cbar.ax.tick_params(labelsize=FONTSIZE, labelcolor=FONTCOLOR)
+            for label in cbar.ax.get_yticklabels():
+                label.set_fontname(FONTNAME)
+            cbar.set_label('relative error', fontsize=FONTSIZE, fontname=FONTNAME, color=FONTCOLOR)
+            plt.title(self.cycle_str, fontsize=FONTSIZE, fontname=FONTNAME, color=FONTCOLOR)
+            plt.savefig(os.path.join(self.work_dir, f'gdas_analysis_ocean_diags.png'),
                     dpi=300)
+
         plt.close()
         
 def run():
