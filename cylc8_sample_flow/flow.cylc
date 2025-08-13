@@ -23,18 +23,19 @@
 
 # =========================================================================
 [meta]
-	title = "SFS reanalysis development: atmosphere-only scout runs"
-	description = "Calculate statistics from the SFS reanalysis scout runs"
+	title = "SFS reanalysis development: scout runs and UFS-replay extensions"
+	description = "Calculate statistics from the SFS reanalysis scout runs and UFS-replay extensions"
 
 # parameters 
 {% set MAIL_ADDRESS = '<EMAIL_ADDRESS>@noaa.gov' %}
-{% set INITIAL_CYCLE_POINT = '20200101T00' %}
-{% set FINAL_CYCLE_POINT = '20241231T18' %}
+{% set INITIAL_CYCLE_POINT = '19800101T00' %}
+{% set FINAL_CYCLE_POINT = '19800106T00' %}
 {% set ENV_PATH = 'scoutrun_monitoring.env' %}
 
 [task parameters]
     stats = file_count, gsi_obsfit
-    #daily_stats = daily_mean_surface_background
+    daily_firstguess_stats = daily_mean_surface_background
+    daily_analysis_stats = daily_mean_surface_analysis
 
 [scheduler]
     UTC mode = True
@@ -47,18 +48,27 @@
 [scheduling]
     initial cycle point = {{ INITIAL_CYCLE_POINT }}
     final cycle point = {{ FINAL_CYCLE_POINT }}
-    runahead limit = P3
+    runahead limit = P0
     [[graph]]
-        T00,T06,T12,T18 = """
+        # File check dependencies for each cycle point (T00, T06, T18) for the current day
+        T00, T06, T18 = """
             file_check => store_data
         """
-        #+PT1D/P1D = """file_check[T00] & file_check[T06] & file_check[T12] &
-        #            file_check[T18] & file_check[+P1D/T00] => store_data_daily"""
-        
+
+        # Store data daily, only after all file checks for T00 (bg), T06, T12, T18
+        # and file_check for next day T00, T06 (an) pass
+        T12 = """
+            file_check => store_data
+            
+            file_check[-PT12H] & file_check[-PT6H] & file_check & file_check[+PT6H] &
+            file_check[+PT12H] => store_data_daily_bg
+          
+            file_check[-PT6H] & file_check & file_check[+PT6H] & file_check[+PT12H] &
+            file_check[+PT18H] => store_data_daily_an
+        """
 [runtime]
     [[root]]
-        #retry delays = 2*PT5M # Try again right away, then wait 5 minutes
-        platform = batch_partition
+        #platform = batch_partition
         [[[events]]]
             mail events = submission failed, failed, retry
         [[[mail]]]
@@ -68,17 +78,31 @@
         script = """
 	    bucket_file_count.py $CYLC_TASK_CYCLE_POINT {{ ENV_PATH }}
         """
-	[[[job]]]
-		execution retry delays = 168*PT1M # if job fails, wait one minute and try again
+	execution retry delays = 240*PT30M # if job fails, wait 30 minutes and try again
     [[print_cycle_valid]]
             script = "echo 'files found in bucket'" # for $CYCLE_TASK_CYCLE_POINT'"
     [[store_data]]
-        [[[job]]]
-                execution retry delays = 168*PT1M # if job fails, wait one minute and try again
+        execution retry delays = 60*PT1M # if job fails, wait one minute and try again
     [[store_data<stats>]]
         inherit=store_data
         script = """
              db_${CYLC_TASK_PARAM_stats}.py $CYLC_TASK_CYCLE_POINT {{ ENV_PATH }}
         """
+    [[store_data_daily_bg]]
+        execution retry delays = 60*PT1M # if job fails, wait one minute and try again
+    [[store_data_daily_an]]
+        execution retry delays = 60*PT1M # if job fails, wait one minute and try again
+            
+    [[store_data_daily_bg<daily_firstguess_stats>]]
+        inherit=store_data_daily_bg
+        script = """
+            db_${CYLC_TASK_PARAM_daily_firstguess_stats}.py $CYLC_TASK_CYCLE_POINT {{ ENV_PATH }}
+        """
+    [[store_data_daily_an<daily_analysis_stats>]]
+        inherit=store_data_daily_an
+        script = """
+            db_${CYLC_TASK_PARAM_daily_analysis_stats}.py $CYLC_TASK_CYCLE_POINT {{ ENV_PATH }}
+        """
+
     [[data_stored]]
         script = "echo 'all data stored'"
