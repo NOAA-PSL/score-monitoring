@@ -78,18 +78,23 @@ else:
 
 work_dir = os.getenv('CYLC_TASK_WORK_DIR')
 file_path_list = list()
+valid_file_idx = 0
 for obj_idx, obj in enumerate(bucket.objects.filter(Prefix=prefix)):
-    file_path_list.append(os.path.join(work_dir, os.path.basename(obj.key)))
-    try:
-        bucket.download_file(obj.key, file_path_list[obj_idx])
-    except ClientError as err:
-        if err.response['Error']['Code'] == "404":
-            print(f"File {file_name} not found at {prefix}")
-            print(err)
-            raise err
-        else:
-            print(err)
-            raise err
+    if not obj.key.lower().endswith('.csv'):
+        # ignore CSV files
+        file_path_list.append(os.path.join(work_dir, os.path.basename(obj.key)))
+        try:
+            bucket.download_file(obj.key, file_path_list[valid_file_idx])
+        except ClientError as err:
+            if err.response['Error']['Code'] == "404":
+                print(f"File {file_name} not found at {prefix}")
+                print(err)
+                raise err
+            else:
+                print(err)
+                raise err
+
+        valid_file_idx += 1
 
 #harvest: build harvest config, build yaml, call subprocess, statistic/variable 
 #combo needs to be registered to be saved in db
