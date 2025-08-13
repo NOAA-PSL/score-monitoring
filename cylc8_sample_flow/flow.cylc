@@ -55,13 +55,13 @@
             file_check => store_data
         """
 
-        # Store data daily, only after all file checks for T00 (fg), T06, T12, T18
+        # Store data daily, only after all file checks for T00 (bg), T06, T12, T18
         # and file_check for next day T00, T06 (an) pass
         T12 = """
             file_check => store_data
             
             file_check[-PT12H] & file_check[-PT6H] & file_check & file_check[+PT6H] &
-            file_check[+PT12H] => store_data_daily_fg
+            file_check[+PT12H] => store_data_daily_bg
           
             file_check[-PT6H] & file_check & file_check[+PT6H] & file_check[+PT12H] &
             file_check[+PT18H] => store_data_daily_an
@@ -88,13 +88,13 @@
         script = """
              db_${CYLC_TASK_PARAM_stats}.py $CYLC_TASK_CYCLE_POINT {{ ENV_PATH }}
         """
-    [[store_data_daily_fg]]
+    [[store_data_daily_bg]]
         execution retry delays = 60*PT1M # if job fails, wait one minute and try again
     [[store_data_daily_an]]
         execution retry delays = 60*PT1M # if job fails, wait one minute and try again
             
-    [[store_data_daily_fg<daily_firstguess_stats>]]
-        inherit=store_data_daily_fg
+    [[store_data_daily_bg<daily_firstguess_stats>]]
+        inherit=store_data_daily_bg
         script = """
             db_${CYLC_TASK_PARAM_daily_firstguess_stats}.py $CYLC_TASK_CYCLE_POINT {{ ENV_PATH }}
         """

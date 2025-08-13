@@ -40,20 +40,34 @@ below. Commented out variables could be uncommented to generate gridcell
 weighted statistics but are in development and are currently not fully
 supported.
 """
-variables = [#'icetk', # sea ice thickness (m)
-             'lhtfl_ave', # surface latent heat flux (W m^-2)
-             #'prate_ave', # surface precip rate (mm weq. s^-1)
-             'prateb_ave', # bucket surface precip rate (mm weq. s^-1)
-             'pressfc', # surface pressure (Pa)
-             #'snod', # surface snow depth (m)
-             #'soil4', # liquid soil moisture at layer-4 (?)
-             #'soilm', # total column soil moisture content (mm weq.)
-             #'soilt4', # soil temperature unknown layer 4 (K)
-             #'tg3', # deep soil temperature (K)
-             'tmp2m', # 2m (surface air) temperature (K)
-             #'tmpsfc', # surface temperature (K)
-             #'weasd', # surface snow water equivalent (mm weq.)
-             ]
+variables = [
+    'icec',        # sea ice concentration (ice=1; no ice=2)
+    'icetk',       # sea ice thickness (m)
+    'lhtfl_ave',   # surface latent heat flux (W/m**2)
+    'shtfl_ave',   # surface sensible heat flux (W/m**2)
+    'dlwrf_ave',   # surface downward longwave flux (W/m**2)
+    'dswrf_ave',   # averaged surface downward shortwave flux (W/m**2)
+    'ulwrf_ave',   # surface upward longwave flux (W/m**2)
+    'uswrf_ave',   # averaged surface upward shortwave flux (W/m**2)
+    'netrf_avetoa',# top of atmosphere net radiative flux (SW and LW) (W/m**2)
+    'netef_ave',   # surface energy balance (W/m**2)
+    'nsst',        # near sea surface temperature(K), using tref over the ocean 
+                   # only
+    'prateb_ave',   # bucket surface precip rate (mm weq. s^-1)
+    'prate_ave',   # surface precip rate (mm weq. s^-1)
+    'pressfc',     # surface pressure (Pa)
+    'snowc_ave',   # snow cover - GFS lsm
+    'snod',        # surface snow depth (m)
+    'soilm',       # total column soil moisture content (mm weq.)
+    'soilt4',      # soil temperature unknown layer 4 (K)
+    'sst',         # sea surface temperature (K), using tmpsfc over the ocean 
+                   # only
+    'tg3',         # deep soil temperature (K)
+    'tmp2m',       # 2m (surface air) temperature (K)
+    'tsnowp',      # accumulated surface snow (kg/m**2)
+    'ulwrf_avetoa', # top of atmosphere upward longwave flux (W m^-2)
+    'weasd',       # surface snow water equivalent (kg/m**2)
+    ]
 
 input_cycle = sys.argv[1]
 datetime_obj = dt.datetime.strptime(input_cycle, "%Y%m%dT%H")
