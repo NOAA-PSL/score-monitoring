@@ -34,7 +34,7 @@
 
 [task parameters]
     stats = file_count, gsi_obsfit
-    daily_firstguess_stats = daily_mean_surface_background
+    daily_background_stats = daily_mean_surface_background
     daily_analysis_stats = daily_mean_surface_analysis
 
 [scheduler]
@@ -93,10 +93,10 @@
     [[store_data_daily_an]]
         execution retry delays = 60*PT1M # if job fails, wait one minute and try again
             
-    [[store_data_daily_bg<daily_firstguess_stats>]]
+    [[store_data_daily_bg<daily_background_stats>]]
         inherit=store_data_daily_bg
         script = """
-            db_${CYLC_TASK_PARAM_daily_firstguess_stats}.py $CYLC_TASK_CYCLE_POINT {{ ENV_PATH }}
+            db_${CYLC_TASK_PARAM_daily_background_stats}.py $CYLC_TASK_CYCLE_POINT {{ ENV_PATH }}
         """
     [[store_data_daily_an<daily_analysis_stats>]]
         inherit=store_data_daily_an
