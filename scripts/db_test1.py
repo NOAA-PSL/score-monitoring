@@ -436,6 +436,332 @@ def put_these_data3():
                         description=None
                     )
 
+def put_these_conventiona_data():
+    """ calls:
+    def put_array_metric_type(name, measurement_type,
+                          coordinate_labels,
+                          coordinate_values,
+                          coordinate_units,
+                          coordinate_lengths,
+                          instrument=None, obs_platform=None,
+                          long_name=None,
+                          measurement_units=None, stat_type=None,
+                          description=None):
+    """
+    obs_dict = get_conventional_instruments()
+    my_stats = {
+        'count': 'number of obs summed under obs types and vertical layers',
+        'bias': 'bias of obs departure for each outer loop (it)',
+        'rms': 'root mean squre error of obs departure for each outer loop (it)',
+        'cpen': 'obs part of penalty (cost function)',
+        'qcpen': 'nonlinear qc penalty'
+    }
+
+    variables = {
+        #TODO: register fit_psfc_data as scalar metric
+        #'fit_psfc_data', # fit of surface pressure data (mb)
+        'fit_uv_data': 'fit of u, v wind data (m/s)',
+        'fit_t_data': 'fit of temperature data (K)',
+        'fit_q_data': 'fit of moisture data (% of qsaturation guess)'
+    }
+    
+    its = [1,2,3,None]
+    
+    for variable, long_name in my_variables.items():
+        if variable == 'fit_uv_data':
+            units = 'm/s'
+        if variable == 'fit_t_data':
+            units = 'K'
+        
+        if variable == 'fit_q_data':
+            units = 'percent of qsaturation guess'
+            
+            plev_bots = [
+                0.120E+04,
+                0.100E+04, 
+                0.950E+03,
+                0.900E+03, 
+                0.850E+03,
+                0.800E+03,
+                0.700E+03,
+                0.600E+03,
+                0.500E+03,
+                0.400E+03,
+                0.300E+03,
+                0.200E+04, 
+            ]
+            
+            plev_tops = [
+                0.100E+04,
+                0.950E+03,
+                0.900E+03,
+                0.850E+03,
+                0.800E+03,
+                0.700E+03,
+                0.600E+03,
+                0.500E+03,
+                0.400E+03,
+                0.300E+03,
+                0.000E+02,
+                0.000E+00,
+            ]
+            
+        else:
+            plev_bots = [
+                0.120E+04, 
+                0.100E+04,
+                0.900E+03,
+                0.800E+03,
+                0.600E+03,
+                0.400E+03,
+                0.300E+03,
+                0.250E+03,
+                0.200E+03,
+                0.150E+03,
+                0.100E+03,
+                0.200E+04,
+            ]
+            plev_tops = [
+                0.100E+04,
+                0.900E+03,
+                0.800E+03,
+                0.600E+03,
+                0.400E+03,
+                0.300E+03,
+                0.250E+03,
+                0.200E+03,
+                0.150E+03,
+                0.100E+03,
+                0.500E+02,
+                0.000E+00,
+            ]
+        
+        for measurement_id, measurement_attrs in obs_dict[variable].items()
+            #measurement_id = 'type_subtype'
+            measurement_type = measurement_id.split('_')[0]
+            
+            for stat, stat_description in my_stats.items():
+                for gsi_stage in its:
+                
+                    name = stat + '_' + variable + '_' + measurement_id + "_GSIstage_" + gsi_stage
+                
+                    put_array_metric_type(name, measurement_type,
+                              ['plev_bot', 'plev_top'], [plev_bots, plev_tops],
+                              ['hPa', 'hPa'],
+                              [len(plev_bots), len(plev_tops)],
+                              instrument=measurement_attrs['instrument'],
+                              obs_platform=measurement_attrs['obs_platform'],
+                              long_name=long_name,
+                              measurement_units=units, stat_type=stat,
+                              description=f'{stat_description} for {long_name} ({measurement_attrs["instrument"]})'
+                    )
+
+def get_station_pressure_instruments():
+    obs_dict = {
+        'fit_psfc_data': {
+            120: {
+                'instrument': 'rawinsonde',
+                'obs_platform': 'balloon',
+                'long_name': 'radar wind -sonde'
+            },
+            180: {
+                'instrument': 'barometer (restricted ship)',
+                'obs_platform': 'R - U.S. & JMA ships',
+                'long_name': 'U.S. & Japan Meteorological Agency (JMA) surface marine (ships) with reported station pressure (restricted outside of NCEP)'
+            },
+            181: {
+                'instrument': 'barometer (restricted WMO station)',
+                'obs_platform': 'R - WMO Res 40 SYNOPS',
+                'long_name': 'World Meteorological Organization (WMO) Res 40 SYNOPS surface land [METAR] (restricted outside of NCEP)'
+            },
+            183: {
+                'instrument': 'barometer (restricted station)',
+                'obs_platform': 'R - WMO Res 40 SYNOPS, U.S. & JMA ships',
+                'long_name': 'World Meteorological Organization (WMO) Res 40 SYNOPS surface land [METAR] and U.S. & Japan Meteorological Agency (JMA) surface marine (ships) with reported station pressure (restricted outside of NCEP)'
+            },
+            187: {
+                'instrument': 'barometer (station)',
+                'obs_platform': 'weather station',
+                'long_name': 'surface land (METAR)'
+            },
+            191: {
+                'instrument': 'bogus station pressure',
+                'obs_platform': 'bogus station pressure',
+                'long_name': 'Australian (PAOB) mean sea-level pressure bogus over ocean'
+            },
+        }
+    }
+
+    return obs_dict
+
+def get_conventional_instruments():
+    obs_dict = {
+        'fit_t_data': {
+            120: {
+                'instrument': 'rawinsonde',
+                'obs_platform': 'balloon',
+                'long_name': 'radar wind -sonde'
+            },
+            130: {    
+                'instrument': 'aircraft (PIREP)',
+                'obs_platform': 'aircraft',
+                'long_name': 'aircraft and pilot reports'
+            },
+            131: {
+                'instrument': 'aircraft (restricted AMDAR)',
+                'obs_platform': 'aircraft',
+                'long_name': 'aircraft meteorological data relay [AMDAR] (restricted outside of NCEP)'
+            },
+            132: {
+                'instrument': 'dropsonde',
+                'obs_platform': 'dropsonde',
+                'long_name': 'flight-level reconnaissance and profile dropsonde'
+            },
+            133: {
+                'instrument': 'aircraft (restricted ACARS)',
+                'obs_platform': 'aircraft',
+                'long_name': 'Aircraft Communications Addressing and Reporting System [ACARS] / Meteorological Data Collection and Reporting System [MDCRS] (restricted outside of NCEP)'
+            },
+            180: {
+                'instrument': 'thermometer (restricted ship)',
+                'obs_platform': 'R - U.S. & JMA ships',
+                'long_name': 'U.S. & Japan Meteorological Agency (JMA) surface marine (ships) with reported station pressure (restricted outside of NCEP)'
+            },
+            181: {
+                'instrument': 'thermometer (restricted WMO station)',
+                'obs_platform': 'R - WMO Res 40 SYNOPS',
+                'long_name': 'World Meteorological Organization (WMO) Res 40 SYNOPS surface land [METAR] (restricted outside of NCEP)'
+            },
+            183: {
+                'instrument': 'thermometer (restricted station)',
+                'obs_platform': 'R - WMO Res 40 SYNOPS, U.S. & JMA ships',
+                'long_name': 'World Meteorological Organization (WMO) Res 40 SYNOPS surface land [METAR] and U.S. & Japan Meteorological Agency (JMA) surface marine (ships) with reported station pressure (restricted outside of NCEP)'
+            },
+        },
+        'fit_q_data': {
+            120: {
+                'instrument': 'rawinsonde',
+                'obs_platform': 'balloon',
+                'long_name': 'radar wind -sonde'
+            },
+            132: {
+                'instrument': 'dropsonde',
+                'obs_platform': 'dropsonde',
+                'long_name': 'flight-level reconnaissance and profile dropsonde'
+            },
+            133: {
+                'instrument': 'aircraft (restricted ACARS)',
+                'obs_platform': 'aircraft',
+                'long_name': 'Aircraft Communications Addressing and Reporting System [ACARS] / Meteorological Data Collection and Reporting System [MDCRS] (restricted outside of NCEP)'
+            },
+            180: {
+                'instrument': 'hygrometer (restricted ship)',
+                'obs_platform': 'R - U.S. & JMA ships',
+                'long_name': 'U.S. & Japan Meteorological Agency (JMA) surface marine (ships) with reported station pressure (restricted outside of NCEP)'
+            },
+            183: {
+                'instrument': 'hygrometer (restricted station)',
+                'obs_platform': 'R - WMO Res 40 SYNOPS, U.S. & JMA ships',
+                'long_name': 'World Meteorological Organization (WMO) Res 40 SYNOPS surface land [METAR] and U.S. & Japan Meteorological Agency (JMA) surface marine (ships) with reported station pressure (restricted outside of NCEP)'
+            },
+        },
+        'fit_uv_data': {
+            220: {
+                'instrument': 'rawinsonde',
+                'obs_platform': 'balloon',
+                'long_name': 'radar wind -sonde'
+            },
+            221: {
+                'instrument': 'theodolite',
+                'obs_platform': 'pilot balloon',
+                'long_name': 'pilot balloon'
+            },
+            229: {
+                'instrument': 'wind profiler radar',
+                'obs_platform': 'pilot balloon',
+                'long_name': 'wind profiler radar decoded from pilot balloon bulletins'
+            },
+            230: {
+                'instrument': 'aircraft (PIREP)',
+                'obs_platform': 'aircraft',
+                'long_name': 'aircraft and pilot reports'
+            },
+            231: {
+                'instrument': 'aircraft (restricted AMDAR)',
+                'obs_platform': 'aircraft',
+                'long_name': 'aircraft meteorological data relay [AMDAR] (restricted outside of NCEP)'
+            },
+            232: {
+                'instrument': 'dropwindsonde',
+                'obs_platform': 'dropsonde',
+                'long_name': 'flight-level reconnaissance and profile dropsonde'
+            },
+            233: {
+                'instrument': 'aircraft (restricted ACARS)',
+                'obs_platform': 'aircraft',
+                'long_name': 'Aircraft Communications Addressing and Reporting System [ACARS] / Meteorological Data Collection and Reporting System [MDCRS] (restricted outside of NCEP)'
+            },
+            242: {
+                'instrument': 'radiometer / cloud imager (Himawari)',
+                'obs_platform': 'satellite (Himawari)',
+                'long_name': 'Japan Meteorological Agency infrared (long-wave) and visible cloud drift (Himawari)'
+            },
+            243: {
+                'instrument': 'radiometer / cloud imager (Meteosat)',
+                'obs_platform': 'satellite (Meteosat)',
+                'long_name': 'European Organisation for the Exploitation of Meteorological Satellites infrared (long-wave) and visible cloud drift (Meteosat)'
+            },
+            250: {
+                'instrument': 'water vapor imager (Himawari)',
+                'obs_platform': 'satellite (Himawari)',
+                'long_name': 'Japan Meteorological Agency imager water vapor (all levels) - cloud top & deep layer (Himawari)'
+            },
+            252: {
+                'instrument': 'radiometer / cloud imager (Himawari)',
+                'obs_platform': 'satellite (Himawari)',
+                'long_name': 'Japan Meteorological Agency infrared (long-wave) and visible cloud drift (Himawari)'
+            },
+            253: {
+                'instrument': 'radiometer / cloud imager (Meteosat)',
+                'obs_platform': 'satellite (Meteosat)',
+                'long_name': 'European Organisation for the Exploitation of Meteorological Satellites infrared (long-wave) and visible cloud drift (Meteosat)'
+            },
+            254: {
+                'instrument': 'water vapor imager (Meteosat)',
+                'obs_platform': 'satellite (Meteosat)',
+                'long_name': 'European Organisation for the Exploitation of Meteorological Satellites imager water vapor (all levels) - cloud top & deep layer (Himawari)'
+            },
+            280: {
+                'instrument': 'anemometer (restricted ship)',
+                'obs_platform': 'R - U.S. & JMA ships',
+                'long_name': 'U.S. & Japan Meteorological Agency (JMA) surface marine (ships) with reported station pressure (restricted outside of NCEP)'
+            },
+            281: {
+                'instrument': 'anemometer (restricted WMO station)',
+                'obs_platform': 'R - WMO Res 40 SYNOPS',
+                'long_name': 'World Meteorological Organization (WMO) Res 40 SYNOPS surface land [METAR] (restricted outside of NCEP)'
+            },
+            282: {
+                'instrument': 'anemometer (ATLAS buoy)',
+                'obs_platform': 'buoy (ATLAS)',
+                'long_name': 'ATLAS buoy'
+            },
+            284: {
+                'instrument': 'anemometer (restricted station)',
+                'obs_platform': 'R - WMO Res 40 SYNOPS, U.S. & JMA ships',
+                'long_name': 'World Meteorological Organization (WMO) Res 40 SYNOPS surface land [METAR] and U.S. & Japan Meteorological Agency (JMA) surface marine (ships) with reported station pressure (restricted outside of NCEP)'
+            },
+            290: {
+                'instrument': 'radar (scatterometer)',
+                'obs_platform': 'Advanced Scatterometer (ASCAT)',
+                'long_name': 'non-superobed scatterometer winds over ocean (ASCAT)'
+            },
+            
+        }
+        
+    }
+    return obs_dict
+
 def get_instrument_channels():
     instrument_channels = {
         'abi': [7, 8, 9, 10, 11, 12, 13, 14, 15, 16],
