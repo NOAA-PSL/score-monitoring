@@ -437,16 +437,7 @@ def put_these_data3():
                     )
 
 def put_these_conventiona_data():
-    """ calls:
-    def put_array_metric_type(name, measurement_type,
-                          coordinate_labels,
-                          coordinate_values,
-                          coordinate_units,
-                          coordinate_lengths,
-                          instrument=None, obs_platform=None,
-                          long_name=None,
-                          measurement_units=None, stat_type=None,
-                          description=None):
+    """
     """
     obs_dict = get_conventional_instruments()
     my_stats = {
@@ -458,21 +449,21 @@ def put_these_conventiona_data():
     }
 
     variables = {
-        #TODO: register fit_psfc_data as scalar metric
-        #'fit_psfc_data', # fit of surface pressure data (mb)
-        'fit_uv_data': 'fit of u, v wind data (m/s)',
-        'fit_t_data': 'fit of temperature data (K)',
-        'fit_q_data': 'fit of moisture data (% of qsaturation guess)'
+        'fit_psfc_data': 'fit of surface pressure data (hPa)',
+        #'fit_uv_data': 'fit of u, v wind data (m/s)',
+        #'fit_t_data': 'fit of temperature data (K)',
+        #'fit_q_data': 'fit of moisture data (% of qsaturation guess)'
     }
     
     its = [1,2,3,None]
     
-    for variable, long_name in my_variables.items():
+    for variable, long_name in variables.items():
+        if variable == 'fit_psfc_data':
+            units = 'hPa'
         if variable == 'fit_uv_data':
             units = 'm/s'
         if variable == 'fit_t_data':
             units = 'K'
-        
         if variable == 'fit_q_data':
             units = 'percent of qsaturation guess'
             
@@ -506,7 +497,7 @@ def put_these_conventiona_data():
                 0.000E+00,
             ]
             
-        else:
+        elif variable == 'fit_uv_data' or variable == 'fit_t_data':
             plev_bots = [
                 0.120E+04, 
                 0.100E+04,
@@ -536,16 +527,36 @@ def put_these_conventiona_data():
                 0.000E+00,
             ]
         
-        for measurement_id, measurement_attrs in obs_dict[variable].items()
-            #measurement_id = 'type_subtype'
-            measurement_type = measurement_id.split('_')[0]
+        for measurement_id, measurement_attrs in obs_dict[variable].items():
             
             for stat, stat_description in my_stats.items():
                 for gsi_stage in its:
                 
-                    name = stat + '_' + variable + '_' + measurement_id + "_GSIstage_" + gsi_stage
+                    name = f"{stat}_{variable}_{str(measurement_id)}_GSIstage_{gsi_stage}"
                 
-                    put_array_metric_type(name, measurement_type,
+                    if variable == 'fit_psfc_data':
+                        if False:
+                            put_scalar_metric_type(
+                                name,
+                                'conventional',
+                                instrument_meta_name=measurement_attrs['instrument'],
+                                obs_platform=measurement_attrs['obs_platform'],
+                                long_name=long_name,
+                                measurement_units=units, stat_type=stat,
+                                description=f'{stat_description} for {long_name} ({measurement_attrs["instrument"]})'
+                            )
+                        else:
+                            print(f'###---!!! NEW SCALAR METRIC TYPE NAME: {name}')
+                            print(f"instrument: {measurement_attrs['instrument']}, "
+                                  f"obs_platform: {measurement_attrs['obs_platform']}, "
+                                  f"long_name: {long_name}, "
+                                  f"measurement_units: {units}, "
+                                  f"stat_type: {stat}, "
+                                  f"description: {stat_description} for {long_name} ({measurement_attrs["instrument"]})"
+                            )
+                    elif var == 'fit_uv_data' or var == 'fit_q_data' or var == 'fit_t_data':
+                        if False:
+                            put_array_metric_type(name, 'conventional',
                               ['plev_bot', 'plev_top'], [plev_bots, plev_tops],
                               ['hPa', 'hPa'],
                               [len(plev_bots), len(plev_tops)],
@@ -554,9 +565,19 @@ def put_these_conventiona_data():
                               long_name=long_name,
                               measurement_units=units, stat_type=stat,
                               description=f'{stat_description} for {long_name} ({measurement_attrs["instrument"]})'
-                    )
+                             )
+                        else:
+                            print(f'###---!!! NEW ARRAY METRIC TYPE NAME: {name}')
+                            print(f"coordinate values (plev_bots, plev_tops) [hPa]: {[plev_bots, plev_tops]}, "
+                                  f"instrument: {measurement_attrs['instrument']}, "
+                                  f"obs_platform: {measurement_attrs['obs_platform']}, "
+                                  f"long_name: {long_name}, "
+                                  f"measurement_units: {units}, "
+                                  f"stat_type: {stat}, "
+                                  f"description: {stat_description} for {long_name} ({measurement_attrs["instrument"]})"
+                            )
 
-def get_station_pressure_instruments():
+def get_conventional_instruments():
     obs_dict = {
         'fit_psfc_data': {
             120: {
@@ -589,13 +610,12 @@ def get_station_pressure_instruments():
                 'obs_platform': 'bogus station pressure',
                 'long_name': 'Australian (PAOB) mean sea-level pressure bogus over ocean'
             },
-        }
-    }
-
-    return obs_dict
-
-def get_conventional_instruments():
-    obs_dict = {
+            'all':{
+                'instrument': 'pressure sensor',
+                'obs_platform': 'multiple',
+                'long_name': 'all surface pressure observations'
+            },
+        },
         'fit_t_data': {
             120: {
                 'instrument': 'rawinsonde',
@@ -637,6 +657,11 @@ def get_conventional_instruments():
                 'obs_platform': 'R - WMO Res 40 SYNOPS, U.S. & JMA ships',
                 'long_name': 'World Meteorological Organization (WMO) Res 40 SYNOPS surface land [METAR] and U.S. & Japan Meteorological Agency (JMA) surface marine (ships) with reported station pressure (restricted outside of NCEP)'
             },
+            'all': {
+                'instrument': 'temperature sensor',
+                'obs_platform': 'multiple',
+                'long_name': 'all temperature observations'
+            }
         },
         'fit_q_data': {
             120: {
@@ -664,6 +689,11 @@ def get_conventional_instruments():
                 'obs_platform': 'R - WMO Res 40 SYNOPS, U.S. & JMA ships',
                 'long_name': 'World Meteorological Organization (WMO) Res 40 SYNOPS surface land [METAR] and U.S. & Japan Meteorological Agency (JMA) surface marine (ships) with reported station pressure (restricted outside of NCEP)'
             },
+            'all': {
+                'instrument': 'humidity sensor',
+                'obs_platform': 'multiple',
+                'long_name': 'all humidity observations'
+            }
         },
         'fit_uv_data': {
             220: {
@@ -756,6 +786,11 @@ def get_conventional_instruments():
                 'obs_platform': 'Advanced Scatterometer (ASCAT)',
                 'long_name': 'non-superobed scatterometer winds over ocean (ASCAT)'
             },
+            'all': {
+                'instrument': 'wind velocity detector',
+                'obs_platform': 'multiple',
+                'long_name': 'all wind velocity observations'
+            }
             
         }
         
