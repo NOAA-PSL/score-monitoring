@@ -790,6 +790,11 @@ def get_conventional_instruments():
                 'obs_platform': 'R - U.S. & JMA ships',
                 'long_name': 'U.S. & Japan Meteorological Agency (JMA) surface marine (ships) with reported station pressure (restricted outside of NCEP)'
             },
+            181: {
+                'instrument': 'hygrometer (restricted WMO station)',
+                'obs_platform': 'R - WMO Res 40 SYNOPS',
+                'long_name': 'World Meteorological Organization (WMO) Res 40 SYNOPS surface land [METAR] (restricted outside of NCEP)'
+            },
             183: {
                 'instrument': 'hygrometer (restricted station)',
                 'obs_platform': 'R - WMO Res 40 SYNOPS, U.S. & JMA ships',
