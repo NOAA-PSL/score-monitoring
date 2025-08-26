@@ -802,6 +802,12 @@ def get_conventional_instruments():
             }
         },
         'fit_uv_data': {
+            210: {
+                'instrument': 'bogus wind report',
+                'obs_platform': 'bogus wind report',
+                'long_name': 'synthetic (bogus) tropical cyclone'
+            },
+            
             220: {
                 'instrument': 'rawinsonde',
                 'obs_platform': 'balloon',
