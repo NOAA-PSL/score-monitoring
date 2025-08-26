@@ -436,6 +436,112 @@ def put_these_data3():
                         description=None
                     )
 
+def put_upper_stratospheric_scalar_metrics():
+    """NOT IMPLEMENTED
+    """
+    obs_dict = get_conventional_instruments()
+    my_stats = {
+        'count': 'number of obs summed under obs types and vertical layers',
+        'bias': 'bias of obs departure for each outer loop (it)',
+        'rms': 'root mean squre error of obs departure for each outer loop (it)',
+        #'cpen': 'obs part of penalty (cost function)',
+        #'qcpen': 'nonlinear qc penalty'
+    }
+    variables = {
+        #'fit_psfc_data': 'fit of surface pressure data (hPa)',
+        'fit_uv_data': 'fit of u, v wind data (m/s)',
+        'fit_t_data': 'fit of temperature data (K)',
+        #'fit_q_data': 'fit of moisture data (% of qsaturation guess)'
+    }
+    its = [1,2,3,None]
+    
+    for variable, long_name in variables.items():
+        if variable == 'fit_uv_data':
+            units = 'm/s'
+        if variable == 'fit_t_data':
+            units = 'K'
+            
+        if variable == 'fit_uv_data' or variable == 'fit_t_data':
+            plev_bots = [
+                0.100E+03,
+            ]
+            plev_tops = [
+                0.500E+02,
+            ]
+        
+        for measurement_id, measurement_attrs in obs_dict[variable].items():
+            
+            for stat, stat_description in my_stats.items():
+                for gsi_stage in its:
+                
+                    name = f"{stat}_{variable}_{str(measurement_id)}_GSIstage_{gsi_stage}"
+                    
+def put_surface_scalar_metrics():
+    """
+    """
+    obs_dict = get_conventional_instruments()
+    my_stats = {
+        'count': 'number of obs summed under obs types and vertical layers',
+        'bias': 'bias of obs departure for each outer loop (it)',
+        'rms': 'root mean squre error of obs departure for each outer loop (it)',
+        #'cpen': 'obs part of penalty (cost function)',
+        #'qcpen': 'nonlinear qc penalty'
+    }
+
+    variables = {
+        'fit_psfc_data': 'fit of surface pressure data (hPa)',
+        'fit_uv_data': 'fit of u, v wind data (m/s)',
+        'fit_t_data': 'fit of temperature data (K)',
+        'fit_q_data': 'fit of moisture data (% of qsaturation guess)'
+    }
+    
+    its = [1,2,3,None]
+    
+    for variable, long_name in variables.items():
+        if variable == 'fit_psfc_data':
+            units = 'hPa'
+        if variable == 'fit_uv_data':
+            units = 'm/s'
+        if variable == 'fit_t_data':
+            units = 'K'
+        if variable == 'fit_q_data':
+            units = 'percent of qsaturation guess'
+            
+        plev_bots = [
+            0.120E+04,
+        ]
+            
+        plev_tops = [
+            0.100E+04,
+        ]
+        
+        for measurement_id, measurement_attrs in obs_dict[variable].items():
+            
+            for stat, stat_description in my_stats.items():
+                for gsi_stage in its:
+                
+                    name = f"{stat}_{variable}_{str(measurement_id)}_GSIstage_{gsi_stage}"
+                
+                    if True:
+                        put_scalar_metric_type(
+                            name,
+                            'conventional',
+                            instrument_meta_name=measurement_attrs['instrument'],
+                            obs_platform=measurement_attrs['obs_platform'],
+                            long_name=long_name,
+                            measurement_units=units, stat_type=stat,
+                            description=f'{stat_description} for surface level {long_name} ({measurement_attrs["instrument"]})'
+                            )
+                    else:
+                        print(f'###---!!! NEW SCALAR METRIC TYPE NAME: {name}')
+                        print(f"instrument: {measurement_attrs['instrument']}, "
+                              f"obs_platform: {measurement_attrs['obs_platform']}, "
+                              f"long_name: {long_name}, "
+                              f"measurement_units: {units}, "
+                              f"stat_type: {stat}, "
+                              f"description: {stat_description} for surface level {long_name} ({measurement_attrs["instrument"]})"
+                            )
+    
 def put_these_conventiona_data():
     """
     """
