@@ -539,7 +539,7 @@ def put_surface_scalar_metrics():
                               f"long_name: {long_name}, "
                               f"measurement_units: {units}, "
                               f"stat_type: {stat}, "
-                              f"description: {stat_description} for surface level {long_name} ({measurement_attrs["instrument"]})"
+                              f"description: {stat_description} for surface level {long_name} ({measurement_attrs['instrument']})"
                             )
     
 def put_these_conventiona_data():
@@ -658,7 +658,7 @@ def put_these_conventiona_data():
                                   f"long_name: {long_name}, "
                                   f"measurement_units: {units}, "
                                   f"stat_type: {stat}, "
-                                  f"description: {stat_description} for {long_name} ({measurement_attrs["instrument"]})"
+                                  f"description: {stat_description} for {long_name} ({measurement_attrs['instrument']})"
                             )
                     elif var == 'fit_uv_data' or var == 'fit_q_data' or var == 'fit_t_data':
                         if False:
@@ -680,7 +680,7 @@ def put_these_conventiona_data():
                                   f"long_name: {long_name}, "
                                   f"measurement_units: {units}, "
                                   f"stat_type: {stat}, "
-                                  f"description: {stat_description} for {long_name} ({measurement_attrs["instrument"]})"
+                                  f"description: {stat_description} for {long_name} ({measurement_attrs['instrument']})"
                             )
 
 def get_conventional_instruments():
