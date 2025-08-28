@@ -207,7 +207,7 @@ def register_sat_meta(name, sat_id=None, long_name=None, short_name=None):
         }
     }
     return score_db_base.handle_request(request_dict)
-
+    
 def put_these_data():
     """
     """
@@ -480,6 +480,7 @@ def put_surface_scalar_metrics():
     """
     """
     obs_dict = get_conventional_instruments()
+    
     my_stats = {
         'count': 'number of obs summed under obs types and vertical layers',
         'bias': 'bias of obs departure for each outer loop (it)',
@@ -515,8 +516,8 @@ def put_surface_scalar_metrics():
             0.100E+04,
         ]
         
-        for measurement_id, measurement_attrs in obs_dict[variable].items():
-            
+        for measurement_id, measurement_attrs in obs_dict[variable].items():            
+            register_instrument_meta(measurement_attrs['instrument'], None)
             for stat, stat_description in my_stats.items():
                 for gsi_stage in its:
                 
@@ -526,7 +527,7 @@ def put_surface_scalar_metrics():
                         put_scalar_metric_type(
                             name,
                             'conventional',
-                            instrument_meta_name=measurement_attrs['instrument'],
+                            instrument_meta_name='%s' % measurement_attrs["instrument"],
                             obs_platform=measurement_attrs['obs_platform'],
                             long_name=long_name,
                             measurement_units=units, stat_type=stat,
@@ -534,7 +535,7 @@ def put_surface_scalar_metrics():
                             )
                     else:
                         print(f'###---!!! NEW SCALAR METRIC TYPE NAME: {name}')
-                        print(f"instrument: {measurement_attrs['instrument']}, "
+                        print("'%s', " % measurement_attrs["instrument"] +
                               f"obs_platform: {measurement_attrs['obs_platform']}, "
                               f"long_name: {long_name}, "
                               f"measurement_units: {units}, "
@@ -555,17 +556,14 @@ def put_these_conventiona_data():
     }
 
     variables = {
-        'fit_psfc_data': 'fit of surface pressure data (hPa)',
-        #'fit_uv_data': 'fit of u, v wind data (m/s)',
-        #'fit_t_data': 'fit of temperature data (K)',
-        #'fit_q_data': 'fit of moisture data (% of qsaturation guess)'
+        'fit_uv_data': 'fit of u, v wind data (m/s)',
+        'fit_t_data': 'fit of temperature data (K)',
+        'fit_q_data': 'fit of moisture data (% of qsaturation guess)'
     }
     
     its = [1,2,3,None]
     
     for variable, long_name in variables.items():
-        if variable == 'fit_psfc_data':
-            units = 'hPa'
         if variable == 'fit_uv_data':
             units = 'm/s'
         if variable == 'fit_t_data':
@@ -639,34 +637,14 @@ def put_these_conventiona_data():
                 for gsi_stage in its:
                 
                     name = f"{stat}_{variable}_{str(measurement_id)}_GSIstage_{gsi_stage}"
-                
-                    if variable == 'fit_psfc_data':
-                        if False:
-                            put_scalar_metric_type(
-                                name,
-                                'conventional',
-                                instrument_meta_name=measurement_attrs['instrument'],
-                                obs_platform=measurement_attrs['obs_platform'],
-                                long_name=long_name,
-                                measurement_units=units, stat_type=stat,
-                                description=f'{stat_description} for {long_name} ({measurement_attrs["instrument"]})'
                             )
-                        else:
-                            print(f'###---!!! NEW SCALAR METRIC TYPE NAME: {name}')
-                            print(f"instrument: {measurement_attrs['instrument']}, "
-                                  f"obs_platform: {measurement_attrs['obs_platform']}, "
-                                  f"long_name: {long_name}, "
-                                  f"measurement_units: {units}, "
-                                  f"stat_type: {stat}, "
-                                  f"description: {stat_description} for {long_name} ({measurement_attrs['instrument']})"
-                            )
-                    elif var == 'fit_uv_data' or var == 'fit_q_data' or var == 'fit_t_data':
+                    if var == 'fit_uv_data' or var == 'fit_q_data' or var == 'fit_t_data':
                         if False:
                             put_array_metric_type(name, 'conventional',
                               ['plev_bot', 'plev_top'], [plev_bots, plev_tops],
                               ['hPa', 'hPa'],
                               [len(plev_bots), len(plev_tops)],
-                              instrument=measurement_attrs['instrument'],
+                              instrument='%s' % measurement_attrs['instrument'],
                               obs_platform=measurement_attrs['obs_platform'],
                               long_name=long_name,
                               measurement_units=units, stat_type=stat,
@@ -952,10 +930,11 @@ def get_instrument_channels():
 
 def run(request='array_metric_types'):
     #return score_db_base.handle_request(get_request_dict2(request))
-    put_these_sats()
-    put_these_data()
-    put_these_data2()
-    put_these_data3()
+    #put_these_sats()
+    #put_these_data()
+    #put_these_data2()
+    #put_these_data3()
+    put_surface_scalar_metrics()
 
 def main():
     run()
