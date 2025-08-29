@@ -676,6 +676,11 @@ def get_conventional_instruments():
                 'obs_platform': 'balloon',
                 'long_name': 'radar wind -sonde'
             },
+            132: {
+                'instrument': 'dropsonde',
+                'obs_platform': 'dropsonde',
+                'long_name': 'flight-level reconnaissance and profile dropsonde'
+            },
             180: {
                 'instrument': 'barometer (restricted ship)',
                 'obs_platform': 'R - U.S. & JMA ships',
