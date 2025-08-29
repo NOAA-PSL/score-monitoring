@@ -412,7 +412,7 @@ def put_these_data3():
     groups = ('ObsValue','oman','ombg', 'ObsError')
 
     for instrument in my_instruments:
-        if instrument == ' ctd':
+        if instrument == 'ctd':
             long_name = 'conductivity, temperature, and depth (CTD)'
         elif instrument == 'xbt':
             long_name = 'expendable bathythermograph (XBT)'
@@ -422,8 +422,15 @@ def put_these_data3():
             long_name = "ocean station data (OSD)"
         else:
             long_name = None
+        
         for stat in my_stats:
             for var in my_vars:
+                
+                if var == 'waterTemperature':
+                    units = 'C'
+                else:
+                    units = None
+                
                 for group in groups:
                     name = f"{stat}_{var}_{instrument}_{group}"
                     put_scalar_metric_type(
@@ -432,7 +439,7 @@ def put_these_data3():
                         instrument_meta_name=instrument,
                         obs_platform='ship',
                         long_name=long_name,
-                        measurement_units=None, stat_type=stat,
+                        measurement_units=units, stat_type=stat,
                         description=None
                     )
 
@@ -476,7 +483,7 @@ def put_upper_stratospheric_scalar_metrics():
                 
                     name = f"{stat}_{variable}_{str(measurement_id)}_GSIstage_{gsi_stage}"
                     
-def put_surface_scalar_metrics():
+def put_whole_atm_conv_scalar_metrics():
     """
     """
     obs_dict = get_conventional_instruments()
@@ -493,7 +500,7 @@ def put_surface_scalar_metrics():
         'fit_psfc_data': 'fit of surface pressure data (hPa)',
         'fit_uv_data': 'fit of u, v wind data (m/s)',
         'fit_t_data': 'fit of temperature data (K)',
-        'fit_q_data': 'fit of moisture data (% of qsaturation guess)'
+        'fit_q_data': 'fit of moisture data (percent of qsaturation guess)'
     }
     
     its = [1,2,3,None]
@@ -509,11 +516,11 @@ def put_surface_scalar_metrics():
             units = 'percent of qsaturation guess'
             
         plev_bots = [
-            0.120E+04,
+            0.200E+04,
         ]
             
         plev_tops = [
-            0.100E+04,
+            0.000E+00,
         ]
         
         for measurement_id, measurement_attrs in obs_dict[variable].items():            
@@ -531,7 +538,7 @@ def put_surface_scalar_metrics():
                             obs_platform=measurement_attrs['obs_platform'],
                             long_name=long_name,
                             measurement_units=units, stat_type=stat,
-                            description=f'{stat_description} for surface level {long_name} ({measurement_attrs["instrument"]})'
+                            description=f'{stat_description} for {long_name} ({measurement_attrs["instrument"]})'
                             )
                     else:
                         print(f'###---!!! NEW SCALAR METRIC TYPE NAME: {name}')
@@ -558,7 +565,7 @@ def put_these_conventiona_data():
     variables = {
         'fit_uv_data': 'fit of u, v wind data (m/s)',
         'fit_t_data': 'fit of temperature data (K)',
-        'fit_q_data': 'fit of moisture data (% of qsaturation guess)'
+        'fit_q_data': 'fit of moisture data (percent of qsaturation guess)'
     }
     
     its = [1,2,3,None]
@@ -637,7 +644,7 @@ def put_these_conventiona_data():
                 for gsi_stage in its:
                 
                     name = f"{stat}_{variable}_{str(measurement_id)}_GSIstage_{gsi_stage}"
-                            )
+
                     if var == 'fit_uv_data' or var == 'fit_q_data' or var == 'fit_t_data':
                         if False:
                             put_array_metric_type(name, 'conventional',
@@ -934,7 +941,7 @@ def run(request='array_metric_types'):
     #put_these_data()
     #put_these_data2()
     #put_these_data3()
-    put_surface_scalar_metrics()
+    put_whole_atm_conv_scalar_metrics()
 
 def main():
     run()
