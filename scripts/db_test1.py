@@ -691,6 +691,11 @@ def get_conventional_instruments():
                 'obs_platform': 'R - WMO Res 40 SYNOPS, U.S. & JMA ships',
                 'long_name': 'World Meteorological Organization (WMO) Res 40 SYNOPS surface land [METAR] and U.S. & Japan Meteorological Agency (JMA) surface marine (ships) with reported station pressure (restricted outside of NCEP)'
             },
+            182: {
+                'instrument': 'dropsonde (splash-level)',
+                'obs_platform': 'dropsonde (splash-level)',
+                'long_name': 'splash-level dropsonde over ocean'
+            },
             187: {
                 'instrument': 'barometer (station)',
                 'obs_platform': 'weather station',
@@ -738,6 +743,11 @@ def get_conventional_instruments():
                 'obs_platform': 'R - U.S. & JMA ships',
                 'long_name': 'U.S. & Japan Meteorological Agency (JMA) surface marine (ships) with reported station pressure (restricted outside of NCEP)'
             },
+            182: {
+                'instrument': 'dropsonde (splash-level)',
+                'obs_platform': 'dropsonde (splash-level)',
+                'long_name': 'splash-level dropsonde over ocean'
+            },
             181: {
                 'instrument': 'thermometer (restricted WMO station)',
                 'obs_platform': 'R - WMO Res 40 SYNOPS',
@@ -779,6 +789,11 @@ def get_conventional_instruments():
                 'instrument': 'hygrometer (restricted WMO station)',
                 'obs_platform': 'R - WMO Res 40 SYNOPS',
                 'long_name': 'World Meteorological Organization (WMO) Res 40 SYNOPS surface land [METAR] (restricted outside of NCEP)'
+            },
+            182: {
+                'instrument': 'dropsonde (splash-level)',
+                'obs_platform': 'dropsonde (splash-level)',
+                'long_name': 'splash-level dropsonde over ocean'
             },
             183: {
                 'instrument': 'hygrometer (restricted station)',
