@@ -49,7 +49,7 @@ statistics = [
 ]
 
 plev_bounds = [
-    (0.120E+04, 0.100E+04),
+    [0.200E+04, 0.000E+00],
 ]
 
 input_cycle = sys.argv[1]
@@ -120,8 +120,7 @@ yaml_file = db_yaml_generator.generate_harvest_metrics_yaml(
                                         os.getenv('EXPERIMENT_NAME'),
                                         os.getenv('EXPERIMENT_WALLCLOCK_START'),
                                         'gsi_conventional_obs',
-                                        harvest_config,
-                                        is_array=False)
+                                        harvest_config)
 # validate the configuration (yaml) file
 file_utils.is_valid_readable_file(yaml_file)
 # submit the score db request
