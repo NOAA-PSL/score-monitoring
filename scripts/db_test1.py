@@ -535,7 +535,7 @@ def put_whole_atm_conv_scalar_metrics():
                             name,
                             'conventional',
                             instrument_meta_name='%s' % measurement_attrs["instrument"],
-                            obs_platform=measurement_attrs['obs_platform'],
+                            obs_platform=f"{measurement_attrs['obs_platform']} ({measurement_id})",
                             long_name=long_name,
                             measurement_units=units, stat_type=stat,
                             description=f'{stat_description} for {long_name} ({measurement_attrs["instrument"]})'
@@ -652,7 +652,7 @@ def put_these_conventiona_data():
                               ['hPa', 'hPa'],
                               [len(plev_bots), len(plev_tops)],
                               instrument='%s' % measurement_attrs['instrument'],
-                              obs_platform=measurement_attrs['obs_platform'],
+                              obs_platform=f"{measurement_attrs['obs_platform']} ({measurement_id})",
                               long_name=long_name,
                               measurement_units=units, stat_type=stat,
                               description=f'{stat_description} for {long_name} ({measurement_attrs["instrument"]})'
@@ -828,6 +828,11 @@ def get_conventional_instruments():
                 'obs_platform': 'pilot balloon',
                 'long_name': 'pilot balloon'
             },
+            224: {
+                'instrument': 'vertical azimuth display (VAD) radar',
+                'obs_platform': 'NEXRAD',
+                'long_name': 'Next Generation Weather Radar (NEXRAD) Vertical Azimuth Display (VAD) from Radar Coded Message'
+            },
             229: {
                 'instrument': 'wind profiler radar',
                 'obs_platform': 'pilot balloon',
@@ -852,6 +857,11 @@ def get_conventional_instruments():
                 'instrument': 'aircraft (restricted ACARS)',
                 'obs_platform': 'aircraft',
                 'long_name': 'Aircraft Communications Addressing and Reporting System [ACARS] / Meteorological Data Collection and Reporting System [MDCRS] (restricted outside of NCEP)'
+            },
+            235: {
+                'instrument': 'Canadian aircraft (restricted AMDAR)',
+                'obs_platform': 'aircraft',
+                'long_name': 'Canadian aircraft meteorological data relay [AMDAR] (restricted outside of NCEP)'
             },
             242: {
                 'instrument': 'radiometer / cloud imager (Himawari)',
