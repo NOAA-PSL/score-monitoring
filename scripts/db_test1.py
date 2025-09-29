@@ -828,6 +828,12 @@ def get_conventional_instruments():
                 'obs_platform': 'pilot balloon',
                 'long_name': 'pilot balloon'
             },
+
+           223: {
+                'instrument': 'wind profiler radar (NPN)',
+                'obs_platform': 'NOAA Profiler Network (NPN)',
+                'long_name': 'NOAA Profiler Network (NPN) Vertical Wind Profile Data'
+            },
             224: {
                 'instrument': 'vertical azimuth display (VAD) radar',
                 'obs_platform': 'NEXRAD',
@@ -873,6 +879,17 @@ def get_conventional_instruments():
                 'obs_platform': 'satellite (Meteosat)',
                 'long_name': 'European Organisation for the Exploitation of Meteorological Satellites infrared (long-wave) and visible cloud drift (Meteosat)'
             },
+            245: {
+                'instrument': 'radiometer (GOES)',
+                'obs_platform': 'satellite (GOES)',
+                'long_name': 'National Environmental Satellite, Data, and Information Service infrared (long-wave) cloud drift (GOES)'
+            },
+            246: {
+                'instrument': 'water vapor imager (GOES)',
+                'obs_platform': 'satellite (GOES)',
+                'long_name': 'National Environmental Satellite, Data, and Information Service imager water vapor (all levels) - cloud top (GOES)'
+            },
+            
             250: {
                 'instrument': 'water vapor imager (Himawari)',
                 'obs_platform': 'satellite (Himawari)',
