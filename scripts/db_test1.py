@@ -885,11 +885,15 @@ def get_conventional_instruments():
                 'long_name': 'National Environmental Satellite, Data, and Information Service infrared (long-wave) cloud drift (GOES)'
             },
             246: {
-                'instrument': 'water vapor imager (GOES)',
+                'instrument': 'water vapor imager (GOES - cloud top)',
                 'obs_platform': 'satellite (GOES)',
                 'long_name': 'National Environmental Satellite, Data, and Information Service imager water vapor (all levels) - cloud top (GOES)'
             },
-            
+            247: {
+                'instrument': 'water vapor imager (GOES - deep layer)',
+                'obs_platform': 'satellite (GOES)',
+                'long_name': 'National Environmental Satellite, Data, and Information Service imager water vapor (all levels) - deep layer (GOES)'
+            }, 
             250: {
                 'instrument': 'water vapor imager (Himawari)',
                 'obs_platform': 'satellite (Himawari)',
