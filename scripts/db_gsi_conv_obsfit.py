@@ -33,25 +33,51 @@ def get_ensemble_member(ensemble_member='control'):
     return ensemble_member
 
 #stats and variables passed in for harvest
-variables = [#'var',
-             #'varch_cld',
-             'use',
-             #'ermax',
-             #'b_rad',
-             #'pg_rad',
-             #'icld_det',
-             #'icloud',
-             #'iaeros',
-             #'bias_correction_coefficients'
-             ]
-statistics = ['nobs_used',
-              'nobs_tossed',
-              'variance',
-              'bias_pre_corr',
-              'bias_post_corr',
-              'penalty',
-              'sqrt_bias',
-              'std']
+variables = [
+    'fit_psfc_data', # fit of surface pressure data (mb)
+    'fit_uv_data', # fit of u, v wind data (m/s),
+    'fit_t_data', # fit of temperature data (K)
+]
+
+qsat_variables = ['fit_q_data', # fit of moisture data (% of qsaturation guess)] 
+
+statistics = [
+    'count', # number of obs summed under obs types and vertical layers
+    'bias', # bias of obs departure for each outer loop (it)
+    'rms', # root mean squre error of obs departure for each outer loop (it)
+    'cpen', # obs part of penalty (cost function)
+    'qcpen' # nonlinear qc penalty
+]
+
+plev_bounds = [
+    (0.120E+04, 0.100E+04),
+    (0.100E+04, 0.900E+03),
+    (0.900E+03, 0.800E+03),
+    (0.800E+03, 0.600E+03),
+    (0.600E+03, 0.400E+03),
+    (0.400E+03, 0.300E+03),
+    (0.300E+03, 0.250E+03),
+    (0.250E+03, 0.200E+03),
+    (0.200E+03, 0.150E+03),
+    (0.150E+03, 0.100E+03),
+    (0.100E+03, 0.500E+02),
+    (0.200E+04, 0.000E+00),
+]
+    
+qsat_plev_bounds = [
+    (0.120E+04, 0.100E+04),
+    (0.100E+04, 0.950E+03),
+    (0.950E+03, 0.900E+03),
+    (0.900E+03, 0.850E+03),
+    (0.850E+03, 0.800E+03),
+    (0.800E+03, 0.700E+03),
+    (0.700E+03, 0.600E+03),
+    (0.600E+03, 0.500E+03),
+    (0.500E+03, 0.400E+03),
+    (0.400E+03, 0.300E+03),
+    (0.300E+03, 0.000E+02),
+    (0.200E+04, 0.000E+00),
+]
 
 input_cycle = sys.argv[1]
 datetime_obj = dt.datetime.strptime(input_cycle, "%Y%m%dT%H")
@@ -111,14 +137,20 @@ except ClientError as err:
 
 #harvest: build harvest config, build yaml, call subprocess, statistic/variable 
 #combo needs to be registered to be saved in db
-harvest_config = {'harvester_name': 'gsi_satellite_radiance_channel',
+harvest_config = {'harvester_name': 'gsi_conventional_obs',
                      'filename': file_path,
                      'variables': variables,
-                     'statistics': statistics}
+                     'statistics': statistics,
+                     'plev_bounds': plev_bounds}
+qsat_harvest_config = {'harvester_name': 'gsi_conventional_obs',
+                       'filename': file_path,
+                       'variables': qsat_variables,
+                       'statistics': statistics,
+                       'plev_bounds': qsat_plev_bounds}
 yaml_file = db_yaml_generator.generate_harvest_metrics_yaml(
                                         os.getenv('EXPERIMENT_NAME'),
                                         os.getenv('EXPERIMENT_WALLCLOCK_START'),
-                                        'gsi_satellite_radiance_channel',
+                                        'gsi_conventional_obs',
                                         harvest_config,
                                         is_array=True)
 # validate the configuration (yaml) file
@@ -132,3 +164,20 @@ if not response.success:
     print(response.message)
     print(response.errors)
     raise RuntimeError("score-db returned a failure message") #generic exception to tell cylc to stop running
+    
+qsat_yaml_file = db_yaml_generator.generate_harvest_metrics_yaml(
+                                        os.getenv('EXPERIMENT_NAME'),
+                                        os.getenv('EXPERIMENT_WALLCLOCK_START'),
+                                        'gsi_conventional_obs',
+                                        qsat_harvest_config,
+                                        is_array=True)
+# validate the configuration (yaml) file
+file_utils.is_valid_readable_file(qsat_yaml_file)
+# submit the score db request
+print("Calling score-db with yaml file: " + qsat_yaml_file + "for cycle: " +
+      cycle_str)
+
+response = score_db_base.handle_request(qsat_yaml_file)
+if not response.success:
+    print(response.message)
+    print(response.errors)
