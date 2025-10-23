@@ -22,7 +22,11 @@ import matplotlib.ticker as mticker
 from netCDF4 import Dataset
 import cftime
 import numpy as np
+import xarray as xr
+import pyproj
 import colorcet as cc
+
+NETCDF_FILL_VALUE = 9.969209968386869e+36
 
 EARTH_RADIUS = 6.37 * 10**6 # meters
 SHARE_DATA_FILE = 'fv3sfc.nc'
@@ -30,6 +34,56 @@ SHARE_DATA_FILE = 'fv3sfc.nc'
 FONTNAME = 'Noto Serif CJK JP'
 FONTSIZE = 10
 FONTCOLOR = 'black'
+
+def generate_file4ncremap(inputfilename, outputfilename):
+    #Open the file and the group
+    ds = xr.open_dataset(inputfilename, group="cdr_supplementary")
+
+    # Extract the mask
+    mask = ds["surface_type_mask"]
+
+    # Open the main dataset
+    main_ds = xr.open_dataset(inputfilename)
+
+    # Create SGS mask (0/1)
+    main_ds["sgs_mask"] = (mask == 50).astype("ubyte")
+
+    # Extract x and y coordinates (or indices)
+    x = main_ds["x"].values
+    y = main_ds["y"].values
+
+    # Define the projection from crs attributes
+    proj = pyproj.Proj(
+        proj='stere',
+        lat_ts=main_ds.crs.standard_parallel,
+        lat_0=main_ds.crs.latitude_of_projection_origin,
+        lon_0=main_ds.crs.straight_vertical_longitude_from_pole
+    )  
+
+    # Make 2D meshgrid
+    X, Y = np.meshgrid(x, y)
+
+    # Convert to lat/lon
+    lon, lat = proj(X, Y, inverse=True)
+
+    # Define fill value for double precision variables (default NetCDF double fill value)
+    # Replace NaNs with fill_value in lat/lon arrays
+    lat_clean = np.where(np.isnan(lat), NETCDF_FILL_VALUE, lat)
+    lon_clean = np.where(np.isnan(lon), NETCDF_FILL_VALUE, lon)
+    # print(np.where(np.isnan(lon)))
+        
+    # Add lat and lon to dataset with dims ("y", "x")
+    main_ds["lat"] = (("y", "x"), lat_clean)
+    main_ds["lon"] = (("y", "x"), lon_clean)
+
+    # Set _FillValue attribute for lat and lon
+    main_ds["lat"].attrs["_FillValue"] = NETCDF_FILL_VALUE
+    main_ds["lon"].attrs["_FillValue"] = NETCDF_FILL_VALUE
+
+    # Save to new file
+    main_ds.to_netcdf(outputfilename)
+    
+    ds.close()
 
 class SurfaceMapper(object):
     """Handles retrieval, processing, accumulation, and visualization of FV3 surface radiation data.
@@ -51,11 +105,12 @@ class SurfaceMapper(object):
         self.work_dir = os.getenv('CYLC_TASK_WORK_DIR')
         self.share_dir = os.getenv('CYLC_WORKFLOW_SHARE_DIR')
         self.integrate = integrate
-        self.luminosity_scalar = 1 - sw_exposure
+        self.luminosity_scalar = 1. - sw_exposure
         
         self.parse_datetime(input_cycle)
         self.get_bucket()
         self.download_output_files()
+        self.process_ref_data()
         self.clean_output_files()
         if self.integrate:
             self.update_running_total_file(os.path.join(self.share_dir, SHARE_DATA_FILE),
@@ -76,6 +131,20 @@ class SurfaceMapper(object):
         self.initial_cycle_point_datetime_obj = datetime.strptime(self.initial_cycle_point, "%Y%m%dT%H")
         self.initial_cycle_point_str = self.initial_cycle_point_datetime_obj.strftime("%Y-%m-%d %H:%M:%S")
 
+    def process_ref_data(self):
+        """
+        """
+        self.ref_file_path_clean_nh = list()
+        self.ref_file_path_clean_sh = list()
+        for idx, ref_file_path in enumerate(self.ref_file_path_nh):
+            self.ref_file_path_clean_nh.append(ref_file_path + "_4nco.nc"))
+            if idx < 1:
+                generate_file4ncremap(ref_file_path, self.ref_file_path_clean_nh[idx])
+        for idx, ref_file_path in enumerate(self.ref_file_path_sh):
+            self.ref_file_path_clean_sh.append(ref_file_path + "_4nco.nc"))
+            if idx < 1:
+                generate_file4ncremap(ref_file_path, self.ref_file_path_clean_sh[idx])
+    
     def get_bucket(self):
         """Initialize an S3 bucket resource using credentials from environment or unsigned access.
         """
@@ -103,6 +172,8 @@ class SurfaceMapper(object):
         fv3atm_file_key = os.getenv('FV3ATM_FILE_KEY')
         fv3sfc_file_name = os.getenv('FV3SFC_FILE_NAME')
         fv3sfc_file_name1 = os.getenv('FV3SFC_FILE_NAME1')
+        ref_file_name_nh = os.getenv('REF_FILE_NAME_NH')
+        ref_file_name_sh = os.getenv('REF_FILE_NAME_SH')
         
         if fv3atm_file_key == '' or fv3atm_file_key == None:
             prefix = self.datetime_obj.strftime(os.getenv('STORAGE_LOCATION_KEY') + "/")
@@ -110,10 +181,23 @@ class SurfaceMapper(object):
             prefix = self.datetime_obj.strftime(os.getenv('STORAGE_LOCATION_KEY') + "/" + fv3atm_file_key + "/")
 
         self.dest_file_path = list()
+        self.ref_file_path_nh = list()
+        self.ref_file_path_sh = list()
+        
         for fv3sfc_file_idx, fv3sfc_file in enumerate([fv3sfc_file_name, fv3sfc_file_name1]):
             target_file_name = datetime.strftime(self.datetime_obj,
                                                  format = fv3sfc_file)
             self.dest_file_path.append(os.path.join(self.work_dir, target_file_name))
+            
+            ref_target_file_name_nh = datetime.strftime(self.datetime_obj,
+                                                     format = [ref_file_name_nh, ref_file_name_nh][fv3sfc_file_idx])
+            
+            self.ref_file_path_nh.append(os.path.join(self.work_dir, ref_target_file_name_nh))
+            
+            ref_target_file_name_sh = datetime.strftime(self.datetime_obj,
+                                                     format = [ref_file_name_sh, ref_file_name_sh][fv3sfc_file_idx])
+            
+            self.ref_file_path_sh.append(os.path.join(self.work_dir, ref_target_file_name_sh))
         
             try:
                 self.bucket.download_file(prefix + target_file_name, self.dest_file_path[fv3sfc_file_idx])
@@ -134,6 +218,7 @@ class SurfaceMapper(object):
                            fv3atm_sw_ave_var = 'uswrf_ave',
                            fv3atm_lw_ave_var = 'ulwrf_ave',
                            fv3atm_land_mask = 'land',
+                           fv3atm_icec_var = 'icec',
                            fv3cstoa_lw_ave_var = 'csulftoa',
                            fv3cstoa_sw_ave_var = 'csusftoa',
                            fv3toa_lw_ave_var = 'ulwrf_avetoa',
@@ -155,7 +240,8 @@ class SurfaceMapper(object):
         self.sw_var =fv3atm_sw_var
         self.lw_ave_var = fv3atm_lw_ave_var
         self.sw_ave_var =fv3atm_sw_ave_var
-        self.land_mask = 'land'
+        self.land_mask = fv3atm_land_mask
+        self.icec = fv3atm_icec_var
         
         # top of atmosphere variables
         self.lw_ave_var_cstoa = fv3cstoa_lw_ave_var
@@ -164,15 +250,40 @@ class SurfaceMapper(object):
         self.sw_ave_var_toa = fv3toa_sw_ave_var
         
         self.rgr_file_path = list()
+        self.rgr_file_path_icec
+        self.ref_rgr_file_path_nh = list()
+        self.ref_rgr_file_path_sh = list()
+        
         for file_path_idx, file_path in enumerate(self.dest_file_path):
             base, ext = os.path.splitext(file_path)
+            ref_file_path_nh = self.ref_file_path_clean_nh[file_path_idx]
+            ref_base_nh, ref_ext_nh = os.path.splitext(ref_file_path_nh)
+            ref_file_path_sh = self.ref_file_path_clean_sh[file_path_idx]
+            ref_base_sh, ref_ext_sh = os.path.splitext(ref_file_path_sh)
+            
             self.rgr_file_path.append(f"{base}_rgr{ext}")
+            self.rgr_file_path_icec.append(f"{base}_rgr_icec{ext}")
+            self.ref_rgr_file_path_nh.append(f"{ref_base_nh}_rgr{ref_ext_nh}")
+            self.ref_rgr_file_path_sh.append(f"{ref_base_sh}_rgr{ref_ext_sh}")
+            
             if self.integrate:
                 cmd = f"ncremap -v {self.lw_var},{self.sw_var},{self.lw_ave_var},{self.sw_ave_var},{self.land_mask},{self.lw_ave_var_cstoa},{self.sw_ave_var_cstoa},{self.lw_ave_var_toa},{self.sw_ave_var_toa} -R '--rgr lat_nm_in={self.lat_var} --rgr lon_nm_in={self.lon_var}' -d {file_path} {file_path} {self.rgr_file_path[file_path_idx]}"
             else:
                 cmd = f"ncremap -v {self.lw_var},{self.sw_var},{self.land_mask} -R '--rgr lat_nm_in={self.lat_var} --rgr lon_nm_in={self.lon_var}' -d {file_path} {file_path} {self.rgr_file_path[file_path_idx]}"
+                cmd2 = f"ncremap -a conserve --sgs_frc={self.icec} --sgs_nrm=1 -R '--rgr lat_nm_in=lat --rgr lon_nm_in=lon' -d {file_path} {file_path} {self.rgr_file_path_icec[file_path_idx]}"
+            
+            cmd2_nh = f"ncremap -a conserve --sgs_frc=cdr_seaice_conc --sgs_msk=sgs_mask --sgs_nrm=1 -R '--rgr lat_nm_in=lat --rgr lon_nm_in=lon' -d {file_path} {ref_file_path_nh} {self.ref_rgr_file_path_nh[file_path_idx]}"
+            cmd2_sh = f"ncremap -a conserve --sgs_frc=cdr_seaice_conc --sgs_msk=sgs_mask --sgs_nrm=1 -R '--rgr lat_nm_in=lat --rgr lon_nm_in=lon' -d {file_path} {ref_file_path_sh} {self.ref_rgr_file_path_sh[file_path_idx]}"
  
             subprocess.run(cmd, check=True, shell=True)
+            subprocess.run(cmd2, check=True, shell=True)
+            
+            if file_path_idx < 1:
+                subprocess.run(cm2_nh, check=True, shell=True)
+                os.remove(ref_file_path_nh)
+                subprocess.run(cm2_sh, check=True, shell=True)
+                os.remove(ref_file_path_sh)
+                
             os.remove(file_path)
 
     def update_running_total_file(self, total_file_path, var_list, time_var='time'):
@@ -195,7 +306,8 @@ class SurfaceMapper(object):
                     for var_name in var_list:
                         dst.variables[var_name][:] += src.variables[var_name][:]
 
-    def map_surface(self, lon, lat, sw_vals, sw_max_val, sw_dark_vals, lw_vals):
+    def map_surface(self, lon, lat, sw_vals, sw_max_val, sw_dark_vals, lw_vals,
+                    sea_ice = False):
         """Render a surface radiation plot with shortwave and longwave components.
 
         Args:
@@ -206,56 +318,78 @@ class SurfaceMapper(object):
             sw_dark_vals (ndarray): Masked shortwave values for highlighting.
             lw_vals (ndarray): Longwave flux values.
         """
-        ax = plt.axes(projection=ccrs.Mercator(central_longitude=180.,
-                                               #min_latitude=-70.,
-                                               #max_latitude=70.
-                                               )
-        )
-
-        gl = ax.gridlines(draw_labels=True, linewidth=0.5, color='#A2A4A3', alpha=1.0, linestyle=':')
-        gl.xlocator = mticker.FixedLocator(np.arange(-180, 181, 30))
-        gl.ylocator = mticker.FixedLocator(np.arange(-90, 91, 15))
-        gl.top_labels = False
-        gl.right_labels = False
-        gl.xlabel_style = {'fontname': FONTNAME, 'fontsize': FONTSIZE, 'color': FONTCOLOR}
-        gl.ylabel_style = {'fontname': FONTNAME, 'fontsize': FONTSIZE, 'color': FONTCOLOR}
-
-        ax.pcolormesh(lon,
-                      lat,
-                      sw_vals,
-                      #cmap=cc.cm.CET_CBL3,
-                      cmap=cc.cm.CET_L1,
-                      vmin=0,
-                      vmax=self.luminosity_scalar*sw_max_val,
-                      shading='nearest',
-                      rasterized=True,
-                      zorder=0,
-                      transform=ccrs.PlateCarree()
-        )
+        if sea_ice:
+            ax_nh = plt.axes(projection=ccrs.LambertAzimuthalEqualArea(
+                central_longitude=180., central_latitude=90.0))
+            ax_nh.set_extent([0, 360, 60, 90], crs=ccrs.PlateCarree())    
+            ax_sh = plt.axes(projection=ccrs.LambertAzimuthalEqualArea(
+                central_longitude=180., central_latitude=-90.0))
+            ax_sh.set_extent([0, 360, 60, 90], crs=ccrs.PlateCarree())
+            
+            ax_list = [ax_nh, ax_sh]
+            
+            lon_grid_ints = 5
+            lat_grid_ints = 2.5
         
-        ax.pcolormesh(lon,
-                      lat,
-                      sw_dark_vals,
-                      cmap=cc.cm.CET_L5,
-                      #vmin=0,
-                      #vmax=0.003333*sw_max_val,
-                      shading='nearest',
-                      rasterized=True,
-                      zorder=2,
-                      transform=ccrs.PlateCarree()
-        )                                      
-        ax.pcolormesh(lon,
-                      lat,
-                      np.ma.masked_where(sw_vals > 0, lw_vals),
-                      cmap=cc.cm.CET_L8,
-                      shading='nearest',
-                      rasterized=True,
-                      alpha=0.667,
-                      zorder=3,
-                      transform=ccrs.PlateCarree()
-        )
+        else:
+            ax = plt.axes(projection=ccrs.Mercator(central_longitude=180.,
+                                                   #min_latitude=-70.,
+                                                   #max_latitude=70.
+                                                   )
+                                                   )
+            ax_list = [ax]
+            
+            lon_grid_ints = 30
+            lat_grid_ints = 15
         
-        return ax
+        for ax in ax_list:
+            gl = ax.gridlines(draw_labels=True, linewidth=0.5, color='#A2A4A3', alpha=1.0, linestyle=':')
+            gl.xlocator = mticker.FixedLocator(np.arange(-180, 181, lon_grid_ints))
+            gl.ylocator = mticker.FixedLocator(np.arange(-90, 91, lat_grid_ints))
+            gl.top_labels = False
+            gl.right_labels = False
+            gl.xlabel_style = {'fontname': FONTNAME, 'fontsize': FONTSIZE, 'color': FONTCOLOR}
+            gl.ylabel_style = {'fontname': FONTNAME, 'fontsize': FONTSIZE, 'color': FONTCOLOR}
+
+            ax.pcolormesh(lon,
+                          lat,
+                          sw_vals,
+                          #cmap=cc.cm.CET_CBL3,
+                          cmap=cc.cm.CET_L1,
+                          vmin=0,
+                          vmax=self.luminosity_scalar*sw_max_val,
+                          shading='nearest',
+                          rasterized=True,
+                          zorder=0,
+                          transform=ccrs.PlateCarree()
+            )
+        
+            ax.pcolormesh(lon,
+                          lat,
+                          sw_dark_vals,
+                          cmap=cc.cm.CET_L5,
+                          #vmin=0,
+                          #vmax=0.003333*sw_max_val,
+                          shading='nearest',
+                          rasterized=True,
+                          zorder=2,
+                          transform=ccrs.PlateCarree()
+            )                                      
+            ax.pcolormesh(lon,
+                          lat,
+                          np.ma.masked_where(sw_vals > 0, lw_vals),
+                          cmap=cc.cm.CET_L8,
+                          shading='nearest',
+                          rasterized=True,
+                          alpha=0.667,
+                          zorder=3,
+                          transform=ccrs.PlateCarree()
+            )
+        
+        if sea_ice:
+            return ax_list
+        else:
+            return ax_list[0]
                                                               
     def view_surface(self):
         """Generate and save plots for each processed NetCDF file.
@@ -276,11 +410,11 @@ class SurfaceMapper(object):
             
             land_mask = rootgrp.variables[self.land_mask][0,:,:]
             
-            lw_vals = (EARTH_RADIUS * rootgrp.variables['area'][:] *
+            lw_vals = (EARTH_RADIUS**2 * rootgrp.variables['area'][:] *
                           rootgrp.variables[self.lw_var][0,:,:])
             lw_max_val = np.ma.max(lw_vals)
             
-            sw_vals = (EARTH_RADIUS * rootgrp.variables['area'][:] *
+            sw_vals = (EARTH_RADIUS**2 * rootgrp.variables['area'][:] *
                        rootgrp.variables[self.sw_var][0,:,:])
                        
             sw_max_val = np.ma.max(sw_vals)
@@ -362,11 +496,11 @@ class SurfaceMapper(object):
         lon = rootgrp.variables[self.lon_var][:]
         lat = rootgrp.variables[self.lat_var][:]
         
-        lw_ave_vals = (EARTH_RADIUS * rootgrp.variables['area'][:] *
+        lw_ave_vals = (EARTH_RADIUS**2 * rootgrp.variables['area'][:] *
                        rootgrp.variables[self.lw_ave_var][0,:,:])
         lw_ave_max_val = np.ma.max(lw_ave_vals)
         
-        sw_ave_vals = (EARTH_RADIUS * rootgrp.variables['area'][:] *
+        sw_ave_vals = (EARTH_RADIUS**2 * rootgrp.variables['area'][:] *
                        rootgrp.variables[self.sw_ave_var][0,:,:])
         sw_ave_max_val = np.ma.max(sw_ave_vals)
         
@@ -384,7 +518,7 @@ class SurfaceMapper(object):
     
         rootgrp.close()
     
-    def view_toa_ave(self, clearsky=False, return_ax=False):
+    def view_toa_ave(self, clearsky=False, return_ax=False, sea_ice=False):
         """Generate and save a plot of the accumulated average TOA radiation.
         """
         rootgrp = Dataset(os.path.join(self.share_dir, SHARE_DATA_FILE))
@@ -401,11 +535,11 @@ class SurfaceMapper(object):
             sw_varname = self.sw_ave_var_toa
             figname = 'fv3toa.png'
         
-        lw_ave_vals = (EARTH_RADIUS * rootgrp.variables['area'][:] *
+        lw_ave_vals = (EARTH_RADIUS**2 * rootgrp.variables['area'][:] *
                        rootgrp.variables[lw_varname][0,:,:])
         lw_ave_max_val = np.ma.max(lw_ave_vals)
         
-        sw_ave_vals = (EARTH_RADIUS * rootgrp.variables['area'][:] *
+        sw_ave_vals = (EARTH_RADIUS**2 * rootgrp.variables['area'][:] *
                        rootgrp.variables[sw_varname][0,:,:])
         sw_ave_max_val = np.ma.max(sw_ave_vals)
         
@@ -413,7 +547,7 @@ class SurfaceMapper(object):
                                               sw_ave_vals)
         np.ma.masked_where(sw_ave_dark_vals == 0, sw_ave_dark_vals, copy=False)
     
-        ax = self.map_surface(lon, lat, sw_ave_vals, sw_ave_max_val, sw_ave_dark_vals, lw_ave_vals)
+        ax = self.map_surface(lon, lat, sw_ave_vals, sw_ave_max_val, sw_ave_dark_vals, lw_ave_vals, sea_ice=sea_ice)
         
         rootgrp.close()
             
@@ -478,6 +612,113 @@ class SurfaceMapper(object):
 
         plt.close()
         
+    def map_sea_ice(self):
+        """
+        """
+        ax_list = self.view_toa_ave(clearsky=True, return_ax=True, sea_ice=True)
+        
+        for file_path_idx, file_path in enumerate(self.rgr_file_path_icec):
+            rootgrp = Dataset(file_path)
+            rootgrp_ref_nh = Dataset(self.ref_rgr_file_path_nh[file_path_idx])
+            rootgrp_ref_sh = Dataset(self.ref_rgr_file_path_sh[file_path_idx])
+            
+            time = rootgrp.variables['time']
+            time_dt = cftime.num2pydate(time[0],
+                                        units=time.units,
+                                        calendar=time.calendar)
+            time_str = datetime.strftime(time_dt,
+                                         "%Y%m%dT%H")
+            time_label = datetime.strftime(time_dt,
+                                           "%Y-%m-%d %H:%M:%S")
+            
+            lon = rootgrp.variables[self.lon_var][:]
+            lat = rootgrp.variables[self.lat_var][:]
+            
+            gridcell_areas = rootgrp.variables['area'][:]
+            ref_gridcell_areas_nh = rootgrp_ref_nh.variables['area'][:]
+            ref_gridcell_areas_sh = rootgrp_ref_sh.variables['area'][:]
+            
+            assert np.allclose(gridcell_areas, ref_gridcell_areas_nh)
+            assert np.allclose(gridcell_areas, ref_gridcell_areas_sh)
+            
+            sia_model = EARTH_RADIUS**2 * rootgrp.variables[self.icec][0,:,:] * gridcell_areas
+            sia_cdr_nh = EARTH_RADIUS**2 * rootgrp_ref_nh.variables['sea_ice_area_fraction'][0,:,:] * ref_gridcell_areas_nh
+            sia_cdr_sh = EARTH_RADIUS**2 * rootgrp_ref_sh.variables['sea_ice_area_fraction'][0,:,:] * ref_gridcell_areas_sh
+            
+            #TODO: mask where SIA_model = SIA_CDR = 0
+            mask_both_zero_nh = (sia_model == 0) & (sia_cdr_nh == 0)
+            mask_both_zero_sh = (sia_model == 0) & (sia_cdr_sh == 0)
+            
+            sia_model_nh_masked = np.ma.masked_where(mask_both_zero_nh, sia_model)
+            sia_cdr_nh_masked = np.ma.masked_where(mask_both_zero_nh, sia_cdr_nh)
+            sia_model_sh_masked = np.ma.masked_where(mask_both_zero_sh, sia_model)
+            sia_cdr_sh_masked = np.ma.masked_where(mask_both_zero_sh, sia_cdr_sh)
+            
+            # Replace masked elements of SIA_CDR with 0 where SIA_model > 0
+            sia_cdr_nh_fixed = np.ma.where((sia_model_nh_masked > 0) & sia_cdr_nh_masked.mask, 0, sia_cdr_nh_masked)
+            sia_cdr_sh_fixed = np.ma.where((sia_model_sh_masked > 0) & sia_cdr_sh_masked.mask, 0, sia_cdr_sh_masked)
+            #TODO: may make sense to instead use percent areal diference, i.e.
+            #TODO: (SIA_model - SIA_CDR) / gridcell area : {-1, 1}
+            
+            nh_sea_ice_area_relative_error = (sia_model_nh_masked -
+                                              sia_cdr_nh_fixed) / gridcell_areas
+            sh_sea_ice_area_relative_error = (sia_model_sh_masked -
+                                              sia_cdr_sh_fixed) / gridcell_areas
+            
+            # Northern Hemisphere plot
+            pmesh_nh = ax_list[0].pcolormesh(
+                lon,
+                lat,
+                nh_sea_ice_area_relative_error,
+                cmap=cc.cm.CET_D1A,
+                vmin=-1,
+                vmax=1,
+                shading='nearest',
+                rasterized=True,
+                alpha=1,
+                zorder=4,
+                transform=ccrs.PlateCarree()
+            )
+
+            # Southern Hemisphere plot
+            pmesh_sh = ax_list[1].pcolormesh(
+                lon,
+                lat,
+                sh_sea_ice_area_relative_error,
+                cmap=cc.cm.CET_D1A,
+                vmin=-1,
+                vmax=1,
+                shading='nearest',
+                rasterized=True,
+                alpha=1,
+                zorder=4,
+                transform=ccrs.PlateCarree()
+            )
+
+            # Create a single shared colorbar for both axes
+            cbar = plt.colorbar(
+                pmesh_nh,               # use one mappable (they share the same scale)
+                ax=ax_list,      # list of axes to share colorbar
+            )
+
+            cbar.set_ticks([-1, 0, 1])
+            cbar.ax.tick_params(labelsize=FONTSIZE, labelcolor=FONTCOLOR)
+            cbar.set_label(
+                'SIC error',
+                fontsize=FONTSIZE,
+                fontname=FONTNAME,
+                color=FONTCOLOR
+            )
+            
+            plt.title(time_label, fontsize=FONTSIZE, fontname=FONTNAME, color=FONTCOLOR)
+            plt.savefig(os.path.join(self.work_dir, f'fv3sia_{time_str}.png'),
+                        dpi=300)
+            plt.close()
+        
+            rootgrp.close()
+            rootgrp_ref_nh.close()
+            rootgrp_ref_sh.close()
+                
 def run():
     """Run the SurfaceMapper with command-line arguments.
     """
@@ -486,6 +727,7 @@ def run():
     surface_mapper.view_toa_ave()
     surface_mapper.view_toa_ave(clearsky=True)
     surface_mapper.map_soca_obs()
+    surface_mapper.map_sea_ice()
 
 def main():
     """Main entry point.
