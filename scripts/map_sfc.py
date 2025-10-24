@@ -49,8 +49,8 @@ def generate_file4ncremap(inputfilename, outputfilename):
     main_ds["sgs_mask"] = (mask == 50).astype("ubyte")
 
     # Extract x and y coordinates (or indices)
-    x = main_ds["x"].values
-    y = main_ds["y"].values
+    xsrc = main_ds["x"].values
+    ysrc = main_ds["y"].values
 
     # Define the projection from crs attributes
     proj = pyproj.Proj(
@@ -61,10 +61,10 @@ def generate_file4ncremap(inputfilename, outputfilename):
     )  
 
     # Make 2D meshgrid
-    X, Y = np.meshgrid(x, y)
+    x2d, y2d = np.meshgrid(xsrc, ysrc)
 
     # Convert to lat/lon
-    lon, lat = proj(X, Y, inverse=True)
+    lon, lat = proj(x2d, y2d, inverse=True)
 
     # Define fill value for double precision variables (default NetCDF double fill value)
     # Replace NaNs with fill_value in lat/lon arrays
@@ -84,6 +84,7 @@ def generate_file4ncremap(inputfilename, outputfilename):
     main_ds.to_netcdf(outputfilename)
     
     ds.close()
+    main_ds.close()
 
 class SurfaceMapper(object):
     """Handles retrieval, processing, accumulation, and visualization of FV3 surface radiation data.
@@ -134,11 +135,12 @@ class SurfaceMapper(object):
     def process_ref_data(self):
         """
         """
-        self.ref_file_path_clean_nh = (self.ref_file_path_nh + "_4nco.nc")
-        generate_file4ncremap(self.ref_file_path_nh, self.ref_file_path_clean_nh)
-        
-        self.ref_file_path_clean_sh = (self.ref_file_path_sh + "_4nco.nc")
-        generate_file4ncremap(self.ref_file_path_sh, self.ref_file_path_clean_sh)
+        if self.do_nh_sea_ice:
+            self.ref_file_path_clean_nh = os.path.join(self.work_dir, 'sic_nh_ref.nc')
+            generate_file4ncremap(self.ref_file_path_nh, self.ref_file_path_clean_nh)
+        if self.do_sh_sea_ice:
+            self.ref_file_path_clean_sh = os.path.join(self.work_dir, 'sic_sh_ref.nc')
+            generate_file4ncremap(self.ref_file_path_sh, self.ref_file_path_clean_sh)
     
     def get_bucket(self):
         """Initialize an S3 bucket resource using credentials from environment or unsigned access.
@@ -227,6 +229,7 @@ class SurfaceMapper(object):
                            fv3atm_lw_ave_var = 'ulwrf_ave',
                            fv3atm_land_mask = 'land',
                            fv3atm_icec_var = 'icec',
+                           fv3atm_icetk_var = 'icetk',
                            fv3cstoa_lw_ave_var = 'csulftoa',
                            fv3cstoa_sw_ave_var = 'csusftoa',
                            fv3toa_lw_ave_var = 'ulwrf_avetoa',
@@ -250,6 +253,7 @@ class SurfaceMapper(object):
         self.sw_ave_var =fv3atm_sw_ave_var
         self.land_mask = fv3atm_land_mask
         self.icec = fv3atm_icec_var
+        self.icetk = fv3atm_icetk_var
         
         # top of atmosphere variables
         self.lw_ave_var_cstoa = fv3cstoa_lw_ave_var
@@ -272,24 +276,33 @@ class SurfaceMapper(object):
             
             subprocess.run(cmd, check=True, shell=True)
             if self.do_nh_sea_ice or self.do_sh_sea_ice:
-                cmd2 = f"ncremap -a conserve --sgs_frc={self.icec} --sgs_nrm=1 -R '--rgr lat_nm_in=lat --rgr lon_nm_in=lon' -d {file_path} {file_path} {self.rgr_file_path_icec[file_path_idx]}"
+                cmd2 = f"ncremap -a conserve -v {self.icetk},{self.icec} --sgs_frc={self.icec} --sgs_nrm=1 -R '--rgr lat_nm_in={self.lat_var} --rgr lon_nm_in={self.lon_var}' -d {file_path} {file_path} {self.rgr_file_path_icec[file_path_idx]}"
                 subprocess.run(cmd2, check=True, shell=True)
         
         if self.do_nh_sea_ice:
             ref_base_nh, ref_ext_nh = os.path.splitext(self.ref_file_path_clean_nh)
+            self.ref_unpacked_file_path_nh = f"{ref_base_nh}_unpacked{ref_ext_nh}"
             self.ref_rgr_file_path_nh = f"{ref_base_nh}_rgr{ref_ext_nh}"
-            cmd2_nh = f"ncremap -a conserve --sgs_frc=cdr_seaice_conc --sgs_msk=sgs_mask --sgs_nrm=1 -R '--rgr lat_nm_in=lat --rgr lon_nm_in=lon' -d {file_path} {self.ref_file_path_clean_nh} {self.ref_rgr_file_path_nh}"
+            cmd1_nh = f"ncpdq -U {self.ref_file_path_clean_nh} {self.ref_unpacked_file_path_nh}"
+            subprocess.run(cmd1_nh, check=True, shell=True)
+            cmd2_nh = f"ncremap -a conserve --sgs_frc=cdr_seaice_conc --sgs_msk=sgs_mask --sgs_nrm=1 -R '--rgr lat_nm_in=lat --rgr lon_nm_in=lon' -d {file_path} {self.ref_unpacked_file_path_nh} {self.ref_rgr_file_path_nh}"
             subprocess.run(cmd2_nh, check=True, shell=True)
             os.remove(self.ref_file_path_clean_nh)
+            os.remove(self.ref_unpacked_file_path_nh)
         
         if self.do_sh_sea_ice:
             ref_base_sh, ref_ext_sh = os.path.splitext(self.ref_file_path_clean_sh)
+            self.ref_unpacked_file_path_sh = f"{ref_base_sh}_unpacked{ref_ext_sh}"
             self.ref_rgr_file_path_sh = f"{ref_base_sh}_rgr{ref_ext_sh}"
-            cmd2_sh = f"ncremap -a conserve --sgs_frc=cdr_seaice_conc --sgs_msk=sgs_mask --sgs_nrm=1 -R '--rgr lat_nm_in=lat --rgr lon_nm_in=lon' -d {file_path} {self.ref_file_path_clean_sh} {self.ref_rgr_file_path_sh}"
+            cmd1_sh = f"ncpdq -U {self.ref_file_path_clean_sh} {self.ref_unpacked_file_path_sh}"
+            subprocess.run(cmd1_sh, check=True, shell=True)
+            cmd2_sh = f"ncremap -a conserve --sgs_frc=cdr_seaice_conc --sgs_msk=sgs_mask --sgs_nrm=1 -R '--rgr lat_nm_in=lat --rgr lon_nm_in=lon' -d {file_path} {self.ref_unpacked_file_path_sh} {self.ref_rgr_file_path_sh}"
             subprocess.run(cmd2_sh, check=True, shell=True)
             os.remove(self.ref_file_path_clean_sh)
+            os.remove(self.ref_unpacked_file_path_sh)
                 
-        os.remove(file_path)
+        for file_path in self.dest_file_path:
+            os.remove(file_path)
 
     def update_running_total_file(self, total_file_path, var_list, time_var='time'):
         """Accumulate specified variables over time into a persistent NetCDF file.
@@ -324,25 +337,27 @@ class SurfaceMapper(object):
             lw_vals (ndarray): Longwave flux values.
         """
         if sea_ice:
-            ax_nh = plt.axes(projection=ccrs.LambertAzimuthalEqualArea(
-                central_longitude=180., central_latitude=90.0))
-            ax_nh.set_extent([0, 360, 60, 90], crs=ccrs.PlateCarree())    
-            ax_sh = plt.axes(projection=ccrs.LambertAzimuthalEqualArea(
-                central_longitude=180., central_latitude=-90.0))
-            ax_sh.set_extent([0, 360, 60, 90], crs=ccrs.PlateCarree())
+            fig, ax_nh = plt.subplots(subplot_kw={
+                'projection': ccrs.LambertAzimuthalEqualArea(
+                    central_longitude=0., central_latitude=90.0)})
+            ax_nh.set_extent([-180, 180, 60, 90], crs=ccrs.PlateCarree())    
+            fig1, ax_sh = plt.subplots(subplot_kw={
+                'projection': ccrs.LambertAzimuthalEqualArea(
+                    central_longitude=0., central_latitude=-90.0)})
+            ax_sh.set_extent([-180, 180, -90, -60], crs=ccrs.PlateCarree())
             
             ax_list = [ax_nh, ax_sh]
             
-            lon_grid_ints = 5
-            lat_grid_ints = 2.5
+            lon_grid_ints = 10
+            lat_grid_ints = 5
         
         else:
-            ax = plt.axes(projection=ccrs.Mercator(central_longitude=180.,
+            ax_global = plt.axes(projection=ccrs.Mercator(central_longitude=180.,
                                                    #min_latitude=-70.,
                                                    #max_latitude=70.
                                                    )
                                                    )
-            ax_list = [ax]
+            ax_list = [ax_global]
             
             lon_grid_ints = 30
             lat_grid_ints = 15
@@ -619,16 +634,16 @@ class SurfaceMapper(object):
         
     def map_sea_ice(self):
         """
-        """
-        ax_list = self.view_toa_ave(clearsky=True, return_ax=True, sea_ice=True)
-        
+        """       
         if self.do_nh_sea_ice:
             rootgrp_ref_nh = Dataset(self.ref_rgr_file_path_nh)
             ref_gridcell_areas_nh = rootgrp_ref_nh.variables['area'][:]
+            ref_sic_cdr_nh = rootgrp_ref_nh.variables['cdr_seaice_conc'][0,:,:]
             
         if self.do_sh_sea_ice:
             rootgrp_ref_sh = Dataset(self.ref_rgr_file_path_sh)
             ref_gridcell_areas_sh = rootgrp_ref_sh.variables['area'][:]
+            ref_sic_cdr_sh = rootgrp_ref_sh.variables['cdr_seaice_conc'][0,:,:]
         
         for file_path_idx, file_path in enumerate(self.rgr_file_path_icec):
             rootgrp = Dataset(file_path)
@@ -647,41 +662,41 @@ class SurfaceMapper(object):
             
             gridcell_areas = rootgrp.variables['area'][:]
             sia_model = EARTH_RADIUS**2 * rootgrp.variables[self.icec][0,:,:] * gridcell_areas
+            ax_list = self.view_toa_ave(clearsky=True, return_ax=True, sea_ice=True)
             
+            plt.sca(ax_list[0])
             if self.do_nh_sea_ice:
-                ax = ax_list[0]
                 assert np.allclose(gridcell_areas, ref_gridcell_areas_nh)
-                pmesh_nh = self.map_sea_ice_hemi(ax, lon, lat,
-                                      rootgrp_ref_nh.variables['sea_ice_area_fraction'][0,:,:],
+                pmesh_nh = self.map_sea_ice_hemi(ax_list[0], lon, lat,
+                                      ref_sic_cdr_nh,
                                       ref_gridcell_areas_nh,
                                       sia_model,
                                       )
                 plt.title(f'Arctic sea ice concentration (SIC) fractional error ({time_label})',
                           fontsize=FONTSIZE, fontname=FONTNAME, color=FONTCOLOR)
-                plt.tight_layout()
-                plt.savefig(os.path.join(self.work_dir, f'fv3nhsic_{time_str}.png'),
-                            dpi=300)
-                plt.close()
                 rootgrp_ref_nh.close()
+            
+            plt.savefig(os.path.join(self.work_dir, f'fv3nhsic_{time_str}.png'),
+                            dpi=300)
+            plt.close()
                 
+            plt.sca(ax_list[1])
             if self.do_sh_sea_ice:
-                ax = ax_list[1]
                 assert np.allclose(gridcell_areas, ref_gridcell_areas_sh)
                 
-                pmesh_sh = self.map_sea_ice_hemi(ax, lon, lat,
-                                      rootgrp_ref_sh.variables['sea_ice_area_fraction'][0,:,:],
+                pmesh_sh = self.map_sea_ice_hemi(ax_list[1], lon, lat,
+                                      ref_sic_cdr_sh,
                                       ref_gridcell_areas_sh,
                                       sia_model,
                                       )
                 plt.title(f'Antarctic sea ice concentration (SIC) fractional error ({time_label})',
                           fontsize=FONTSIZE, fontname=FONTNAME, color=FONTCOLOR)
-                plt.tight_layout()
-                plt.savefig(os.path.join(self.work_dir, f'fv3shsic_{time_str}.png'),
+                rootgrp_ref_sh.close()    
+        
+            plt.savefig(os.path.join(self.work_dir, f'fv3shsic_{time_str}.png'),
                             dpi=300)
-                plt.close()
-                rootgrp_ref_sh.close()
-                
-            rootgrp.close()
+            plt.close()               
+            #rootgrp.close()
             
     def map_sea_ice_hemi(self, ax, lon, lat, sic_cdr_hemi, gridcell_areas, sia_model):
         sia_cdr_hemi = EARTH_RADIUS**2 * sic_cdr_hemi * gridcell_areas
@@ -695,7 +710,7 @@ class SurfaceMapper(object):
         sia_cdr_hemi_fixed = np.ma.where((sia_model_hemi_masked > 0) & sia_cdr_hemi_masked.mask, 0, sia_cdr_hemi_masked)
         
         hemi_sea_ice_area_relative_error = (sia_model_hemi_masked -
-                                          sia_cdr_hemi_fixed) / gridcell_areas
+                                          sia_cdr_hemi_fixed) / (EARTH_RADIUS**2 * gridcell_areas)
         
         # Hemisphere plot
         pmesh_hemi = ax.pcolormesh(
