@@ -37,16 +37,16 @@ FONTCOLOR = 'black'
 
 def generate_file4ncremap(inputfilename, outputfilename):
     #Open the file and the group
-    ds = xr.open_dataset(inputfilename, group="cdr_supplementary")
+    #ds = xr.open_dataset(inputfilename, group="cdr_supplementary")
 
     # Extract the mask
-    mask = ds["surface_type_mask"]
+    #mask = ds["surface_type_mask"]
 
     # Open the main dataset
     main_ds = xr.open_dataset(inputfilename)
 
     # Create SGS mask (0/1)
-    main_ds["sgs_mask"] = (mask == 50).astype("ubyte")
+    #main_ds["sgs_mask"] = (mask == 50).astype("ubyte")
 
     # Extract x and y coordinates (or indices)
     xsrc = main_ds["x"].values
@@ -83,7 +83,7 @@ def generate_file4ncremap(inputfilename, outputfilename):
     # Save to new file
     main_ds.to_netcdf(outputfilename)
     
-    ds.close()
+    #ds.close()
     main_ds.close()
 
 class SurfaceMapper(object):
@@ -285,7 +285,7 @@ class SurfaceMapper(object):
             self.ref_rgr_file_path_nh = f"{ref_base_nh}_rgr{ref_ext_nh}"
             cmd1_nh = f"ncpdq -U {self.ref_file_path_clean_nh} {self.ref_unpacked_file_path_nh}"
             subprocess.run(cmd1_nh, check=True, shell=True)
-            cmd2_nh = f"ncremap -a conserve --sgs_frc=cdr_seaice_conc --sgs_msk=sgs_mask --sgs_nrm=1 -R '--rgr lat_nm_in=lat --rgr lon_nm_in=lon' -d {file_path} {self.ref_unpacked_file_path_nh} {self.ref_rgr_file_path_nh}"
+            cmd2_nh = f"ncremap -a conserve --sgs_frc=cdr_seaice_conc --sgs_nrm=1 -R '--rgr lat_nm_in=lat --rgr lon_nm_in=lon' -d {file_path} {self.ref_unpacked_file_path_nh} {self.ref_rgr_file_path_nh}"
             subprocess.run(cmd2_nh, check=True, shell=True)
             os.remove(self.ref_file_path_clean_nh)
             os.remove(self.ref_unpacked_file_path_nh)
@@ -296,7 +296,7 @@ class SurfaceMapper(object):
             self.ref_rgr_file_path_sh = f"{ref_base_sh}_rgr{ref_ext_sh}"
             cmd1_sh = f"ncpdq -U {self.ref_file_path_clean_sh} {self.ref_unpacked_file_path_sh}"
             subprocess.run(cmd1_sh, check=True, shell=True)
-            cmd2_sh = f"ncremap -a conserve --sgs_frc=cdr_seaice_conc --sgs_msk=sgs_mask --sgs_nrm=1 -R '--rgr lat_nm_in=lat --rgr lon_nm_in=lon' -d {file_path} {self.ref_unpacked_file_path_sh} {self.ref_rgr_file_path_sh}"
+            cmd2_sh = f"ncremap -a conserve --sgs_frc=cdr_seaice_conc --sgs_nrm=1 -R '--rgr lat_nm_in=lat --rgr lon_nm_in=lon' -d {file_path} {self.ref_unpacked_file_path_sh} {self.ref_rgr_file_path_sh}"
             subprocess.run(cmd2_sh, check=True, shell=True)
             os.remove(self.ref_file_path_clean_sh)
             os.remove(self.ref_unpacked_file_path_sh)
@@ -340,11 +340,11 @@ class SurfaceMapper(object):
             fig, ax_nh = plt.subplots(subplot_kw={
                 'projection': ccrs.LambertAzimuthalEqualArea(
                     central_longitude=0., central_latitude=90.0)})
-            ax_nh.set_extent([-180, 180, 60, 90], crs=ccrs.PlateCarree())    
+            ax_nh.set_extent([-180, 180, 50, 90], crs=ccrs.PlateCarree())    
             fig1, ax_sh = plt.subplots(subplot_kw={
                 'projection': ccrs.LambertAzimuthalEqualArea(
                     central_longitude=0., central_latitude=-90.0)})
-            ax_sh.set_extent([-180, 180, -90, -60], crs=ccrs.PlateCarree())
+            ax_sh.set_extent([-180, 180, -90, -50], crs=ccrs.PlateCarree())
             
             ax_list = [ax_nh, ax_sh]
             
@@ -365,7 +365,7 @@ class SurfaceMapper(object):
         for ax in ax_list:
             gl = ax.gridlines(draw_labels=True, linewidth=0.5, color='#A2A4A3', alpha=1.0, linestyle=':')
             gl.xlocator = mticker.FixedLocator(np.arange(-180, 181, lon_grid_ints))
-            gl.ylocator = mticker.FixedLocator(np.arange(-90, 91, lat_grid_ints))
+            gl.ylocator = mticker.FixedLocator(np.arange(-90+lat_grid_ints, 90, lat_grid_ints))
             gl.top_labels = False
             gl.right_labels = False
             gl.xlabel_style = {'fontname': FONTNAME, 'fontsize': FONTSIZE, 'color': FONTCOLOR}
@@ -674,7 +674,7 @@ class SurfaceMapper(object):
                                       )
                 plt.title(f'Arctic sea ice concentration (SIC) fractional error ({time_label})',
                           fontsize=FONTSIZE, fontname=FONTNAME, color=FONTCOLOR)
-                rootgrp_ref_nh.close()
+                #rootgrp_ref_nh.close()
             
             plt.savefig(os.path.join(self.work_dir, f'fv3nhsic_{time_str}.png'),
                             dpi=300)
@@ -691,7 +691,7 @@ class SurfaceMapper(object):
                                       )
                 plt.title(f'Antarctic sea ice concentration (SIC) fractional error ({time_label})',
                           fontsize=FONTSIZE, fontname=FONTNAME, color=FONTCOLOR)
-                rootgrp_ref_sh.close()    
+                #rootgrp_ref_sh.close()    
         
             plt.savefig(os.path.join(self.work_dir, f'fv3shsic_{time_str}.png'),
                             dpi=300)
