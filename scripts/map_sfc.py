@@ -23,7 +23,9 @@ from netCDF4 import Dataset
 import cftime
 import numpy as np
 import xarray as xr
-import pyproj
+from pyproj import CRS
+from pyproj import Transformer
+
 import colorcet as cc
 
 NETCDF_FILL_VALUE = 9.969209968386869e+36
@@ -36,55 +38,60 @@ FONTSIZE = 10
 FONTCOLOR = 'black'
 
 def generate_file4ncremap(inputfilename, outputfilename):
-    #Open the file and the group
-    #ds = xr.open_dataset(inputfilename, group="cdr_supplementary")
+    """
+    """
+    with xr.open_dataset(inputfilename,
+                         #group = "cdr_supplementary"
+                         ) as ds:
 
-    # Extract the mask
-    #mask = ds["surface_type_mask"]
+        # Extract open ocean mask
+        #open_ocean_mask = ds["surface_type_mask"]
 
-    # Open the main dataset
-    main_ds = xr.open_dataset(inputfilename)
+        # Create SGS mask (0/1)
+        #main_ds["sgs_mask"] = (mask == 50).astype("ubyte")
 
-    # Create SGS mask (0/1)
-    #main_ds["sgs_mask"] = (mask == 50).astype("ubyte")
+        # Extract x and y coordinates (or indices)
+        #xsrc = main_ds["x"].values
+        #ysrc = main_ds["y"].values
 
-    # Extract x and y coordinates (or indices)
-    xsrc = main_ds["x"].values
-    ysrc = main_ds["y"].values
-
-    # Define the projection from crs attributes
-    proj = pyproj.Proj(
-        proj='stere',
+        # Define the projection from crs attributes
+        crs = CRS.from_wkt(ds["crs"].crs_wkt)
+        print(crs)
+        print(crs.geodetic_crs)
+        
+        """
+        proj = pyproj.Proj(
+            proj='stere',
         lat_ts=main_ds.crs.standard_parallel,
         lat_0=main_ds.crs.latitude_of_projection_origin,
         lon_0=main_ds.crs.straight_vertical_longitude_from_pole
-    )  
-
-    # Make 2D meshgrid
-    x2d, y2d = np.meshgrid(xsrc, ysrc)
-
-    # Convert to lat/lon
-    lon, lat = proj(x2d, y2d, inverse=True)
-
-    # Define fill value for double precision variables (default NetCDF double fill value)
-    # Replace NaNs with fill_value in lat/lon arrays
-    lat_clean = np.where(np.isnan(lat), NETCDF_FILL_VALUE, lat)
-    lon_clean = np.where(np.isnan(lon), NETCDF_FILL_VALUE, lon)
-    # print(np.where(np.isnan(lon)))
+        )
+        """  
         
-    # Add lat and lon to dataset with dims ("y", "x")
-    main_ds["lat"] = (("y", "x"), lat_clean)
-    main_ds["lon"] = (("y", "x"), lon_clean)
+        proj = Transformer.from_crs(crs, crs.geodetic_crs, always_xy=True)
 
-    # Set _FillValue attribute for lat and lon
-    main_ds["lat"].attrs["_FillValue"] = NETCDF_FILL_VALUE
-    main_ds["lon"].attrs["_FillValue"] = NETCDF_FILL_VALUE
+        # Convert to lat/lon
+        lon, lat = proj(np.meshgrid(ds["x"].values, ds["y"].values))
 
-    # Save to new file
-    main_ds.to_netcdf(outputfilename)
-    
-    #ds.close()
-    main_ds.close()
+        # Define fill value for double precision variables (default NetCDF double fill value)
+        # Replace NaNs with fill_value in lat/lon arrays
+        lat_clean = np.where(np.isnan(lat), NETCDF_FILL_VALUE, lat)
+        lon_clean = np.where(np.isnan(lon), NETCDF_FILL_VALUE, lon)
+        # print(np.where(np.isnan(lon)))
+        
+        # Add lat and lon to dataset with dims ("y", "x")
+        ds["lon"] = (("y", "x"), lon_clean)
+        ds["lat"] = (("y", "x"), lat_clean)
+        
+
+        # Set _FillValue attribute for lat and lon
+        ds["lat"].attrs["_FillValue"] = NETCDF_FILL_VALUE
+        ds["lon"].attrs["_FillValue"] = NETCDF_FILL_VALUE
+
+        ds["cdr_seaice_conc_variance"] = ds["cdr_seaice_conc_stdev"] ** 2
+        
+        # Save to new file
+        ds.to_netcdf(outputfilename)
 
 class SurfaceMapper(object):
     """Handles retrieval, processing, accumulation, and visualization of FV3 surface radiation data.
@@ -276,7 +283,7 @@ class SurfaceMapper(object):
             
             subprocess.run(cmd, check=True, shell=True)
             if self.do_nh_sea_ice or self.do_sh_sea_ice:
-                cmd2 = f"ncremap -a conserve -v {self.icetk},{self.icec} --sgs_frc={self.icec} --sgs_nrm=1 -R '--rgr lat_nm_in={self.lat_var} --rgr lon_nm_in={self.lon_var}' -d {file_path} {file_path} {self.rgr_file_path_icec[file_path_idx]}"
+                cmd2 = f"ncremap -a conserve -v {self.icetk} --sgs_frc={self.icec} --sgs_nrm=1 -R '--rgr lat_nm_in={self.lat_var} --rgr lon_nm_in={self.lon_var}' -d {file_path} {file_path} {self.rgr_file_path_icec[file_path_idx]}"
                 subprocess.run(cmd2, check=True, shell=True)
         
         if self.do_nh_sea_ice:
@@ -285,7 +292,7 @@ class SurfaceMapper(object):
             self.ref_rgr_file_path_nh = f"{ref_base_nh}_rgr{ref_ext_nh}"
             cmd1_nh = f"ncpdq -U {self.ref_file_path_clean_nh} {self.ref_unpacked_file_path_nh}"
             subprocess.run(cmd1_nh, check=True, shell=True)
-            cmd2_nh = f"ncremap -a conserve --sgs_frc=cdr_seaice_conc --sgs_nrm=1 -R '--rgr lat_nm_in=lat --rgr lon_nm_in=lon' -d {file_path} {self.ref_unpacked_file_path_nh} {self.ref_rgr_file_path_nh}"
+            cmd2_nh = f"ncremap -a conserve -v cdr_seaice_conc_variance --sgs_frc=cdr_seaice_conc --sgs_nrm=1 -R '--rgr lat_nm_in=lat --rgr lon_nm_in=lon' -d {file_path} {self.ref_unpacked_file_path_nh} {self.ref_rgr_file_path_nh}"
             subprocess.run(cmd2_nh, check=True, shell=True)
             os.remove(self.ref_file_path_clean_nh)
             os.remove(self.ref_unpacked_file_path_nh)
@@ -296,7 +303,7 @@ class SurfaceMapper(object):
             self.ref_rgr_file_path_sh = f"{ref_base_sh}_rgr{ref_ext_sh}"
             cmd1_sh = f"ncpdq -U {self.ref_file_path_clean_sh} {self.ref_unpacked_file_path_sh}"
             subprocess.run(cmd1_sh, check=True, shell=True)
-            cmd2_sh = f"ncremap -a conserve --sgs_frc=cdr_seaice_conc --sgs_nrm=1 -R '--rgr lat_nm_in=lat --rgr lon_nm_in=lon' -d {file_path} {self.ref_unpacked_file_path_sh} {self.ref_rgr_file_path_sh}"
+            cmd2_sh = f"ncremap -a conserve -v cdr_seaice_conc_variance --sgs_frc=cdr_seaice_conc --sgs_nrm=1 -R '--rgr lat_nm_in=lat --rgr lon_nm_in=lon' -d {file_path} {self.ref_unpacked_file_path_sh} {self.ref_rgr_file_path_sh}"
             subprocess.run(cmd2_sh, check=True, shell=True)
             os.remove(self.ref_file_path_clean_sh)
             os.remove(self.ref_unpacked_file_path_sh)
@@ -638,12 +645,12 @@ class SurfaceMapper(object):
         if self.do_nh_sea_ice:
             rootgrp_ref_nh = Dataset(self.ref_rgr_file_path_nh)
             ref_gridcell_areas_nh = rootgrp_ref_nh.variables['area'][:]
-            ref_sic_cdr_nh = rootgrp_ref_nh.variables['cdr_seaice_conc'][0,:,:]
+            ref_sic_cdr_nh = rootgrp_ref_nh.variables['sgs_frc'][:]
             
         if self.do_sh_sea_ice:
             rootgrp_ref_sh = Dataset(self.ref_rgr_file_path_sh)
             ref_gridcell_areas_sh = rootgrp_ref_sh.variables['area'][:]
-            ref_sic_cdr_sh = rootgrp_ref_sh.variables['cdr_seaice_conc'][0,:,:]
+            ref_sic_cdr_sh = rootgrp_ref_sh.variables['sgs_frc'][:]
         
         for file_path_idx, file_path in enumerate(self.rgr_file_path_icec):
             rootgrp = Dataset(file_path)
@@ -661,7 +668,7 @@ class SurfaceMapper(object):
             lat = rootgrp.variables[self.lat_var][:]
             
             gridcell_areas = rootgrp.variables['area'][:]
-            sia_model = EARTH_RADIUS**2 * rootgrp.variables[self.icec][0,:,:] * gridcell_areas
+            sia_model = EARTH_RADIUS**2 * rootgrp.variables['sgs_frc'][:] * gridcell_areas
             ax_list = self.view_toa_ave(clearsky=True, return_ax=True, sea_ice=True)
             
             plt.sca(ax_list[0])
