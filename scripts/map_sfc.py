@@ -37,61 +37,80 @@ FONTNAME = 'Noto Serif CJK JP'
 FONTSIZE = 10
 FONTCOLOR = 'black'
 
+import xarray as xr
+import numpy as np
+from pyproj import CRS, Transformer
+
+NETCDF_FILL_VALUE = 9.969209968386869e+36
+
 def generate_file4ncremap(inputfilename, outputfilename):
     """
+    Generate an ncremap-ready NetCDF file from input sea ice data.
+    Adds lat/lon coordinates, computes cdr_seaice_ext variable,
+    and preserves fill values and masking.
     """
-    with xr.open_dataset(inputfilename,
-                         #group = "cdr_supplementary"
-                         ) as ds:
 
-        # Extract open ocean mask
-        #open_ocean_mask = ds["surface_type_mask"]
+    # Open both main and supplementary datasets
+    with xr.open_dataset(inputfilename) as main_ds, xr.open_dataset(
+        inputfilename, group="cdr_supplementary") as supp_ds:
 
-        # Create SGS mask (0/1)
-        #main_ds["sgs_mask"] = (mask == 50).astype("ubyte")
+        # Extract surface type mask if available
+        if "surface_type_mask" in supp_ds:
+            mask = supp_ds["surface_type_mask"]
+        else:
+            raise KeyError("surface_type_mask not found in 'cdr_supplementary' group")
 
-        # Extract x and y coordinates (or indices)
-        #xsrc = main_ds["x"].values
-        #ysrc = main_ds["y"].values
+        # Define projection from CRS attributes
+        crs = CRS.from_wkt(main_ds["crs"].crs_wkt)
+        print("Projection CRS:", crs)
+        print("Geodetic CRS:", crs.geodetic_crs)
 
-        # Define the projection from crs attributes
-        crs = CRS.from_wkt(ds["crs"].crs_wkt)
-        print(crs)
-        print(crs.geodetic_crs)
-        
-        """
-        proj = pyproj.Proj(
-            proj='stere',
-        lat_ts=main_ds.crs.standard_parallel,
-        lat_0=main_ds.crs.latitude_of_projection_origin,
-        lon_0=main_ds.crs.straight_vertical_longitude_from_pole
-        )
-        """  
-        
         proj = Transformer.from_crs(crs, crs.geodetic_crs, always_xy=True)
 
-        # Convert to lat/lon
-        lon, lat = proj(np.meshgrid(ds["x"].values, ds["y"].values))
+        # Build coordinate grids
+        x2d, y2d = np.meshgrid(main_ds["x"].values, main_ds["y"].values)
+        x2d_masked = np.ma.masked_invalid(x2d)
+        y2d_masked = np.ma.masked_invalid(y2d)
 
-        # Define fill value for double precision variables (default NetCDF double fill value)
-        # Replace NaNs with fill_value in lat/lon arrays
-        lat_clean = np.where(np.isnan(lat), NETCDF_FILL_VALUE, lat)
-        lon_clean = np.where(np.isnan(lon), NETCDF_FILL_VALUE, lon)
-        # print(np.where(np.isnan(lon)))
-        
-        # Add lat and lon to dataset with dims ("y", "x")
-        ds["lon"] = (("y", "x"), lon_clean)
-        ds["lat"] = (("y", "x"), lat_clean)
-        
+        # Convert projected coordinates to lat/lon
+        lon, lat = proj.transform(x2d_masked, y2d_masked)
 
-        # Set _FillValue attribute for lat and lon
-        ds["lat"].attrs["_FillValue"] = NETCDF_FILL_VALUE
-        ds["lon"].attrs["_FillValue"] = NETCDF_FILL_VALUE
+        # Add lat/lon variables
+        main_ds["lon"] = (("y", "x"), lon)
+        main_ds["lat"] = (("y", "x"), lat)
 
-        ds["cdr_seaice_conc_variance"] = ds["cdr_seaice_conc_stdev"] ** 2
-        
-        # Save to new file
-        ds.to_netcdf(outputfilename)
+        # Assign fill values and replace NaNs
+        for var in ["lat", "lon"]:
+            main_ds[var].attrs["_FillValue"] = NETCDF_FILL_VALUE
+            main_ds[var] = main_ds[var].fillna(NETCDF_FILL_VALUE)
+
+        # === Compute cdr_seaice_ext ===
+        conc = main_ds["cdr_seaice_con"]
+        stdev = main_ds["cdr_seaice_con_stdev"]
+        fill_value = conc.attrs.get("_FillValue", NETCDF_FILL_VALUE)
+
+        # Apply threshold rules
+        ext = xr.where(conc - 2 * stdev > 0.15, 1.0,
+              xr.where(conc + 2 * stdev < 0.15, 0.0, conc))
+
+        # Mask out non-open-ocean (surface_type_mask != 50)
+        ext = ext.where(mask == 50)
+
+        # Replace NaNs with fill value
+        ext = ext.fillna(fill_value)
+
+        # Add new variable to dataset
+        main_ds["cdr_seaice_ext"] = ext
+        main_ds["cdr_seaice_ext"].attrs.update({
+            "long_name": "Sea Ice Extent (thresholded concentration ±2stdev)",
+            "units": "1",
+            "description": "1 where (conc - 2*stdev > 0.15); 0 where (conc + 2*stdev < 0.15); conc otherwise; masked where surface_type_mask != 50",
+            "_FillValue": fill_value,
+        })
+
+        # Save to output file
+        main_ds.to_netcdf(outputfilename)
+        print(f"Saved processed dataset to {outputfilename}")
 
 class SurfaceMapper(object):
     """Handles retrieval, processing, accumulation, and visualization of FV3 surface radiation data.
@@ -277,22 +296,22 @@ class SurfaceMapper(object):
             self.rgr_file_path_icec.append(f"{base}_rgr_icec{ext}")
             
             if self.integrate:
-                cmd = f"ncremap -v {self.lw_var},{self.sw_var},{self.lw_ave_var},{self.sw_ave_var},{self.land_mask},{self.lw_ave_var_cstoa},{self.sw_ave_var_cstoa},{self.lw_ave_var_toa},{self.sw_ave_var_toa} -R '--rgr lat_nm_in={self.lat_var} --rgr lon_nm_in={self.lon_var}' -d {file_path} {file_path} {self.rgr_file_path[file_path_idx]}"
+                cmd = f'ncremap -v {self.lw_var},{self.sw_var},{self.lw_ave_var},{self.sw_ave_var},{self.land_mask},{self.lw_ave_var_cstoa},{self.sw_ave_var_cstoa},{self.lw_ave_var_toa},{self.sw_ave_var_toa} -R "--rgr lat_nm_in={self.lat_var} --rgr lon_nm_in={self.lon_var}" -d {file_path} {file_path} {self.rgr_file_path[file_path_idx]}'
             else:
-                cmd = f"ncremap -v {self.lw_var},{self.sw_var},{self.land_mask} -R '--rgr lat_nm_in={self.lat_var} --rgr lon_nm_in={self.lon_var}' -d {file_path} {file_path} {self.rgr_file_path[file_path_idx]}"
+                cmd = f'ncremap -v {self.lw_var},{self.sw_var},{self.land_mask} -R "--rgr lat_nm_in={self.lat_var} --rgr lon_nm_in={self.lon_var}" -d {file_path} {file_path} {self.rgr_file_path[file_path_idx]}'
             
             subprocess.run(cmd, check=True, shell=True)
             if self.do_nh_sea_ice or self.do_sh_sea_ice:
-                cmd2 = f"ncremap -a conserve -v {self.icetk} --sgs_frc={self.icec} --sgs_nrm=1 -R '--rgr lat_nm_in={self.lat_var} --rgr lon_nm_in={self.lon_var}' -d {file_path} {file_path} {self.rgr_file_path_icec[file_path_idx]}"
+                cmd2 = f'ncremap -a conserve -v {self.icec},{self.land_mask} -R "--rgr lat_nm_in={self.lat_var} --rgr lon_nm_in={self.lon_var}" -d {file_path} {file_path} {self.rgr_file_path_icec[file_path_idx]}'
                 subprocess.run(cmd2, check=True, shell=True)
         
         if self.do_nh_sea_ice:
             ref_base_nh, ref_ext_nh = os.path.splitext(self.ref_file_path_clean_nh)
             self.ref_unpacked_file_path_nh = f"{ref_base_nh}_unpacked{ref_ext_nh}"
             self.ref_rgr_file_path_nh = f"{ref_base_nh}_rgr{ref_ext_nh}"
-            cmd1_nh = f"ncpdq -U {self.ref_file_path_clean_nh} {self.ref_unpacked_file_path_nh}"
+            cmd1_nh = f'ncpdq -U {self.ref_file_path_clean_nh} {self.ref_unpacked_file_path_nh}'
             subprocess.run(cmd1_nh, check=True, shell=True)
-            cmd2_nh = f"ncremap -a conserve -v cdr_seaice_conc_variance --sgs_frc=cdr_seaice_conc --sgs_nrm=1 -R '--rgr lat_nm_in=lat --rgr lon_nm_in=lon' -d {file_path} {self.ref_unpacked_file_path_nh} {self.ref_rgr_file_path_nh}"
+            cmd2_nh = f'ncremap -a conserve -v cdr_seaice_ext -R "--rgr lat_nm_in=lat --rgr lon_nm_in=lon" -d {file_path} {self.ref_unpacked_file_path_nh} {self.ref_rgr_file_path_nh}'
             subprocess.run(cmd2_nh, check=True, shell=True)
             os.remove(self.ref_file_path_clean_nh)
             os.remove(self.ref_unpacked_file_path_nh)
@@ -301,9 +320,9 @@ class SurfaceMapper(object):
             ref_base_sh, ref_ext_sh = os.path.splitext(self.ref_file_path_clean_sh)
             self.ref_unpacked_file_path_sh = f"{ref_base_sh}_unpacked{ref_ext_sh}"
             self.ref_rgr_file_path_sh = f"{ref_base_sh}_rgr{ref_ext_sh}"
-            cmd1_sh = f"ncpdq -U {self.ref_file_path_clean_sh} {self.ref_unpacked_file_path_sh}"
+            cmd1_sh = f'ncpdq -U {self.ref_file_path_clean_sh} {self.ref_unpacked_file_path_sh}'
             subprocess.run(cmd1_sh, check=True, shell=True)
-            cmd2_sh = f"ncremap -a conserve -v cdr_seaice_conc_variance --sgs_frc=cdr_seaice_conc --sgs_nrm=1 -R '--rgr lat_nm_in=lat --rgr lon_nm_in=lon' -d {file_path} {self.ref_unpacked_file_path_sh} {self.ref_rgr_file_path_sh}"
+            cmd2_sh = f'ncremap -a conserve -v cdr_seaice_ext -R "--rgr lat_nm_in=lat --rgr lon_nm_in=lon" -d {file_path} {self.ref_unpacked_file_path_sh} {self.ref_rgr_file_path_sh}'
             subprocess.run(cmd2_sh, check=True, shell=True)
             os.remove(self.ref_file_path_clean_sh)
             os.remove(self.ref_unpacked_file_path_sh)
@@ -387,6 +406,7 @@ class SurfaceMapper(object):
                           vmax=self.luminosity_scalar*sw_max_val,
                           shading='nearest',
                           rasterized=True,
+                          antialiased=False,
                           zorder=0,
                           transform=ccrs.PlateCarree()
             )
@@ -399,6 +419,7 @@ class SurfaceMapper(object):
                           #vmax=0.003333*sw_max_val,
                           shading='nearest',
                           rasterized=True,
+                          antialiased=False,
                           zorder=2,
                           transform=ccrs.PlateCarree()
             )                                      
@@ -408,7 +429,8 @@ class SurfaceMapper(object):
                           cmap=cc.cm.CET_L8,
                           shading='nearest',
                           rasterized=True,
-                          alpha=0.667,
+                          #alpha=0.667,
+                          antialiased=False,
                           zorder=3,
                           transform=ccrs.PlateCarree()
             )
@@ -466,6 +488,7 @@ class SurfaceMapper(object):
                           vmax=0.95*self.luminosity_scalar*sw_max_val,
                           shading='nearest',
                           rasterized=True,
+                          antialiased=False,
                           zorder=1,
                           transform=ccrs.PlateCarree()
             )
@@ -501,6 +524,7 @@ class SurfaceMapper(object):
                           vmax=0.95*self.luminosity_scalar*sw_max_val,
                           shading='nearest',
                           rasterized=True,
+                          antialiased=False,
                           zorder=1,
                           transform=ccrs.PlateCarree()
             )
@@ -645,12 +669,12 @@ class SurfaceMapper(object):
         if self.do_nh_sea_ice:
             rootgrp_ref_nh = Dataset(self.ref_rgr_file_path_nh)
             ref_gridcell_areas_nh = rootgrp_ref_nh.variables['area'][:]
-            ref_sic_cdr_nh = rootgrp_ref_nh.variables['sgs_frc'][:]
+            ref_sic_cdr_nh = rootgrp_ref_nh.variables['cdr_seaice_conc'][0,:,:]
             
         if self.do_sh_sea_ice:
             rootgrp_ref_sh = Dataset(self.ref_rgr_file_path_sh)
             ref_gridcell_areas_sh = rootgrp_ref_sh.variables['area'][:]
-            ref_sic_cdr_sh = rootgrp_ref_sh.variables['sgs_frc'][:]
+            ref_sic_cdr_sh = rootgrp_ref_sh.variables['cdr_seaice_conc'][0,:,:]
         
         for file_path_idx, file_path in enumerate(self.rgr_file_path_icec):
             rootgrp = Dataset(file_path)
@@ -668,7 +692,9 @@ class SurfaceMapper(object):
             lat = rootgrp.variables[self.lat_var][:]
             
             gridcell_areas = rootgrp.variables['area'][:]
-            sia_model = EARTH_RADIUS**2 * rootgrp.variables['sgs_frc'][:] * gridcell_areas
+            sic_model = np.ma.masked_where(rootgrp.variables[self.land_mask][0,:,:] == 1,
+                                           rootgrp.variables[self.icec][0,:,:])
+            
             ax_list = self.view_toa_ave(clearsky=True, return_ax=True, sea_ice=True)
             
             plt.sca(ax_list[0])
@@ -676,8 +702,7 @@ class SurfaceMapper(object):
                 assert np.allclose(gridcell_areas, ref_gridcell_areas_nh)
                 pmesh_nh = self.map_sea_ice_hemi(ax_list[0], lon, lat,
                                       ref_sic_cdr_nh,
-                                      ref_gridcell_areas_nh,
-                                      sia_model,
+                                      sic_model,
                                       )
                 plt.title(f'Arctic sea ice concentration (SIC) fractional error ({time_label})',
                           fontsize=FONTSIZE, fontname=FONTNAME, color=FONTCOLOR)
@@ -693,8 +718,7 @@ class SurfaceMapper(object):
                 
                 pmesh_sh = self.map_sea_ice_hemi(ax_list[1], lon, lat,
                                       ref_sic_cdr_sh,
-                                      ref_gridcell_areas_sh,
-                                      sia_model,
+                                      sic_model,
                                       )
                 plt.title(f'Antarctic sea ice concentration (SIC) fractional error ({time_label})',
                           fontsize=FONTSIZE, fontname=FONTNAME, color=FONTCOLOR)
@@ -705,46 +729,60 @@ class SurfaceMapper(object):
             plt.close()               
             #rootgrp.close()
             
-    def map_sea_ice_hemi(self, ax, lon, lat, sic_cdr_hemi, gridcell_areas, sia_model):
-        sia_cdr_hemi = EARTH_RADIUS**2 * sic_cdr_hemi * gridcell_areas
-        # mask where SIA_model = SIA_CDR = 0
-        mask_both_zero_hemi = (sia_model == 0) & (sia_cdr_hemi == 0)
-        
-        sia_model_hemi_masked = np.ma.masked_where(mask_both_zero_hemi, sia_model)
-        sia_cdr_hemi_masked = np.ma.masked_where(mask_both_zero_hemi, sia_cdr_hemi)
-        
-        # Replace masked elements of SIA_CDR with 0 where SIA_model > 0
-        sia_cdr_hemi_fixed = np.ma.where((sia_model_hemi_masked > 0) & sia_cdr_hemi_masked.mask, 0, sia_cdr_hemi_masked)
-        
-        hemi_sea_ice_area_relative_error = (sia_model_hemi_masked -
-                                          sia_cdr_hemi_fixed) / (EARTH_RADIUS**2 * gridcell_areas)
-        
-        # Hemisphere plot
-        pmesh_hemi = ax.pcolormesh(
+    def map_sea_ice_hemi(self, ax, lon, lat, sic_cdr_hemi, sic_model):
+        """
+        Compare modeled and observed sea ice concentration (SIC) over a hemisphere.
+        Masks open water, normalizes binary ice regions, and plots the difference field.
+        """
+
+        # 1. Mask where both SIC_model and SIC_CDR < 0.15 (open water)
+        mask_both_zero = (sic_model < 0.15) & (sic_cdr_hemi < 0.15)
+        model_combined_mask = mask_both_zero | np.ma.getmaskarray(sic_model)
+        cdr_combined_mask = mask_both_zero | np.ma.getmaskarray(sic_cdr_hemi)
+
+        sic_model_masked = np.ma.masked_where(model_combined_mask, sic_model)
+        sic_cdr_masked = np.ma.masked_where(cdr_combined_mask, sic_cdr_hemi)
+
+        # 2. Replace masked elements of SIC_CDR with 0 where SIC_model >= 0.15
+        sic_cdr_fixed = np.ma.where(
+            (sic_model_masked >= 0.15) & sic_cdr_masked.mask,
+            0,
+            sic_cdr_masked
+        )
+
+        # 3. Replace elements of both fields with 1 where both > 0.15
+        both_ice = (sic_model_masked > 0.15) & (sic_cdr_fixed > 0.15)
+        sic_cdr_fixed   = np.ma.where(both_ice, 1.0, sic_cdr_fixed)
+        sic_model_fixed = np.ma.where(both_ice, 1.0, sic_model_masked)
+
+        # 4. Compute difference (SIC)
+        hemi_sie_diff = np.ma.masked_where(sic_model_fixed.mask | sic_cdr_fixed.mask,
+                                           sic_model_fixed - sic_cdr_fixed)
+
+        # 5. Plot
+        pmesh = ax.pcolormesh(
             lon,
             lat,
-            hemi_sea_ice_area_relative_error,
+            hemi_sie_diff,
             cmap=cc.cm.CET_D1A,
-            vmin=-1,
-            vmax=1,
+            vmin=-0.15,
+            vmax=0.15,
             shading='nearest',
             rasterized=True,
+            antialiased=False,
             alpha=1,
             zorder=4,
             transform=ccrs.PlateCarree()
         )
 
-        cbar = plt.colorbar(pmesh_hemi, ax=ax)
-        cbar.set_ticks(np.arange(-1, 1.01, 0.25))
+        # 6. Colorbar
+        cbar = plt.colorbar(pmesh, ax=ax)
+        cbar.set_ticks(np.arange(-0.15, 0.151, 0.05))
         cbar.ax.tick_params(labelsize=FONTSIZE, labelcolor=FONTCOLOR)
-        cbar.set_label(
-            'SIC fractional error',
-            fontsize=FONTSIZE,
-            fontname=FONTNAME,
-            color=FONTCOLOR
-        )
-                
-        return pmesh_hemi
+        cbar.set_label('SIC difference (model - CDR)', fontsize=FONTSIZE,
+                       fontname=FONTNAME, color=FONTCOLOR)
+
+        return pmesh
                 
 def run():
     """Run the SurfaceMapper with command-line arguments.
