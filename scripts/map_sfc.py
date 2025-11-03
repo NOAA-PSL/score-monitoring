@@ -85,8 +85,8 @@ def generate_file4ncremap(inputfilename, outputfilename):
             main_ds[var] = main_ds[var].fillna(NETCDF_FILL_VALUE)
 
         # === Compute cdr_seaice_ext ===
-        conc = main_ds["cdr_seaice_con"]
-        stdev = main_ds["cdr_seaice_con_stdev"]
+        conc = main_ds["cdr_seaice_conc"]
+        stdev = main_ds["cdr_seaice_conc_stdev"]
         fill_value = conc.attrs.get("_FillValue", NETCDF_FILL_VALUE)
 
         # Apply threshold rules
@@ -94,7 +94,7 @@ def generate_file4ncremap(inputfilename, outputfilename):
               xr.where(conc + 2 * stdev < 0.15, 0.0, conc))
 
         # Mask out non-open-ocean (surface_type_mask != 50)
-        ext = ext.where(mask == 50)
+        ext = ext.where(mask < 150)
 
         # Replace NaNs with fill value
         ext = ext.fillna(fill_value)
@@ -669,12 +669,12 @@ class SurfaceMapper(object):
         if self.do_nh_sea_ice:
             rootgrp_ref_nh = Dataset(self.ref_rgr_file_path_nh)
             ref_gridcell_areas_nh = rootgrp_ref_nh.variables['area'][:]
-            ref_sic_cdr_nh = rootgrp_ref_nh.variables['cdr_seaice_conc'][0,:,:]
+            ref_sic_cdr_nh = rootgrp_ref_nh.variables['cdr_seaice_ext'][0,:,:]
             
         if self.do_sh_sea_ice:
             rootgrp_ref_sh = Dataset(self.ref_rgr_file_path_sh)
             ref_gridcell_areas_sh = rootgrp_ref_sh.variables['area'][:]
-            ref_sic_cdr_sh = rootgrp_ref_sh.variables['cdr_seaice_conc'][0,:,:]
+            ref_sic_cdr_sh = rootgrp_ref_sh.variables['cdr_seaice_ext'][0,:,:]
         
         for file_path_idx, file_path in enumerate(self.rgr_file_path_icec):
             rootgrp = Dataset(file_path)
@@ -704,7 +704,7 @@ class SurfaceMapper(object):
                                       ref_sic_cdr_nh,
                                       sic_model,
                                       )
-                plt.title(f'Arctic sea ice concentration (SIC) fractional error ({time_label})',
+                plt.title(f'Arctic sea ice cover fractional error ({time_label})',
                           fontsize=FONTSIZE, fontname=FONTNAME, color=FONTCOLOR)
                 #rootgrp_ref_nh.close()
             
@@ -720,7 +720,7 @@ class SurfaceMapper(object):
                                       ref_sic_cdr_sh,
                                       sic_model,
                                       )
-                plt.title(f'Antarctic sea ice concentration (SIC) fractional error ({time_label})',
+                plt.title(f'Antarctic sea ice cover fractional error ({time_label})',
                           fontsize=FONTSIZE, fontname=FONTNAME, color=FONTCOLOR)
                 #rootgrp_ref_sh.close()    
         
@@ -743,16 +743,18 @@ class SurfaceMapper(object):
         sic_model_masked = np.ma.masked_where(model_combined_mask, sic_model)
         sic_cdr_masked = np.ma.masked_where(cdr_combined_mask, sic_cdr_hemi)
 
+        """
         # 2. Replace masked elements of SIC_CDR with 0 where SIC_model >= 0.15
         sic_cdr_fixed = np.ma.where(
             (sic_model_masked >= 0.15) & sic_cdr_masked.mask,
             0,
             sic_cdr_masked
         )
+        """
 
         # 3. Replace elements of both fields with 1 where both > 0.15
-        both_ice = (sic_model_masked > 0.15) & (sic_cdr_fixed > 0.15)
-        sic_cdr_fixed   = np.ma.where(both_ice, 1.0, sic_cdr_fixed)
+        both_ice = (sic_model_masked > 0.15) & (sic_cdr_masked > 0.15)
+        sic_cdr_fixed   = np.ma.where(both_ice, 1.0, sic_cdr_masked)
         sic_model_fixed = np.ma.where(both_ice, 1.0, sic_model_masked)
 
         # 4. Compute difference (SIC)
@@ -779,7 +781,7 @@ class SurfaceMapper(object):
         cbar = plt.colorbar(pmesh, ax=ax)
         cbar.set_ticks(np.arange(-0.15, 0.151, 0.05))
         cbar.ax.tick_params(labelsize=FONTSIZE, labelcolor=FONTCOLOR)
-        cbar.set_label('SIC difference (model - CDR)', fontsize=FONTSIZE,
+        cbar.set_label('Fractional error', fontsize=FONTSIZE,
                        fontname=FONTNAME, color=FONTCOLOR)
 
         return pmesh
