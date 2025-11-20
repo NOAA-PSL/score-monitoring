@@ -881,6 +881,11 @@ def get_conventional_instruments():
                 'obs_platform': 'satellite (Meteosat)',
                 'long_name': 'European Organisation for the Exploitation of Meteorological Satellites infrared (long-wave) and visible cloud drift (Meteosat)'
             },
+            244: {'instrument': 'radiometer (AVHRR)',
+                'obs_platform': 'satellite (POES/MetOp)',
+                'long_name': 'Advanced Very High Resolution Radiometer (AVHRR) / Polar Operational Environmental Satellites (POES) infrared (long-wave) cloud drift (NOAA, EUMETSAT)'
+            },
+            
             245: {
                 'instrument': 'radiometer (GOES)',
                 'obs_platform': 'satellite (GOES)',
@@ -916,6 +921,12 @@ def get_conventional_instruments():
                 'obs_platform': 'satellite (Meteosat)',
                 'long_name': 'European Organisation for the Exploitation of Meteorological Satellites imager water vapor (all levels) - cloud top & deep layer (Himawari)'
             },
+            255: {
+                'instrument': 'picture triplet (GOES)',
+                'obs_platform': 'satellite (GOES)',
+                'long_name': 'National Environmental Satellite, Data, and Information Service picture triplet cloud drift (low levels) (GOES)'
+                },
+
             280: {
                 'instrument': 'anemometer (restricted ship)',
                 'obs_platform': 'R - U.S. & JMA ships',
@@ -993,10 +1004,10 @@ def get_instrument_channels():
 def run(request='array_metric_types'):
     #return score_db_base.handle_request(get_request_dict2(request))
     #put_these_sats()
-    put_these_data()
-    put_these_data2()
+    #put_these_data()
+    #put_these_data2()
     #put_these_data3()
-    #put_whole_atm_conv_scalar_metrics()
+    put_whole_atm_conv_scalar_metrics()
 
 def main():
     run()
