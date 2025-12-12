@@ -793,7 +793,7 @@ def run():
     surface_mapper.view_surface()
     surface_mapper.view_toa_ave()
     surface_mapper.view_toa_ave(clearsky=True)
-    surface_mapper.map_soca_obs()
+    #surface_mapper.map_soca_obs()
     
     if surface_mapper.do_nh_sea_ice or surface_mapper.do_sh_sea_ice:
         surface_mapper.map_sea_ice()

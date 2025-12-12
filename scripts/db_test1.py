@@ -85,12 +85,12 @@ def get_experiments(experiment_names=list()):
                                                'method': 'GET'}))
     return experiment_data
 
-def put_new_experiment(name, cycle_start='1978100100', cycle_stop='2025093018',
+def put_new_experiment(name, cycle_start='1978100100', cycle_stop='2026103018',
                        owner_id='Adam.Schneider', group_id='gsienkf',
                        experiment_type='replay_observer_diagnostic',
                        platform = "pw_awv2",
                        wall_clock_start='2025-04-15 00:00:00',
-                       wall_clock_end='2025-10-01 00:00:00',
+                       wall_clock_end='2026-10-01 00:00:00',
                        description=None):
  
     """ put experiment meta data into database
@@ -552,7 +552,7 @@ def put_whole_atm_conv_scalar_metrics():
                               f"description: {stat_description} for surface level {long_name} ({measurement_attrs['instrument']})"
                             )
     
-def put_these_conventiona_data():
+def put_these_conventional_data():
     """
     """
     obs_dict = get_conventional_instruments()
@@ -606,7 +606,7 @@ def put_these_conventiona_data():
                 0.500E+03,
                 0.400E+03,
                 0.300E+03,
-                0.000E+02,
+                0.000E+00,
                 0.000E+00,
             ]
             
@@ -647,8 +647,8 @@ def put_these_conventiona_data():
                 
                     name = f"{stat}_{variable}_{str(measurement_id)}_GSIstage_{gsi_stage}"
 
-                    if var == 'fit_uv_data' or var == 'fit_q_data' or var == 'fit_t_data':
-                        if False:
+                    if variable == 'fit_uv_data' or variable == 'fit_q_data' or variable == 'fit_t_data':
+                        if True:
                             put_array_metric_type(name, 'conventional',
                               ['plev_bot', 'plev_top'], [plev_bots, plev_tops],
                               ['hPa', 'hPa'],
@@ -871,6 +871,12 @@ def get_conventional_instruments():
                 'obs_platform': 'aircraft',
                 'long_name': 'Canadian aircraft meteorological data relay [AMDAR] (restricted outside of NCEP)'
             },
+            240: {
+                'instrument': 'radiometer (GOES - short-wave)',
+                'obs_platform': 'satellite (GOES)',
+                'long_name': 'National Environmental Satellite, Data, and Information Service infrared (short-wave) cloud drift (GOES)'
+            },
+
             242: {
                 'instrument': 'radiometer / cloud imager (Himawari)',
                 'obs_platform': 'satellite (Himawari)',
@@ -887,7 +893,7 @@ def get_conventional_instruments():
             },
             
             245: {
-                'instrument': 'radiometer (GOES)',
+                'instrument': 'radiometer (GOES - long-wave)',
                 'obs_platform': 'satellite (GOES)',
                 'long_name': 'National Environmental Satellite, Data, and Information Service infrared (long-wave) cloud drift (GOES)'
             },
@@ -926,6 +932,29 @@ def get_conventional_instruments():
                 'obs_platform': 'satellite (GOES)',
                 'long_name': 'National Environmental Satellite, Data, and Information Service picture triplet cloud drift (low levels) (GOES)'
                 },
+            257: {
+                'instrument': 'radiometer (MODIS/POES)',
+                'obs_platform': 'satellite (Aqua, Terra)',
+                'long_name': 'Moderate Resolution Imaging Spectroradiometer (MODIS) infrared (long-wave) cloud drift (Aqua, Terra) (POES)'
+            },
+
+            258: {
+                'instrument': 'water vapor imager (MODIS/POES - cloud top)',
+                'obs_platform': 'satellite (Aqua, Terra)',
+                'long_name': 'Moderate Resolution Imaging Spectroradiometer (MODIS) water vapor imager cloud drift (Aqua, Terra) - cloud top (POES)'
+            },
+
+            259: {
+                'instrument': 'water vapor imager (MODIS/POES - deep layer)',
+                'obs_platform': 'satellite (Aqua, Terra)',
+                'long_name': 'Moderate Resolution Imaging Spectroradiometer (MODIS) water vapor imager cloud drift (Aqua, Terra) - deep layer (POES)'
+            },
+
+            260: {
+                'instrument': 'radiometer (VIIRS)',
+                'obs_platform': 'satellite (Suomi NPP)',
+                'long_name': 'Visible Infrared Imaging Radiometer Suite (VIIRS) (long-wave) cloud drift (Suomi NPP)'
+                },
 
             280: {
                 'instrument': 'anemometer (restricted ship)',
@@ -946,6 +975,11 @@ def get_conventional_instruments():
                 'instrument': 'anemometer (restricted station)',
                 'obs_platform': 'R - WMO Res 40 SYNOPS, U.S. & JMA ships',
                 'long_name': 'World Meteorological Organization (WMO) Res 40 SYNOPS surface land [METAR] and U.S. & Japan Meteorological Agency (JMA) surface marine (ships) with reported station pressure (restricted outside of NCEP)'
+            },
+            287: {
+                    'instrument': 'anemometer',
+                    'obs_platform': 'weather station',
+                    'long_name': 'Surface land wind speed (METAR) with missing station pressure'
             },
             290: {
                 'instrument': 'radar (scatterometer)',
@@ -1003,11 +1037,13 @@ def get_instrument_channels():
 
 def run(request='array_metric_types'):
     #return score_db_base.handle_request(get_request_dict2(request))
+    #put_new_experiment('replay_observer_diagnostic_v1.1')
     #put_these_sats()
     #put_these_data()
     #put_these_data2()
     #put_these_data3()
-    put_whole_atm_conv_scalar_metrics()
+    #put_whole_atm_conv_scalar_metrics()
+    put_these_conventional_data()
 
 def main():
     run()
