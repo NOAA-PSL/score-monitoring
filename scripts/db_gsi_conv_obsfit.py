@@ -34,20 +34,24 @@ def get_ensemble_member(ensemble_member='control'):
 
 #stats and variables passed in for harvest
 variables = [
-    'fit_psfc_data', # fit of surface pressure data (mb)
     'fit_uv_data', # fit of u, v wind data (m/s),
     'fit_t_data', # fit of temperature data (K)
 ]
 
-qsat_variables = ['fit_q_data', # fit of moisture data (% of qsaturation guess)] 
+psfc_variables = ['fit_psfc_data', # fit of surface pressure data (mb)
+]
+qsat_variables = ['fit_q_data', # fit of moisture data (% of qsaturation guess)
+] 
 
 statistics = [
     'count', # number of obs summed under obs types and vertical layers
     'bias', # bias of obs departure for each outer loop (it)
     'rms', # root mean squre error of obs departure for each outer loop (it)
-    'cpen', # obs part of penalty (cost function)
-    'qcpen' # nonlinear qc penalty
+    #'cpen', # obs part of penalty (cost function)
+    #'qcpen' # nonlinear qc penalty
 ]
+
+psfc_plev_bounds = [(0.200E+04, 0.000E+00)]
 
 plev_bounds = [
     (0.120E+04, 0.100E+04),
@@ -147,6 +151,30 @@ qsat_harvest_config = {'harvester_name': 'gsi_conventional_obs',
                        'variables': qsat_variables,
                        'statistics': statistics,
                        'plev_bounds': qsat_plev_bounds}
+psfc_harvest_config = {'harvester_name': 'gsi_conventional_obs',
+                       'filename': file_path,
+                       'variables': psfc_variables,
+                       'statistics': statistics,
+                       'plev_bounds': psfc_plev_bounds}       
+
+psfc_yaml_file = db_yaml_generator.generate_harvest_metrics_yaml(
+                                        os.getenv('EXPERIMENT_NAME'),
+                                        os.getenv('EXPERIMENT_WALLCLOCK_START'),
+                                        'gsi_conventional_obs',
+                                        psfc_harvest_config,
+                                        )
+# validate the configuration (yaml) file
+file_utils.is_valid_readable_file(psfc_yaml_file)
+# submit the score db request
+print("Calling score-db with yaml file: " + psfc_yaml_file + "for cycle: " +
+      cycle_str)
+
+response = score_db_base.handle_request(psfc_yaml_file)
+if not response.success:
+    print(response.message)
+    print(response.errors)
+    raise RuntimeError("score-db returned a failure message") #generic exception to tell cylc to stop running
+
 yaml_file = db_yaml_generator.generate_harvest_metrics_yaml(
                                         os.getenv('EXPERIMENT_NAME'),
                                         os.getenv('EXPERIMENT_WALLCLOCK_START'),
@@ -181,3 +209,4 @@ response = score_db_base.handle_request(qsat_yaml_file)
 if not response.success:
     print(response.message)
     print(response.errors)
+    raise RuntimeError("score-db returned a failure message") #generic exception to tell cylc to stop running
