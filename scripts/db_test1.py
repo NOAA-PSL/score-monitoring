@@ -693,16 +693,19 @@ def get_conventional_instruments():
                 'obs_platform': 'R - WMO Res 40 SYNOPS',
                 'long_name': 'World Meteorological Organization (WMO) Res 40 SYNOPS surface land [METAR] (restricted outside of NCEP)'
             },
-            183: {
-                'instrument': 'barometer (restricted station)',
-                'obs_platform': 'R - WMO Res 40 SYNOPS, U.S. & JMA ships',
-                'long_name': 'World Meteorological Organization (WMO) Res 40 SYNOPS surface land [METAR] and U.S. & Japan Meteorological Agency (JMA) surface marine (ships) with reported station pressure (restricted outside of NCEP)'
-            },
+            
             182: {
                 'instrument': 'dropsonde (splash-level)',
                 'obs_platform': 'dropsonde (splash-level)',
                 'long_name': 'splash-level dropsonde over ocean'
             },
+            
+            183: {
+                'instrument': 'barometer (restricted station)',
+                'obs_platform': 'R - WMO Res 40 SYNOPS, U.S. & JMA ships',
+                'long_name': 'World Meteorological Organization (WMO) Res 40 SYNOPS surface land [METAR] and U.S. & Japan Meteorological Agency (JMA) surface marine (ships) with reported station pressure (restricted outside of NCEP)'
+            },
+
             187: {
                 'instrument': 'barometer (station)',
                 'obs_platform': 'weather station',
@@ -725,6 +728,11 @@ def get_conventional_instruments():
                 'obs_platform': 'balloon',
                 'long_name': 'radar wind -sonde'
             },
+            126: {
+                'instrument': 'radio acoustic sounding system',
+                'obs_platform': 'NPN/MAP network'
+                'long_name': 'Radio acoustic sounding system from NOAA profiler network (NPN) or multi-agency profiler (MAP) network'
+            },
             130: {    
                 'instrument': 'aircraft (PIREP)',
                 'obs_platform': 'aircraft',
@@ -745,26 +753,40 @@ def get_conventional_instruments():
                 'obs_platform': 'aircraft',
                 'long_name': 'Aircraft Communications Addressing and Reporting System [ACARS] / Meteorological Data Collection and Reporting System [MDCRS] (restricted outside of NCEP)'
             },
+            135: {
+                'instrument': 'Canadian aircraft (restricted AMDAR)',
+                'obs_platform': 'aircraft',
+                'long_name': 'Canadian aircraft meteorological data relay [AMDAR] (restricted outside of NCEP)'
+            },
             180: {
                 'instrument': 'thermometer (restricted ship)',
                 'obs_platform': 'R - U.S. & JMA ships',
                 'long_name': 'U.S. & Japan Meteorological Agency (JMA) surface marine (ships) with reported station pressure (restricted outside of NCEP)'
-            },
-            182: {
-                'instrument': 'dropsonde (splash-level)',
-                'obs_platform': 'dropsonde (splash-level)',
-                'long_name': 'splash-level dropsonde over ocean'
             },
             181: {
                 'instrument': 'thermometer (restricted WMO station)',
                 'obs_platform': 'R - WMO Res 40 SYNOPS',
                 'long_name': 'World Meteorological Organization (WMO) Res 40 SYNOPS surface land [METAR] (restricted outside of NCEP)'
             },
+            
+            182: {
+                'instrument': 'dropsonde (splash-level)',
+                'obs_platform': 'dropsonde (splash-level)',
+                'long_name': 'splash-level dropsonde over ocean'
+            },
+
             183: {
                 'instrument': 'thermometer (restricted station)',
                 'obs_platform': 'R - WMO Res 40 SYNOPS, U.S. & JMA ships',
                 'long_name': 'World Meteorological Organization (WMO) Res 40 SYNOPS surface land [METAR] and U.S. & Japan Meteorological Agency (JMA) surface marine (ships) with reported station pressure (restricted outside of NCEP)'
             },
+            
+            187: {
+                'instrument': 'thermometer (station)',
+                'obs_platform': 'weather station',
+                'long_name': 'surface land (METAR)'
+            },
+            
             'all': {
                 'instrument': 'temperature sensor',
                 'obs_platform': 'multiple',
@@ -776,6 +798,11 @@ def get_conventional_instruments():
                 'instrument': 'rawinsonde',
                 'obs_platform': 'balloon',
                 'long_name': 'radar wind -sonde'
+            },
+            131: {
+                'instrument': 'aircraft (restricted AMDAR)',
+                'obs_platform': 'aircraft',
+                'long_name': 'aircraft meteorological data relay [AMDAR] (restricted outside of NCEP)'
             },
             132: {
                 'instrument': 'dropsonde',
@@ -806,6 +833,11 @@ def get_conventional_instruments():
                 'instrument': 'hygrometer (restricted station)',
                 'obs_platform': 'R - WMO Res 40 SYNOPS, U.S. & JMA ships',
                 'long_name': 'World Meteorological Organization (WMO) Res 40 SYNOPS surface land [METAR] and U.S. & Japan Meteorological Agency (JMA) surface marine (ships) with reported station pressure (restricted outside of NCEP)'
+            },
+            187: {
+                'instrument': 'hygrometer (station)',
+                'obs_platform': 'weather station',
+                'long_name': 'surface land (METAR)'
             },
             'all': {
                 'instrument': 'humidity sensor',
@@ -1042,7 +1074,7 @@ def run(request='array_metric_types'):
     #put_these_data()
     #put_these_data2()
     #put_these_data3()
-    #put_whole_atm_conv_scalar_metrics()
+    put_whole_atm_conv_scalar_metrics()
     put_these_conventional_data()
 
 def main():
