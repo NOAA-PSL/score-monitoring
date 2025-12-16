@@ -730,7 +730,7 @@ def get_conventional_instruments():
             },
             126: {
                 'instrument': 'radio acoustic sounding system',
-                'obs_platform': 'NPN/MAP network'
+                'obs_platform': 'NPN/MAP network',
                 'long_name': 'Radio acoustic sounding system from NOAA profiler network (NPN) or multi-agency profiler (MAP) network'
             },
             130: {    
