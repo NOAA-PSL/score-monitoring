@@ -89,10 +89,12 @@ def generate_file4ncremap(inputfilename, outputfilename):
         stdev = main_ds["cdr_seaice_conc_stdev"]
         fill_value = conc.attrs.get("_FillValue", NETCDF_FILL_VALUE)
 
-        # Apply threshold rules
-        ext = xr.where(conc - 2 * stdev > 0.15, 1.0,
-              xr.where(conc + 2 * stdev < 0.15, 0.0, conc))
-
+        if False:
+            # Apply threshold rules
+            ext = xr.where(conc - 2 * stdev > 0.15, 1.0,
+                  xr.where(conc + 2 * stdev < 0.15, 0.0, conc))
+        else:
+            ext = conc
         # Mask out non-open-ocean (surface_type_mask != 50)
         ext = ext.where(mask < 150)
 
@@ -696,7 +698,9 @@ class SurfaceMapper(object):
                                            rootgrp.variables[self.icec][0,:,:])
             
             ax_list = self.view_toa_ave(clearsky=True, return_ax=True, sea_ice=True)
-            
+            ax_list_model = self.view_toa_ave(clearsky=True, return_ax=True, sea_ice=True)
+            ax_list_cdr = self.view_toa_ave(clearsky=True, return_ax=True, sea_ice=True)
+
             plt.sca(ax_list[0])
             if self.do_nh_sea_ice:
                 assert np.allclose(gridcell_areas, ref_gridcell_areas_nh)
@@ -728,8 +732,78 @@ class SurfaceMapper(object):
                             dpi=300)
             plt.close()               
             #rootgrp.close()
+
+            plt.sca(ax_list_model[0])
+            if self.do_nh_sea_ice:
+                assert np.allclose(gridcell_areas, ref_gridcell_areas_nh)
+                pmesh_nh = self.map_sea_ice_hemi(ax_list_model[0], lon, lat,
+                                      ref_sic_cdr_nh,
+                                      sic_model,
+                                      model_only=True,
+                                      cdr_only=False
+                                      )
+                plt.title(f'Model Arctic SIC ({time_label})',
+                          fontsize=FONTSIZE, fontname=FONTNAME, color=FONTCOLOR)
+                #rootgrp_ref_nh.close()
+
+            plt.savefig(os.path.join(self.work_dir, f'modelfv3nhsic_{time_str}.png'),
+                            dpi=300)
+            plt.close()
+
+            plt.sca(ax_list_model[1])
+            if self.do_sh_sea_ice:
+                assert np.allclose(gridcell_areas, ref_gridcell_areas_sh)
+
+                pmesh_sh = self.map_sea_ice_hemi(ax_list_model[1], lon, lat,
+                                      ref_sic_cdr_sh,
+                                      sic_model,
+                                      model_only=True,
+                                      cdr_only=False
+                                      )
+                plt.title(f'Model Antarctic SIC ({time_label})',
+                          fontsize=FONTSIZE, fontname=FONTNAME, color=FONTCOLOR)
+                #rootgrp_ref_sh.close()
+
+            plt.savefig(os.path.join(self.work_dir, f'modelfv3shsic_{time_str}.png'),
+                            dpi=300)
+            plt.close()
+
+            plt.sca(ax_list_cdr[0])
+            if self.do_nh_sea_ice:
+                assert np.allclose(gridcell_areas, ref_gridcell_areas_nh)
+                pmesh_nh = self.map_sea_ice_hemi(ax_list_cdr[0], lon, lat,
+                                      ref_sic_cdr_nh,
+                                      sic_model,
+                                      model_only=False,
+                                      cdr_only=True
+                                      )
+                plt.title(f'PM Arctic SIC ({time_label})',
+                          fontsize=FONTSIZE, fontname=FONTNAME, color=FONTCOLOR)
+                #rootgrp_ref_nh.close()
+
+            plt.savefig(os.path.join(self.work_dir, f'pmnhsic_{time_str}.png'),
+                            dpi=300)
+            plt.close()
+
+            plt.sca(ax_list_cdr[1])
+            if self.do_sh_sea_ice:
+                assert np.allclose(gridcell_areas, ref_gridcell_areas_sh)
+
+                pmesh_sh = self.map_sea_ice_hemi(ax_list_cdr[1], lon, lat,
+                                      ref_sic_cdr_sh,
+                                      sic_model,
+                                      model_only=False,
+                                      cdr_only=True
+                                      )
+                plt.title(f'PM Antarctic SIC ({time_label})',
+                          fontsize=FONTSIZE, fontname=FONTNAME, color=FONTCOLOR)
+                #rootgrp_ref_sh.close()
+
+            plt.savefig(os.path.join(self.work_dir, f'pmshsic_{time_str}.png'),
+                            dpi=300)
+            plt.close()
             
-    def map_sea_ice_hemi(self, ax, lon, lat, sic_cdr_hemi, sic_model):
+    def map_sea_ice_hemi(self, ax, lon, lat, sic_cdr_hemi, sic_model, model_only=False, cdr_only=False):
         """
         Compare modeled and observed sea ice concentration (SIC) over a hemisphere.
         Masks open water, normalizes binary ice regions, and plots the difference field.
@@ -752,37 +826,69 @@ class SurfaceMapper(object):
         )
         """
 
-        # 3. Replace elements of both fields with 1 where both > 0.15
-        both_ice = (sic_model_masked > 0.15) & (sic_cdr_masked > 0.15)
-        sic_cdr_fixed   = np.ma.where(both_ice, 1.0, sic_cdr_masked)
-        sic_model_fixed = np.ma.where(both_ice, 1.0, sic_model_masked)
+        if False:
+            # 3. Replace elements of both fields with 1 where both > 0.15
+            both_ice = (sic_model_masked > 0.15) & (sic_cdr_masked > 0.15)
+            sic_cdr_fixed   = np.ma.where(both_ice, 1.0, sic_cdr_masked)
+            sic_model_fixed = np.ma.where(both_ice, 1.0, sic_model_masked)
+        else:
+            sic_cdr_fixed = sic_cdr_masked
+            sic_model_fixed = sic_model_masked
 
-        # 4. Compute difference (SIC)
-        hemi_sie_diff = np.ma.masked_where(sic_model_fixed.mask | sic_cdr_fixed.mask,
+        if not model_only and not cdr_only:
+            # 4. Compute difference (SIC)
+            hemi_sie_diff = np.ma.masked_where(sic_model_fixed.mask | sic_cdr_fixed.mask,
                                            sic_model_fixed - sic_cdr_fixed)
 
-        # 5. Plot
-        pmesh = ax.pcolormesh(
-            lon,
-            lat,
-            hemi_sie_diff,
-            cmap=cc.cm.CET_D1A,
-            vmin=-0.15,
-            vmax=0.15,
-            shading='nearest',
-            rasterized=True,
-            antialiased=False,
-            alpha=1,
-            zorder=4,
-            transform=ccrs.PlateCarree()
-        )
+            # 5. Plot
+            pmesh = ax.pcolormesh(
+                lon,
+                lat,
+                hemi_sie_diff,
+                cmap=cc.cm.CET_D1A,
+                vmin=-0.15,
+                vmax=0.15,
+                shading='nearest',
+                rasterized=True,
+                antialiased=False,
+                alpha=1,
+                zorder=4,
+                transform=ccrs.PlateCarree()
+            )
 
-        # 6. Colorbar
-        cbar = plt.colorbar(pmesh, ax=ax)
-        cbar.set_ticks(np.arange(-0.15, 0.151, 0.05))
-        cbar.ax.tick_params(labelsize=FONTSIZE, labelcolor=FONTCOLOR)
-        cbar.set_label('Fractional error', fontsize=FONTSIZE,
-                       fontname=FONTNAME, color=FONTCOLOR)
+            # 6. Colorbar
+            cbar = plt.colorbar(pmesh, ax=ax)
+            cbar.set_ticks(np.arange(-0.15, 0.151, 0.05))
+            cbar.ax.tick_params(labelsize=FONTSIZE, labelcolor=FONTCOLOR)
+            cbar.set_label('Fractional error', fontsize=FONTSIZE,
+                           fontname=FONTNAME, color=FONTCOLOR)
+        else:
+            if model_only:
+                to_plot = sic_model_fixed
+            elif cdr_only:
+                to_plot = sic_cdr_fixed
+                        # 5. Plot
+            pmesh = ax.pcolormesh(
+                lon,
+                lat,
+                to_plot,
+                cmap=cc.cm.CET_CBTL3,
+                vmin=0.05,
+                vmax=0.95,
+                shading='nearest',
+                rasterized=True,
+                antialiased=False,
+                alpha=1,
+                zorder=4,
+                transform=ccrs.PlateCarree()
+            )
+
+            # 6. Colorbar
+            cbar = plt.colorbar(pmesh, ax=ax)
+            cbar.set_ticks(np.arange(0.1, 0.91, 0.1))
+            cbar.ax.tick_params(labelsize=FONTSIZE, labelcolor=FONTCOLOR)
+            cbar.set_label('Sea ice concentration', fontsize=FONTSIZE,
+                           fontname=FONTNAME, color=FONTCOLOR)
 
         return pmesh
                 
@@ -794,6 +900,7 @@ def run():
     surface_mapper.view_toa_ave()
     surface_mapper.view_toa_ave(clearsky=True)
     #surface_mapper.map_soca_obs()
+    surface_mapper.map_pwv()
     
     if surface_mapper.do_nh_sea_ice or surface_mapper.do_sh_sea_ice:
         surface_mapper.map_sea_ice()
