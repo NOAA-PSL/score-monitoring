@@ -79,7 +79,7 @@ class SurfaceMapper(object):
         self.bucket = s3.Bucket(os.getenv('STORAGE_LOCATION_BUCKET'))
 
     def download_output_files(self, soca_diags_file_names):
-        """Download surface files (e.g. flux output) from the S3 bucket to the working directory.
+        """Download files from the S3 bucket to the working directory.
         """
         soca_diags_key = os.getenv('SOCA_DIAGS_KEY') 
         print('hello world! - need to download files')
@@ -105,12 +105,22 @@ class SurfaceMapper(object):
                     raise err
 
     def map_soca_obs(self, soca_obs_dir='soca_diags_mapper', max_size=100):
-        """
+        """ figure mapper function
         """
         soca_obs_path = pathlib.Path(self.work_dir).parent / soca_obs_dir
         soca_diag_files = list(soca_obs_path.glob('*.nc')) + list(soca_obs_path.glob('*.nc4'))
         
         ax = plt.axes(projection=ccrs.Mercator(central_longitude=180.))
+        lon_grid_ints = 30
+        lat_grid_ints = 15
+        gl = ax.gridlines(draw_labels=True, linewidth=0.5, color='#A2A4A3', alpha=1.0, linestyle=':', zorder=10)
+        gl.xlocator = mticker.FixedLocator(np.arange(-180, 181, lon_grid_ints))
+        gl.ylocator = mticker.FixedLocator(np.arange(-90+lat_grid_ints, 90, lat_grid_ints))
+        gl.top_labels = False
+        gl.right_labels = False
+        gl.xlabel_style = {'fontname': FONTNAME, 'fontsize': FONTSIZE, 'color': FONTCOLOR}
+        gl.ylabel_style = {'fontname': FONTNAME, 'fontsize': FONTSIZE, 'color': FONTCOLOR}
+        
         soca_obs_exist = False
         for soca_diag_file in soca_diag_files:
             rootgrp = Dataset(soca_diag_file)
@@ -144,9 +154,9 @@ class SurfaceMapper(object):
             rootgrp.close()
         
         if soca_obs_exist:
-            ax.legend(loc='lower left')
-            cbar = plt.colorbar(sc, ax=ax, orientation='vertical')
-            cbar.ax.tick_params(labelsize=FONTSIZE, labelcolor=FONTCOLOR)
+            ax.legend(loc='lower left', fontsize=FONTSIZE, prop={"family":FONTNAME})
+            cbar = plt.colorbar(sc, ax=ax, orientation='horizontal')
+            cbar.ax.tick_params(labelsize=FONTSIZE, labelcolor=FONTCOLOR, labelfontfamily=FONTNAME)
             for label in cbar.ax.get_yticklabels():
                 label.set_fontname(FONTNAME)
             cbar.set_label('relative error', fontsize=FONTSIZE, fontname=FONTNAME, color=FONTCOLOR)
