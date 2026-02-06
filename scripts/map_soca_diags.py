@@ -15,6 +15,7 @@ from botocore.client import Config
 from botocore.errorfactory import ClientError
 import cartopy.crs as ccrs
 from matplotlib import pyplot as plt
+import matplotlib.ticker as mticker
 from netCDF4 import Dataset
 import numpy as np
 
