@@ -18,6 +18,7 @@ from matplotlib import pyplot as plt
 import matplotlib.ticker as mticker
 from netCDF4 import Dataset
 import numpy as np
+import cartopy.feature as cfeature
 
 import colorcet as cc
 
@@ -112,6 +113,9 @@ class SurfaceMapper(object):
         soca_diag_files = list(soca_obs_path.glob('*.nc')) + list(soca_obs_path.glob('*.nc4'))
         
         ax = plt.axes(projection=ccrs.Mercator(central_longitude=180.))
+        ax.coastlines(resolution='110m', linewidth=0.8)
+        ax.add_feature(cfeature.LAND, facecolor='lightgray', zorder=0)
+        ax.add_feature(cfeature.OCEAN, facecolor='white', zorder=0)
         lon_grid_ints = 30
         lat_grid_ints = 15
         gl = ax.gridlines(draw_labels=True, linewidth=0.5, color='#A2A4A3', alpha=1.0, linestyle=':', zorder=10)
@@ -122,6 +126,12 @@ class SurfaceMapper(object):
         gl.xlabel_style = {'fontname': FONTNAME, 'fontsize': FONTSIZE, 'color': FONTCOLOR}
         gl.ylabel_style = {'fontname': FONTNAME, 'fontsize': FONTSIZE, 'color': FONTCOLOR}
         
+        depth_bins = {
+            "1–10 m":   (1, 10),
+            "10–100 m": (10, 100),
+            "100+ m":   (100, np.inf),
+        }
+
         soca_obs_exist = False
         for soca_diag_file in soca_diag_files:
             rootgrp = Dataset(soca_diag_file)
@@ -143,29 +153,92 @@ class SurfaceMapper(object):
                     
                 relative_errs = (-1 * ombg[:]) / obsvals
                 
-                sc = ax.scatter(x=lons, y=lats, c=relative_errs, edgecolors=FONTCOLOR,
-                               label=var, vmin=-0.025, vmax=0.025,
-                               s=np.clip(max_size / (depths + 0.01), 5, max_size),
-                               alpha=0.9,
-                               transform=ccrs.PlateCarree(),
-                               zorder=4,
-                               cmap=cc.cm.CET_D9)
-                soca_obs_exist = True
+                fig, axes = plt.subplots(
+                    nrows=1, ncols=3,
+                    figsize=(18, 6),
+                    subplot_kw={"projection": ccrs.PlateCarree()},
+                    constrained_layout=True
+                )
+                # sc = ax.scatter(x=lons, y=lats, c=relative_errs, edgecolors=FONTCOLOR,
+                #                label=var, vmin=-0.025, vmax=0.025,
+                #                s=np.clip(max_size / (depths + 0.01), 5, max_size),
+                #                alpha=0.9,
+                #                transform=ccrs.PlateCarree(),
+                #                zorder=4,
+                #                cmap=cc.cm.CET_D9)
 
-            rootgrp.close()
-        
-        if soca_obs_exist:
-            ax.legend(loc='lower left', fontsize=FONTSIZE, prop={"family":FONTNAME})
-            cbar = plt.colorbar(sc, ax=ax, orientation='horizontal')
-            cbar.ax.tick_params(labelsize=FONTSIZE, labelcolor=FONTCOLOR, labelfontfamily=FONTNAME)
-            for label in cbar.ax.get_yticklabels():
-                label.set_fontname(FONTNAME)
-            cbar.set_label('relative error', fontsize=FONTSIZE, fontname=FONTNAME, color=FONTCOLOR)
-            plt.title(self.cycle_str, fontsize=FONTSIZE, fontname=FONTNAME, color=FONTCOLOR)
-            plt.savefig(os.path.join(self.work_dir, f'gdas_analysis_ocean_diags.png'),
-                    dpi=300)
+                ombg_arr = ombg[:]
 
-        plt.close()
+                sc = None
+                for ax, (label, (zmin, zmax)) in zip(axes, depth_bins.items()):
+
+                    ax.set_global()
+
+                    # Coastlines + land
+                    ax.coastlines(resolution='110m', linewidth=0.8)
+                    ax.add_feature(cfeature.LAND, facecolor='lightgray', zorder=0)
+                    ax.add_feature(cfeature.OCEAN, facecolor='white', zorder=0)
+
+                    depth_mask = (
+                        (depths >= zmin) &
+                        (depths < zmax) &
+                        np.isfinite(ombg_arr) &
+                        np.isfinite(lons) &
+                        np.isfinite(lats)
+                    )
+
+                    if not np.any(depth_mask):
+                        ax.set_title(f"{label}\n(no data)")
+                        continue
+
+                    sc = ax.scatter(
+                        lons[depth_mask],
+                        lats[depth_mask],
+                        c=ombg_arr[depth_mask],
+                        s=10,
+                        alpha=0.9,
+                        vmin=-0.025,
+                        vmax=0.025,
+                        cmap=cc.cm.CET_D9,
+                        transform=ccrs.PlateCarree(),
+                        zorder=4
+                    )
+
+                    ax.set_title(label)
+                    soca_obs_exist = True
+
+                if sc is not None:
+                    cbar = fig.colorbar(
+                        sc,
+                        ax=axes,
+                        orientation='horizontal',
+                        pad=0.08,
+                        fraction=0.05
+                    )
+                    cbar.set_label('Obs − Background')
+
+                fig.suptitle(var)
+
+                outfile = os.path.join(
+                    self.work_dir,
+                    f"gdas_analysis_ocean_diags_{var}_3depths.png"
+                )
+                plt.savefig(outfile, dpi=300, bbox_inches='tight')
+                plt.close(fig)
+
+            rootgrp.close()        
+        # if soca_obs_exist:
+        #     ax.legend(loc='lower left', fontsize=FONTSIZE, prop={"family":FONTNAME})
+        #     cbar = plt.colorbar(sc, ax=ax, orientation='horizontal')
+        #     cbar.ax.tick_params(labelsize=FONTSIZE, labelcolor=FONTCOLOR, labelfontfamily=FONTNAME)
+        #     for label in cbar.ax.get_yticklabels():
+        #         label.set_fontname(FONTNAME)
+        #     cbar.set_label('relative error', fontsize=FONTSIZE, fontname=FONTNAME, color=FONTCOLOR)
+        #     plt.title(self.cycle_str, fontsize=FONTSIZE, fontname=FONTNAME, color=FONTCOLOR)
+        #     plt.savefig(os.path.join(self.work_dir, f'gdas_analysis_ocean_diags.png'),
+        #             dpi=300)
+
+        # plt.close()
                 
 def run():
     """Run the SurfaceMapper with command-line arguments.
