@@ -52,13 +52,13 @@
     [[graph]]
         # File check dependencies for each cycle point (T00, T06, T18) for the current day
         T00, T06, T18 = """
-            file_check => store_data
+            file_check => store_data => soca_diags_mapper
         """
 
         # Store data daily, only after all file checks for T00 (bg), T06, T12, T18
         # and file_check for next day T00, T06 (an) pass
         T12 = """
-            file_check => store_data
+            file_check => store_data => soca_diags_mapper
             
             file_check[-PT12H] & file_check[-PT6H] & file_check & file_check[+PT6H] &
             file_check[+PT12H] => store_data_daily_bg
@@ -106,3 +106,8 @@
 
     [[data_stored]]
         script = "echo 'all data stored'"
+
+    [[soca_diags_mapper]]
+        script = """
+            map_soca_diags.py $CYLC_TASK_CYCLE_POINT {{ ENV_PATH }}
+        """
