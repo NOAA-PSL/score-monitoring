@@ -112,25 +112,18 @@ class SurfaceMapper(object):
         soca_obs_path = pathlib.Path(self.work_dir).parent / soca_obs_dir
         soca_diag_files = list(soca_obs_path.glob('*.nc')) + list(soca_obs_path.glob('*.nc4'))
         
-        ax = plt.axes(projection=ccrs.Mercator(central_longitude=180.))
-        ax.coastlines(resolution='110m', linewidth=0.8)
-        ax.add_feature(cfeature.LAND, facecolor='lightgray', zorder=0)
-        ax.add_feature(cfeature.OCEAN, facecolor='white', zorder=0)
-        lon_grid_ints = 30
-        lat_grid_ints = 15
-        gl = ax.gridlines(draw_labels=True, linewidth=0.5, color='#A2A4A3', alpha=1.0, linestyle=':', zorder=10)
-        gl.xlocator = mticker.FixedLocator(np.arange(-180, 181, lon_grid_ints))
-        gl.ylocator = mticker.FixedLocator(np.arange(-90+lat_grid_ints, 90, lat_grid_ints))
-        gl.top_labels = False
-        gl.right_labels = False
-        gl.xlabel_style = {'fontname': FONTNAME, 'fontsize': FONTSIZE, 'color': FONTCOLOR}
-        gl.ylabel_style = {'fontname': FONTNAME, 'fontsize': FONTSIZE, 'color': FONTCOLOR}
-        
-        depth_bins = {
-            "1–10 m":   (1, 10),
-            "10–100 m": (10, 100),
-            "100+ m":   (100, np.inf),
-        }
+
+        depth_bins = [
+            ("1–10 m", (1,10)),
+            ("10–100 m", (10,100)),
+            ("100–500 m", (100,500)),
+            ("500+ m", (500,np.inf)),
+        ]
+        def nice_round(x):
+            # round up to 1 significant figure
+            exponent = np.floor(np.log10(x))
+            factor = 10**exponent
+            return np.ceil(x / factor) * factor
 
         soca_obs_exist = False
         for soca_diag_file in soca_diag_files:
@@ -138,107 +131,123 @@ class SurfaceMapper(object):
             meta_grp = rootgrp.groups['MetaData']
             ombg_grp = rootgrp.groups['ombg']
             obsvalue_grp = rootgrp.groups['ObsValue']
-            
+            effectiveQC0_grp = rootgrp.groups['EffectiveQC0']
+
             lats = meta_grp.variables['latitude'][:]
             lons = meta_grp.variables['longitude'][:]
-            depths = meta_grp.variables['depth'][:]
+            has_depth = 'depth' in meta_grp.variables
+
+            if not has_depth:
+                print(f"{soca_diag_file.name}: no depth variable → plotting surface map")
+    
+            depths = meta_grp.variables['depth'][:] if has_depth else None
+
+            valid_geo = np.isfinite(lons) & np.isfinite(lats)
             for var, ombg in ombg_grp.variables.items():
                 
-                if var=='waterTemperature':
-                    marker='o'
-                    obsvals = obsvalue_grp[var][:] + 273.15
-                else:
-                    marker = '+'
-                    obsvals = obsvalue_grp[var][:]
-                    
-                relative_errs = (-1 * ombg[:]) / obsvals
-                
-                fig, axes = plt.subplots(
-                    nrows=1, ncols=3,
-                    figsize=(18, 6),
-                    subplot_kw={"projection": ccrs.PlateCarree()},
-                    constrained_layout=True
-                )
-                # sc = ax.scatter(x=lons, y=lats, c=relative_errs, edgecolors=FONTCOLOR,
-                #                label=var, vmin=-0.025, vmax=0.025,
-                #                s=np.clip(max_size / (depths + 0.01), 5, max_size),
-                #                alpha=0.9,
-                #                transform=ccrs.PlateCarree(),
-                #                zorder=4,
-                #                cmap=cc.cm.CET_D9)
+                # obsvals = obsvalue_grp[var][:] + 273.15 if var=='waterTemperature' else obsvalue_grp[var][:]
+                ombg_vals = ombg[:]
+                effQC0_vals = effectiveQC0_grp[var][:]
+                ombg_arr = np.where(effQC0_vals==0, ombg_vals, np.nan)
 
-                ombg_arr = ombg[:]
+                # relative_errs = (-1 * ombg[:]) / obsvals
+                
+                if has_depth:
+                    fig, axes = plt.subplots(
+                        2, 2,
+                        figsize=(11, 6),
+                        subplot_kw={"projection": ccrs.PlateCarree()},
+                        constrained_layout=False 
+                    )
+                    # fig.subplots_adjust(wspace=0.05, hspace=0.15)
+                    fig.subplots_adjust(
+                        wspace=0.001,  # smaller → columns closer
+                        hspace=0.2    # larger → rows farther apart
+                    )
+                    axes_list = list(axes.flat)
+                    axes_iter = zip(axes_list, depth_bins)
+                else:
+                    fig, ax = plt.subplots(
+                        1, 1,
+                        figsize=(9, 4),
+                        subplot_kw={"projection": ccrs.PlateCarree()},
+                        constrained_layout=True
+                    )
+                    axes_list = [ax]
+                    axes_iter = [(ax, ("", (None, None)))]
 
                 sc = None
-                for ax, (label, (zmin, zmax)) in zip(axes, depth_bins.items()):
+                for ax, (label, (zmin, zmax)) in axes_iter:
 
+                    lon_grid_ints = 60
+                    lat_grid_ints = 30
                     ax.set_global()
-
-                    # Coastlines + land
                     ax.coastlines(resolution='110m', linewidth=0.8)
                     ax.add_feature(cfeature.LAND, facecolor='lightgray', zorder=0)
                     ax.add_feature(cfeature.OCEAN, facecolor='white', zorder=0)
+                    gl = ax.gridlines(draw_labels=True, linewidth=0.5, color='#A2A4A3', alpha=1.0, linestyle=':', zorder=10)
+                    gl.xlocator = mticker.FixedLocator(np.arange(-180, 181, lon_grid_ints))
+                    gl.ylocator = mticker.FixedLocator(np.arange(-90+lat_grid_ints, 90, lat_grid_ints))
+                    gl.top_labels = False
+                    gl.right_labels = False
+                    gl.xlabel_style = {'fontname': FONTNAME, 'fontsize': FONTSIZE, 'color': FONTCOLOR}
+                    gl.ylabel_style = {'fontname': FONTNAME, 'fontsize': FONTSIZE, 'color': FONTCOLOR}
 
-                    depth_mask = (
-                        (depths >= zmin) &
-                        (depths < zmax) &
-                        np.isfinite(ombg_arr) &
-                        np.isfinite(lons) &
-                        np.isfinite(lats)
-                    )
+                    if has_depth:
+                        depth_mask = (depths >= zmin) & (depths < zmax) & valid_geo
+                    else:
+                        depth_mask = valid_geo
+                    
 
                     if not np.any(depth_mask):
-                        ax.set_title(f"{label}\n(no data)")
+                        ax.set_title(f"{label}\n(no data)", pad=2)
                         continue
 
+                    ## set up colorbar range 
+                    data = ombg_arr[depth_mask]
+                    # find max absolute value
+                    abs_max = np.nanmax(np.abs(data))*0.8
+                    nice_max = nice_round(abs_max)
+                    vmin, vmax = -nice_max, nice_max
+                    
+                    ## plot
                     sc = ax.scatter(
                         lons[depth_mask],
                         lats[depth_mask],
                         c=ombg_arr[depth_mask],
                         s=10,
                         alpha=0.9,
-                        vmin=-0.025,
-                        vmax=0.025,
+                        vmin=vmin,
+                        vmax=vmax,
                         cmap=cc.cm.CET_D9,
                         transform=ccrs.PlateCarree(),
                         zorder=4
                     )
 
-                    ax.set_title(label)
+                    ax.set_title(label, pad=2)
                     soca_obs_exist = True
 
                 if sc is not None:
-                    cbar = fig.colorbar(
-                        sc,
-                        ax=axes,
-                        orientation='horizontal',
-                        pad=0.08,
-                        fraction=0.05
-                    )
-                    cbar.set_label('Obs − Background')
+                    fig.colorbar(sc, ax=axes_list if has_depth else axes_list[0],
+                    orientation='horizontal', pad=0.08, fraction=0.05).set_label('Obs − Background')
 
-                fig.suptitle(var)
+                    # cbar.set_label('effective QC flag')
+
+                fig.suptitle(var+', '+soca_diag_file.name+', '+self.datetime_str)
 
                 outfile = os.path.join(
                     self.work_dir,
-                    f"gdas_analysis_ocean_diags_{var}_3depths.png"
+                    f"gdas_analysis_ocean_diags_{soca_diag_file.name}_{'4depths' if has_depth else 'surface'}.png"
                 )
+                # outfile = os.path.join(
+                #     self.work_dir,
+                #     f"gdas_analysis_ocean_diags_effQ0_3depths.png"
+                # )
                 plt.savefig(outfile, dpi=300, bbox_inches='tight')
                 plt.close(fig)
 
             rootgrp.close()        
-        # if soca_obs_exist:
-        #     ax.legend(loc='lower left', fontsize=FONTSIZE, prop={"family":FONTNAME})
-        #     cbar = plt.colorbar(sc, ax=ax, orientation='horizontal')
-        #     cbar.ax.tick_params(labelsize=FONTSIZE, labelcolor=FONTCOLOR, labelfontfamily=FONTNAME)
-        #     for label in cbar.ax.get_yticklabels():
-        #         label.set_fontname(FONTNAME)
-        #     cbar.set_label('relative error', fontsize=FONTSIZE, fontname=FONTNAME, color=FONTCOLOR)
-        #     plt.title(self.cycle_str, fontsize=FONTSIZE, fontname=FONTNAME, color=FONTCOLOR)
-        #     plt.savefig(os.path.join(self.work_dir, f'gdas_analysis_ocean_diags.png'),
-        #             dpi=300)
 
-        # plt.close()
                 
 def run():
     """Run the SurfaceMapper with command-line arguments.
@@ -246,13 +255,19 @@ def run():
     surface_mapper = SurfaceMapper(sys.argv[1], sys.argv[2])
     
     # for plotting all diags downloaded during score-hv/score-db harvesting
-    #surface_mapper.map_soca_obs(soca_obs_dir='store_data_soca_obsfit')
+    # surface_mapper.map_soca_obs(soca_obs_dir='store_data_soca_obsfit')
     
     # for plotting diags associated with specific output
-    surface_mapper.download_output_files(['wod_t_xbt.nc',
-                                          #'sst_avhrr_n20_l3u.nc',
-                                          #'icec_amsr2_north',
-                                          #'icec_amsr2_south',
+    surface_mapper.download_output_files(['wod_t_pfl.nc',
+                                          'wod_t_gld.nc',
+                                          'wod_t_drb.nc',
+                                          'wod_t_xbt.nc',
+                                          'sst_viirs_n20_l3u.nc',
+                                          'sst_viirs_npp_l3u.nc',
+                                          'sst_avhrr_mc_l3u.nc',
+                                          'sst_avhrr_mb_l3u.nc',
+                                          'icec_amsr2_north.nc',
+                                          'icec_amsr2_south.nc',
                                           #'...'
                                           ])
     surface_mapper.map_soca_obs(soca_obs_dir='soca_diags_mapper')
