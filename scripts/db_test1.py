@@ -133,6 +133,29 @@ def put_new_experiment(name, cycle_start='1978100100', cycle_stop='2026103018',
     
     return score_db_base.handle_request(request_dict)
 
+def put_region(region_name='global', min_lat=-90., max_lat=90., east_lon=0., west_lon=360.):
+    request_dict = {
+        'db_request_name': 'region',
+        'method': 'PUT',
+        'body': {
+            'regions': [
+                {'name': region_name, 'min_lat': min_lat, 'max_lat': max_lat, 'east_lon': east_lon, 'west_lon': west_lon},
+            ]
+        }
+    }
+
+    return score_db_base.handle_request(request_dict)
+
+def put_these_regions():
+    put_region('nh', min_lat=0., max_lat=90.)
+    put_region('sh', min_lat=-90., max_lat=0.)
+    put_region('equatorial', min_lat=-5., max_lat=5.)
+    put_region('n_midlats', min_lat=30., max_lat=65.)
+    put_region('s_midlats', min_lat=-65., max_lat=-30.)
+    put_region('tropics', min_lat=-23., max_lat=23.)
+    put_region('arctic', min_lat=66., max_lat=90.)
+    put_region('antarctic', min_lat=-90., max_lat=-60.)
+
 def put_array_metric_type(name, measurement_type,
                           coordinate_labels,
                           coordinate_values,
@@ -1003,6 +1026,11 @@ def get_conventional_instruments():
                 'obs_platform': 'buoy (ATLAS)',
                 'long_name': 'ATLAS buoy'
             },
+            283: {
+                'instrument': 'radiometer (SSM/I)',
+                'obs_platform': 'satellite (DMSP)',
+                'long_name': 'Special Sensor Microwave/Imager (SSM/I) superobed (1 deg. lat/lon) neural net 3 wind speed over ocean'
+                },
             284: {
                 'instrument': 'anemometer (restricted station)',
                 'obs_platform': 'R - WMO Res 40 SYNOPS, U.S. & JMA ships',
@@ -1012,6 +1040,11 @@ def get_conventional_instruments():
                     'instrument': 'anemometer',
                     'obs_platform': 'weather station',
                     'long_name': 'Surface land wind speed (METAR) with missing station pressure'
+            },
+            285: {
+                'instrument': 'radar (Quick Scatterometer)',
+                'obs_platform': 'satellite (QuikSCAT)',
+                'long_name': 'superobed (0.5 deg. lat/lon) scatterometer winds over ocean (QuikSCAT)'
             },
             290: {
                 'instrument': 'radar (scatterometer)',
@@ -1069,13 +1102,17 @@ def get_instrument_channels():
 
 def run(request='array_metric_types'):
     #return score_db_base.handle_request(get_request_dict2(request))
-    #put_new_experiment('replay_observer_diagnostic_v1.1')
+    put_new_experiment('full_input',wall_clock_start='2026-02-13 12:00:00')
+    put_new_experiment('no_insitu',wall_clock_start='2026-02-13 12:00:00')
+    put_new_experiment('no_sst',wall_clock_start='2026-02-13 12:00:00')
+
     #put_these_sats()
     #put_these_data()
     #put_these_data2()
     #put_these_data3()
     put_whole_atm_conv_scalar_metrics()
     put_these_conventional_data()
+    #put_these_regions()
 
 def main():
     run()
