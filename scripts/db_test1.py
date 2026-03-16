@@ -776,6 +776,11 @@ def get_conventional_instruments():
                 'obs_platform': 'aircraft',
                 'long_name': 'Aircraft Communications Addressing and Reporting System [ACARS] / Meteorological Data Collection and Reporting System [MDCRS] (restricted outside of NCEP)'
             },
+            134: {
+                'instrument': 'aircraft (restricted TAMDAR)',
+                'obs_platform': 'aircraft',
+                'long_name': 'tropospheric airborne meteorological data reporting [TAMDAR] (restricted outside of NCEP)'
+            },
             135: {
                 'instrument': 'Canadian aircraft (restricted AMDAR)',
                 'obs_platform': 'aircraft',
@@ -920,6 +925,11 @@ def get_conventional_instruments():
                 'instrument': 'aircraft (restricted ACARS)',
                 'obs_platform': 'aircraft',
                 'long_name': 'Aircraft Communications Addressing and Reporting System [ACARS] / Meteorological Data Collection and Reporting System [MDCRS] (restricted outside of NCEP)'
+                },
+                234: {
+                'instrument': 'aircraft (restricted TAMDAR)',
+                'obs_platform': 'aircraft',
+                'long_name': 'tropospheric airborne meteorological data reporting [TAMDAR] (restricted outside of NCEP)'
             },
             235: {
                 'instrument': 'Canadian aircraft (restricted AMDAR)',
@@ -1036,6 +1046,12 @@ def get_conventional_instruments():
                 'obs_platform': 'R - WMO Res 40 SYNOPS, U.S. & JMA ships',
                 'long_name': 'World Meteorological Organization (WMO) Res 40 SYNOPS surface land [METAR] and U.S. & Japan Meteorological Agency (JMA) surface marine (ships) with reported station pressure (restricted outside of NCEP)'
             },
+            286: {
+                'instrument': 'radar (ERS scatterometer)',
+                'obs_platform': 'satellite (ERS)',
+                'description': 'European Space Agency (ESA) remote sensing satellite (ERS) scatterometer ocean wind measurements'
+                    },
+
             287: {
                     'instrument': 'anemometer',
                     'obs_platform': 'weather station',
@@ -1045,6 +1061,11 @@ def get_conventional_instruments():
                 'instrument': 'radar (Quick Scatterometer)',
                 'obs_platform': 'satellite (QuikSCAT)',
                 'long_name': 'superobed (0.5 deg. lat/lon) scatterometer winds over ocean (QuikSCAT)'
+            },
+            289: {
+                'instrument': 'radar (WindSat scatterometer)',
+                'obs_platform': 'satellite (Coriolis)',
+                'long_name': 'superobed (1 deg. lat/lon) scatterometer winds over ocean (WindSat/Coriolis)'
             },
             290: {
                 'instrument': 'radar (scatterometer)',
