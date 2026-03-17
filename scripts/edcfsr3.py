@@ -22,7 +22,6 @@ def edcfsr(infile, outfile):
                 elif current_obs != cc and "all" not in line:
                     current_obs = cc
                     print("the current obs changed to ", current_obs)
-                    time.sleep(2)
 
             # Fix conventional header lines
             if line[0:3].strip() == "" and "it" in line and "obs" in line and "bias" in line and "pbot" not in line:
