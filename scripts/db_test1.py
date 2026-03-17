@@ -977,6 +977,11 @@ def get_conventional_instruments():
                 'obs_platform': 'satellite (Himawari)',
                 'long_name': 'Japan Meteorological Agency imager water vapor (all levels) - cloud top & deep layer (Himawari)'
             },
+            251: {'instrument':  'radiometer (GOES - visible)',
+                'obs_platform': 'satellite (GOES)',
+                'long_name': 'National Environmental Satellite, Data, and Information Service visible cloud drift (all levels) (GOES)'
+            },
+                    }
             252: {
                 'instrument': 'radiometer / cloud imager (Himawari)',
                 'obs_platform': 'satellite (Himawari)',
