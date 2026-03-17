@@ -981,7 +981,6 @@ def get_conventional_instruments():
                 'obs_platform': 'satellite (GOES)',
                 'long_name': 'National Environmental Satellite, Data, and Information Service visible cloud drift (all levels) (GOES)'
             },
-                    }
             252: {
                 'instrument': 'radiometer / cloud imager (Himawari)',
                 'obs_platform': 'satellite (Himawari)',
@@ -1055,8 +1054,7 @@ def get_conventional_instruments():
                 'instrument': 'radar (ERS scatterometer)',
                 'obs_platform': 'satellite (ERS)',
                 'description': 'European Space Agency (ESA) remote sensing satellite (ERS) scatterometer ocean wind measurements'
-                    },
-
+            },
             287: {
                     'instrument': 'anemometer',
                     'obs_platform': 'weather station',
