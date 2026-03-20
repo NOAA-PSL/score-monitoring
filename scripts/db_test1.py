@@ -739,6 +739,10 @@ def get_conventional_instruments():
                 'obs_platform': 'bogus station pressure',
                 'long_name': 'Australian (PAOB) mean sea-level pressure bogus over ocean'
             },
+            199: {'instrument': 'pressure sensor (GEOS-IT)',
+                'obs_platform': 'unknown (GEOS-IT)',
+                'long_name': 'unknown surface pressure observation type from GEOS-IT assimilation'
+            },
             'all':{
                 'instrument': 'pressure sensor',
                 'obs_platform': 'multiple',
@@ -813,6 +817,12 @@ def get_conventional_instruments():
                 'instrument': 'thermometer (station)',
                 'obs_platform': 'weather station',
                 'long_name': 'surface land (METAR)'
+            },
+
+            '199': {
+                'instrument': 'temperature sensor (GEOS-IT)',
+                'obs_platform': 'unknown (GEOS-IT)',
+                'long_name': 'unknown temperature observation type from GEOS-IT assimilation'
             },
             
             'all': {
@@ -941,7 +951,11 @@ def get_conventional_instruments():
                 'obs_platform': 'satellite (GOES)',
                 'long_name': 'National Environmental Satellite, Data, and Information Service infrared (short-wave) cloud drift (GOES)'
             },
-
+            241: {
+                'instrument': 'radiometer / cloud imager (INSAT)',
+                'obs_platform': 'satellite (INSAT/Kalpana-1)',
+                'long_name': 'Indian National Satellite System (INSAT) infrared (long-wave) and visible cloud drift (Kalpana-1)'
+            },
             242: {
                 'instrument': 'radiometer / cloud imager (Himawari)',
                 'obs_platform': 'satellite (Himawari)',
@@ -977,7 +991,7 @@ def get_conventional_instruments():
                 'obs_platform': 'satellite (Himawari)',
                 'long_name': 'Japan Meteorological Agency imager water vapor (all levels) - cloud top & deep layer (Himawari)'
             },
-            251: {'instrument':  'radiometer (GOES - visible)',
+            251: {'instrument':  'radiometer / cloud imager (GOES - visible)',
                 'obs_platform': 'satellite (GOES)',
                 'long_name': 'National Environmental Satellite, Data, and Information Service visible cloud drift (all levels) (GOES)'
             },
@@ -1001,6 +1015,11 @@ def get_conventional_instruments():
                 'obs_platform': 'satellite (GOES)',
                 'long_name': 'National Environmental Satellite, Data, and Information Service picture triplet cloud drift (low levels) (GOES)'
                 },
+            256: {
+                'instrument': 'radiometer / water vapor imager (INSAT)',
+                'obs_platform': 'satellite (INSAT/Kalpana-1)',
+                'long_name': 'Indian National Satellite System (INSAT) imager water vapor (all levels) (Kalpana-1)'
+            },
             257: {
                 'instrument': 'radiometer (MODIS/POES)',
                 'obs_platform': 'satellite (Aqua, Terra)',
@@ -1074,6 +1093,11 @@ def get_conventional_instruments():
                 'instrument': 'radar (scatterometer)',
                 'obs_platform': 'Advanced Scatterometer (ASCAT)',
                 'long_name': 'non-superobed scatterometer winds over ocean (ASCAT)'
+            },
+            '299': {
+                'instrument': 'wind velocity detector (GEOS-IT)',
+                'obs_platform': 'unknown (GEOS-IT)',
+                'long_name': 'unknown wind velocity observation type from GEOS-IT assimilation'
             },
             'all': {
                 'instrument': 'wind velocity detector',
