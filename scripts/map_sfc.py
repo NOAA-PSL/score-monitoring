@@ -343,9 +343,9 @@ class SurfaceMapper(object):
         for file_path in self.rgr_file_path:
             with Dataset(file_path) as ds:
                 time = ds.variables[time_var]
-                time_dt = cftime.num2pydate(time[0], units=time.units, calendar=time.calendar)
+                time_dt = cftime.num2date(time[0], units=time.units, calendar=time.calendar)
 
-            if time_dt == self.initial_cycle_point_datetime_obj or not os.path.exists(total_file_path):
+            if time_dt.strftime("%Y%m%dT%H") == self.initial_cycle_point_datetime_obj.strftime("%Y%m%dT%H") or not os.path.exists(total_file_path):
                 shutil.copy(file_path, total_file_path)
             else:
                 with Dataset(file_path) as src, Dataset(total_file_path, 'r+') as dst:
@@ -448,13 +448,11 @@ class SurfaceMapper(object):
         for file_path in self.rgr_file_path:
             rootgrp = Dataset(file_path)
             time = rootgrp.variables['time']
-            time_dt = cftime.num2pydate(time[0],
+            time_dt = cftime.num2date(time[0],
                                         units=time.units,
                                         calendar=time.calendar)
-            time_str = datetime.strftime(time_dt,
-                                         "%Y%m%dT%H")
-            time_label = datetime.strftime(time_dt,
-                                           "%Y-%m-%d %H:%M:%S")
+            time_str = time_dt.strftime("%Y%m%dT%H")
+            time_label = time_dt.strftime("%Y-%m-%d %H:%M:%S")
             
             lon = rootgrp.variables[self.lon_var][:]
             lat = rootgrp.variables[self.lat_var][:]
@@ -682,13 +680,11 @@ class SurfaceMapper(object):
             rootgrp = Dataset(file_path)
             
             time = rootgrp.variables['time']
-            time_dt = cftime.num2pydate(time[0],
+            time_dt = cftime.num2date(time[0],
                                         units=time.units,
                                         calendar=time.calendar)
-            time_str = datetime.strftime(time_dt,
-                                         "%Y%m%dT%H")
-            time_label = datetime.strftime(time_dt,
-                                           "%Y-%m-%d %H:%M:%S")
+            time_str = time_dt.strftime("%Y%m%dT%H")
+            time_label = time_dt.strftime("%Y-%m-%d %H:%M:%S")
             
             lon = rootgrp.variables[self.lon_var][:]
             lat = rootgrp.variables[self.lat_var][:]
