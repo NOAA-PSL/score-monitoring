@@ -30,6 +30,7 @@ import colorcet as cc
 
 NETCDF_FILL_VALUE = 9.969209968386869e+36
 
+MEAN_SLP = 101325 # Pa
 EARTH_RADIUS = 6.37 * 10**6 # meters
 SHARE_DATA_FILE = 'fv3sfc.nc'
 
@@ -89,12 +90,10 @@ def generate_file4ncremap(inputfilename, outputfilename):
         stdev = main_ds["cdr_seaice_conc_stdev"]
         fill_value = conc.attrs.get("_FillValue", NETCDF_FILL_VALUE)
 
-        if False:
-            # Apply threshold rules
-            ext = xr.where(conc - 2 * stdev > 0.15, 1.0,
-                  xr.where(conc + 2 * stdev < 0.15, 0.0, conc))
-        else:
-            ext = conc
+        # Apply threshold rules
+        ext = xr.where(conc - 2 * stdev > 0.15, 1.0,
+                       xr.where(conc + 2 * stdev < 0.15, 0.0, conc))
+
         # Mask out non-open-ocean (surface_type_mask != 50)
         ext = ext.where(mask < 150)
 
@@ -262,6 +261,9 @@ class SurfaceMapper(object):
                            fv3cstoa_sw_ave_var = 'csusftoa',
                            fv3toa_lw_ave_var = 'ulwrf_avetoa',
                            fv3toa_sw_ave_var = 'uswrf_avetoa',
+                           fv3pwv_var = 'pwat',
+                           fv3lhtfl_var = 'lhtfl_ave',
+                           fv3pressfc_var = 'pressfc',
                            ):
         """Regrid and clean downloaded NetCDF surface files using `ncremap`.
 
@@ -282,6 +284,9 @@ class SurfaceMapper(object):
         self.land_mask = fv3atm_land_mask
         self.icec = fv3atm_icec_var
         self.icetk = fv3atm_icetk_var
+        self.pwv_var = fv3pwv_var
+        self.lhtfl_var = fv3lhtfl_var
+        self.pressfc_var = fv3pressfc_var
         
         # top of atmosphere variables
         self.lw_ave_var_cstoa = fv3cstoa_lw_ave_var
@@ -298,7 +303,7 @@ class SurfaceMapper(object):
             self.rgr_file_path_icec.append(f"{base}_rgr_icec{ext}")
             
             if self.integrate:
-                cmd = f'ncremap -v {self.lw_var},{self.sw_var},{self.lw_ave_var},{self.sw_ave_var},{self.land_mask},{self.lw_ave_var_cstoa},{self.sw_ave_var_cstoa},{self.lw_ave_var_toa},{self.sw_ave_var_toa} -R "--rgr lat_nm_in={self.lat_var} --rgr lon_nm_in={self.lon_var}" -d {file_path} {file_path} {self.rgr_file_path[file_path_idx]}'
+                cmd = f'ncremap -v {self.lhtfl_var},{self.pressfc_var},{self.pwv_var},{self.lw_var},{self.sw_var},{self.lw_ave_var},{self.sw_ave_var},{self.land_mask},{self.lw_ave_var_cstoa},{self.sw_ave_var_cstoa},{self.lw_ave_var_toa},{self.sw_ave_var_toa} -R "--rgr lat_nm_in={self.lat_var} --rgr lon_nm_in={self.lon_var}" -d {file_path} {file_path} {self.rgr_file_path[file_path_idx]}'
             else:
                 cmd = f'ncremap -v {self.lw_var},{self.sw_var},{self.land_mask} -R "--rgr lat_nm_in={self.lat_var} --rgr lon_nm_in={self.lon_var}" -d {file_path} {file_path} {self.rgr_file_path[file_path_idx]}'
             
@@ -353,7 +358,11 @@ class SurfaceMapper(object):
                         dst.variables[var_name][:] += src.variables[var_name][:]
 
     def map_surface(self, lon, lat, sw_vals, sw_max_val, sw_dark_vals, lw_vals,
-                    sea_ice = False):
+                    sea_ice = False, surface_contours=True,
+                    projection=ccrs.Mercator(central_longitude=180.,
+                                                   #min_latitude=-70.,
+                                                   #max_latitude=70.
+                                                   )):
         """Render a surface radiation plot with shortwave and longwave components.
 
         Args:
@@ -380,18 +389,14 @@ class SurfaceMapper(object):
             lat_grid_ints = 5
         
         else:
-            ax_global = plt.axes(projection=ccrs.Mercator(central_longitude=180.,
-                                                   #min_latitude=-70.,
-                                                   #max_latitude=70.
-                                                   )
-                                                   )
+            ax_global = plt.axes(projection=projection)
             ax_list = [ax_global]
             
             lon_grid_ints = 30
             lat_grid_ints = 15
         
         for ax in ax_list:
-            gl = ax.gridlines(draw_labels=True, linewidth=0.5, color='#A2A4A3', alpha=1.0, linestyle=':')
+            gl = ax.gridlines(draw_labels=True, linewidth=0.5, color='#A2A4A3', alpha=1.0, linestyle=':', zorder=10)
             gl.xlocator = mticker.FixedLocator(np.arange(-180, 181, lon_grid_ints))
             gl.ylocator = mticker.FixedLocator(np.arange(-90+lat_grid_ints, 90, lat_grid_ints))
             gl.top_labels = False
@@ -436,6 +441,10 @@ class SurfaceMapper(object):
                           zorder=3,
                           transform=ccrs.PlateCarree()
             )
+            if surface_contours:
+                ax.contour(lon, lat, self.pressfc_data,
+                           levels = np.exp(np.linspace(np.log(MEAN_SLP/2), np.log(MEAN_SLP), 6)),
+                           color='#565A5C', linewidth=0.5, alpha=1., zorder=5)
         
         if sea_ice:
             return ax_list
@@ -472,6 +481,7 @@ class SurfaceMapper(object):
                                               sw_vals)
             np.ma.masked_where(sw_dark_vals == 0, sw_dark_vals, copy=False)
         
+            self.pressfc_data = rootgrp.variables[self.pressfc_var][0,:,:]
             ax = self.map_surface(lon, lat, sw_vals, sw_max_val, sw_dark_vals, lw_vals)
             
             sw_vals_sea = np.ma.masked_where(land_mask != 0, sw_vals)
@@ -569,7 +579,8 @@ class SurfaceMapper(object):
     
         rootgrp.close()
     
-    def view_toa_ave(self, clearsky=False, return_ax=False, sea_ice=False):
+    def view_toa_ave(self, clearsky=False, return_ax=False, sea_ice=False,
+                     projection=ccrs.Mercator(central_longitude=180.)):
         """Generate and save a plot of the accumulated average TOA radiation.
         """
         rootgrp = Dataset(os.path.join(self.share_dir, SHARE_DATA_FILE))
@@ -598,7 +609,8 @@ class SurfaceMapper(object):
                                               sw_ave_vals)
         np.ma.masked_where(sw_ave_dark_vals == 0, sw_ave_dark_vals, copy=False)
     
-        ax = self.map_surface(lon, lat, sw_ave_vals, sw_ave_max_val, sw_ave_dark_vals, lw_ave_vals, sea_ice=sea_ice)
+        ax = self.map_surface(lon, lat, sw_ave_vals, sw_ave_max_val, sw_ave_dark_vals, lw_ave_vals, sea_ice=sea_ice,
+                              projection=projection, surface_contours=False)
         
         rootgrp.close()
             
@@ -611,6 +623,119 @@ class SurfaceMapper(object):
                         dpi=300)
             plt.close()
         
+    def map_pwv(self):
+        """
+        """
+        for file_path in self.rgr_file_path:
+            rootgrp = Dataset(file_path)
+            time = rootgrp.variables['time']
+            time_dt = cftime.num2pydate(time[0],
+                                        units=time.units,
+                                        calendar=time.calendar)
+            time_str = datetime.strftime(time_dt,
+                                         "%Y%m%dT%H")
+            time_label = datetime.strftime(time_dt,
+                                           "%Y-%m-%d %H:%M:%S")
+            
+            lon = rootgrp.variables[self.lon_var][:]
+            lat = rootgrp.variables[self.lat_var][:]
+            
+            lw_vals = (EARTH_RADIUS**2 * rootgrp.variables['area'][:] *
+                          rootgrp.variables[self.lw_var][0,:,:])
+            lw_max_val = np.ma.max(lw_vals)
+            
+            sw_vals = (EARTH_RADIUS**2 * rootgrp.variables['area'][:] *
+                       rootgrp.variables[self.sw_var][0,:,:])
+                       
+            sw_max_val = np.ma.max(sw_vals)
+            
+            sw_dark_vals = np.ma.masked_where(sw_vals > 0.0005 * sw_max_val,
+                                              sw_vals)
+            np.ma.masked_where(sw_dark_vals == 0, sw_dark_vals, copy=False)
+        
+            ax = self.view_toa_ave(clearsky=True, return_ax=True,
+                                   projection=
+                                      ccrs.EqualEarth(
+                                          central_longitude=180.0, globe=None))
+            
+            pwv = rootgrp.variables[self.pwv_var][0,:,:]
+            lhtfl = rootgrp.variables[self.lhtfl_var][0,:,:]
+            np.ma.masked_where(pwv < 15, pwv, copy=False)
+            np.ma.masked_where(lhtfl < 45, lhtfl, copy=False)
+            
+            # Plot PWV
+            pcm = ax.pcolormesh(
+                lon,
+                lat,
+                pwv,
+                cmap=cc.cm.CET_R3,
+                vmin=15,
+                vmax=60,
+                shading='nearest',
+                rasterized=True,
+                antialiased=False,
+                zorder=9,
+                transform=ccrs.PlateCarree()
+            )
+
+            # Add colorbar
+            fig = ax.get_figure()
+            cbar = fig.colorbar(
+                pcm,
+                ax=ax,
+                orientation='horizontal',
+                #pad=0.02,
+                #shrink=0.85
+            )
+            cbar.set_label('precipitable water vapor (mm)', fontsize=FONTSIZE, fontname=FONTNAME, color=FONTCOLOR)
+            cbar.set_ticks(np.arange(15, 61, 5))
+            cbar.ax.tick_params(labelsize=FONTSIZE, labelfontfamily=FONTNAME, color=FONTCOLOR)
+            
+            plt.title(time_label, fontsize=FONTSIZE, fontname=FONTNAME, color=FONTCOLOR)
+            plt.savefig(os.path.join(self.work_dir, f'fv3pwv_{time_str}.png'),
+                        dpi=300)
+            plt.close()
+            
+            # Plot latent heat flux
+            ax = self.view_toa_ave(clearsky=True, return_ax=True,
+                                   projection=
+                                      ccrs.EqualEarth(
+                                          central_longitude=180.0, globe=None))
+            
+            pcm = ax.pcolormesh(
+                lon,
+                lat,
+                lhtfl,
+                cmap=cc.cm.CET_CBTL1_r,
+                vmin=50,
+                vmax=300,
+                shading='nearest',
+                rasterized=True,
+                antialiased=False,
+                zorder=4,
+                transform=ccrs.PlateCarree()
+            )
+
+            # Add colorbar
+            fig = ax.get_figure()
+            cbar = fig.colorbar(
+                pcm,
+                ax=ax,
+                orientation='horizontal',
+                #pad=0.02,
+                #shrink=0.85
+            )
+            cbar.set_label('surface latent heat flux (W/m^2)', fontsize=FONTSIZE, fontname=FONTNAME, color=FONTCOLOR)
+            cbar.set_ticks(np.arange(50, 301, 50))
+            cbar.ax.tick_params(labelsize=FONTSIZE, labelfontfamily=FONTNAME, color=FONTCOLOR)
+            
+            plt.title(time_label, fontsize=FONTSIZE, fontname=FONTNAME, color=FONTCOLOR)
+            plt.savefig(os.path.join(self.work_dir, f'fv3slhf_{time_str}.png'),
+                        dpi=300)
+            plt.close()
+        
+            rootgrp.close()
+
     def map_soca_obs(self, soca_obs_dir='store_data_soca_obsfit', max_size=100):
         """
         """
@@ -821,17 +946,12 @@ class SurfaceMapper(object):
             sic_cdr_masked
         )
         """
-
-        if False:
+        if not model_only and not cdr_only:
             # 3. Replace elements of both fields with 1 where both > 0.15
             both_ice = (sic_model_masked > 0.15) & (sic_cdr_masked > 0.15)
             sic_cdr_fixed   = np.ma.where(both_ice, 1.0, sic_cdr_masked)
             sic_model_fixed = np.ma.where(both_ice, 1.0, sic_model_masked)
-        else:
-            sic_cdr_fixed = sic_cdr_masked
-            sic_model_fixed = sic_model_masked
-
-        if not model_only and not cdr_only:
+            
             # 4. Compute difference (SIC)
             hemi_sie_diff = np.ma.masked_where(sic_model_fixed.mask | sic_cdr_fixed.mask,
                                            sic_model_fixed - sic_cdr_fixed)
@@ -842,8 +962,8 @@ class SurfaceMapper(object):
                 lat,
                 hemi_sie_diff,
                 cmap=cc.cm.CET_D1A,
-                vmin=-0.15,
-                vmax=0.15,
+                vmin=-0.5,
+                vmax=0.5,
                 shading='nearest',
                 rasterized=True,
                 antialiased=False,
@@ -854,11 +974,13 @@ class SurfaceMapper(object):
 
             # 6. Colorbar
             cbar = plt.colorbar(pmesh, ax=ax)
-            cbar.set_ticks(np.arange(-0.15, 0.151, 0.05))
+            cbar.set_ticks(np.arange(-0.5, 0.51, 0.1))
             cbar.ax.tick_params(labelsize=FONTSIZE, labelcolor=FONTCOLOR)
             cbar.set_label('Fractional error', fontsize=FONTSIZE,
                            fontname=FONTNAME, color=FONTCOLOR)
         else:
+            sic_cdr_fixed = sic_cdr_masked
+            sic_model_fixed = sic_model_masked
             if model_only:
                 to_plot = sic_model_fixed
             elif cdr_only:
