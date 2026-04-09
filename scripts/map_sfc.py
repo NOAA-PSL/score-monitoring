@@ -629,13 +629,11 @@ class SurfaceMapper(object):
         for file_path in self.rgr_file_path:
             rootgrp = Dataset(file_path)
             time = rootgrp.variables['time']
-            time_dt = cftime.num2pydate(time[0],
+            time_dt = cftime.num2date(time[0],
                                         units=time.units,
                                         calendar=time.calendar)
-            time_str = datetime.strftime(time_dt,
-                                         "%Y%m%dT%H")
-            time_label = datetime.strftime(time_dt,
-                                           "%Y-%m-%d %H:%M:%S")
+            time_str = time_dt.strftime("%Y%m%dT%H")
+            time_label = time_dt.strftime("%Y-%m-%d %H:%M:%S")
             
             lon = rootgrp.variables[self.lon_var][:]
             lat = rootgrp.variables[self.lat_var][:]
