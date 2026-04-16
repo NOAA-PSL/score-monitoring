@@ -852,6 +852,11 @@ def get_conventional_instruments():
                 'obs_platform': 'aircraft',
                 'long_name': 'Aircraft Communications Addressing and Reporting System [ACARS] / Meteorological Data Collection and Reporting System [MDCRS] (restricted outside of NCEP)'
             },
+            134: {
+                'instrument': 'aircraft (restricted TAMDAR)',
+                'obs_platform': 'aircraft',
+                'long_name': 'tropospheric airborne meteorological data reporting [TAMDAR] (restricted outside of NCEP)'
+            },
             180: {
                 'instrument': 'hygrometer (restricted ship)',
                 'obs_platform': 'R - U.S. & JMA ships',
@@ -911,11 +916,19 @@ def get_conventional_instruments():
                 'obs_platform': 'NEXRAD',
                 'long_name': 'Next Generation Weather Radar (NEXRAD) Vertical Azimuth Display (VAD) from Radar Coded Message'
             },
+            
+            228: {
+                'instrument': 'wind profiler radar (JMA)',
+                'obs_platform': 'JMA WInd profiler Network and Data Acquisition System ',
+                'long_name': 'wind profiler radar from the Japan Meteorological Agency (JMA) WInd profiler Network and Data Acquisition System (WINDAS)'
+            },
+            
             229: {
                 'instrument': 'wind profiler radar',
                 'obs_platform': 'pilot balloon',
                 'long_name': 'wind profiler radar decoded from pilot balloon bulletins'
             },
+
             230: {
                 'instrument': 'aircraft (PIREP)',
                 'obs_platform': 'aircraft',
@@ -1153,13 +1166,18 @@ def run(request='array_metric_types'):
     put_new_experiment('full_input',wall_clock_start='2026-02-13 12:00:00')
     put_new_experiment('no_insitu',wall_clock_start='2026-02-13 12:00:00')
     put_new_experiment('no_sst',wall_clock_start='2026-02-13 12:00:00')
-
+    put_new_experiment('3dvar_coupledreanl_scoutrun_v2', cycle_start='1978100100', cycle_stop='2026093018',
+                       owner_id='Adam.Schneider', group_id='gsienkf',
+                       experiment_type='weakly_coupled_scout_run',
+                       wall_clock_start='2026-04-15 12:00:00',
+                       wall_clock_end='2026-10-01 00:00:00',
+                       description=None)
     #put_these_sats()
     #put_these_data()
     #put_these_data2()
     #put_these_data3()
-    put_whole_atm_conv_scalar_metrics()
-    put_these_conventional_data()
+    #put_whole_atm_conv_scalar_metrics()
+    #put_these_conventional_data()
     #put_these_regions()
 
 def main():
