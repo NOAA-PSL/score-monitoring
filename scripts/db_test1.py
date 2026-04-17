@@ -966,6 +966,11 @@ def get_conventional_instruments():
                 'obs_platform': 'aircraft',
                 'long_name': 'Canadian aircraft meteorological data relay [AMDAR] (restricted outside of NCEP)'
             },
+            236: {
+                'instrument': 'unknown wind velocity detector (236)',
+                'obs_platform': 'unknown',
+                'long_name': 'unknown wind velocity observation type from scout run (2023) assimilation'
+            },
             240: {
                 'instrument': 'radiometer (GOES - short-wave)',
                 'obs_platform': 'satellite (GOES)',
