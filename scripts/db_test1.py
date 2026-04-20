@@ -713,6 +713,11 @@ def get_conventional_instruments():
                 'obs_platform': 'dropsonde',
                 'long_name': 'flight-level reconnaissance and profile dropsonde'
             },
+            136: {
+                'instrument': 'unknown pressure sensor (136)',
+                'obs_platform': 'unknown',
+                'long_name': 'unknown pressure observation type from scout run (2023) assimilation'
+            },
             180: {
                 'instrument': 'barometer (restricted ship)',
                 'obs_platform': 'R - U.S. & JMA ships',
@@ -797,6 +802,11 @@ def get_conventional_instruments():
                 'obs_platform': 'aircraft',
                 'long_name': 'Canadian aircraft meteorological data relay [AMDAR] (restricted outside of NCEP)'
             },
+            136: {
+                'instrument': 'unknown temperature sensor (136)',
+                'obs_platform': 'unknown',
+                'long_name': 'unknown temperature observation type from scout run (2023) assimilation'
+            },
             180: {
                 'instrument': 'thermometer (restricted ship)',
                 'obs_platform': 'R - U.S. & JMA ships',
@@ -863,6 +873,11 @@ def get_conventional_instruments():
                 'instrument': 'aircraft (restricted TAMDAR)',
                 'obs_platform': 'aircraft',
                 'long_name': 'tropospheric airborne meteorological data reporting [TAMDAR] (restricted outside of NCEP)'
+            },
+            136: {
+                'instrument': 'unknown humidity sensor (136)',
+                'obs_platform': 'unknown',
+                'long_name': 'unknown humidity observation type from scout run (2023) assimilation'
             },
             180: {
                 'instrument': 'hygrometer (restricted ship)',
