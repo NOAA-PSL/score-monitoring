@@ -1201,12 +1201,12 @@ def run(request='array_metric_types'):
     #                   wall_clock_start='2026-04-15 12:00:00',
     #                   wall_clock_end='2026-10-01 00:00:00',
     #                   description=None)
-    put_these_sats()
-    put_these_data()
-    put_these_data2()
+    #put_these_sats()
+    #put_these_data()
+    #put_these_data2()
     #put_these_data3()
-    #put_whole_atm_conv_scalar_metrics()
-    #put_these_conventional_data()
+    put_whole_atm_conv_scalar_metrics()
+    put_these_conventional_data()
     #put_these_regions()
 
 def main():
