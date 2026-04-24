@@ -354,7 +354,7 @@ class SurfaceMapper(object):
             time_var (str): Name of the time variable in the NetCDF file.
         """
         for file_path in self.rgr_file_path:
-            with Dataset(file_path) as ds:
+            with Dataset(file_path, 'r+') as ds:
                 time = ds.variables[time_var]
                 time_dt = cftime.num2date(time[0], units=time.units, calendar=time.calendar)
 
@@ -366,21 +366,31 @@ class SurfaceMapper(object):
                                     ["ncks", "-v", var_name, "--mk_rec_dmn", time_var, file_path, append_file_path],
                                     check=True
                                 )
+                
                 else:
                     shutil.copy(file_path, self.total_file_path)
                 
             else:
                 if append:
+                    units_corr = self.initial_cycle_point_datetime_obj.strftime("hours since %Y-%m-%d %H:%M:%S")
+                    time_corr = cftime.date2num(time_dt, units=units_corr, calendar=time.calendar)
+                    time_dt[0] = time_corr
+                    time.units = units_corr
+                    
                     for var_name in var_list:
                         append_file_path = os.path.join(self.share_dir, f"{var_name}_{APPEND_FILE_BASE}")
                         subprocess.run(
                             ["ncrcat", "-O", append_file_path, file_path, append_file_path],
                             check=True
                         )
+                        
                 else:
-                    with Dataset(file_path) as src, Dataset(self.total_file_path, 'r+') as dst:
+                    with Dataset(self.total_file_path, 'r+') as dst:
                         for var_name in var_list:
-                            dst.variables[var_name][:] += src.variables[var_name][:]
+                            dst.variables[var_name][:] += ds.variables[var_name][:]
+                            
+            if append:
+                os.remove(file_path)
 
     def map_surface(self, lon, lat, sw_vals, sw_max_val, sw_dark_vals, lw_vals,
                     sea_ice = False, surface_contours=True, use_albedo=False, albedo_vals=None,
@@ -436,7 +446,7 @@ class SurfaceMapper(object):
                               #cmap=cc.cm.CET_CBL3,
                               cmap=cc.cm.CET_L1,
                               vmin=0,
-                              vmax=1,
+                              vmax=0.9,
                               shading='nearest',
                               rasterized=True,
                               antialiased=False,
@@ -1075,7 +1085,7 @@ class SurfaceMapper(object):
 
         return pmesh
                 
-def run(append=False):
+def run(append=True):
     """Run the SurfaceMapper with command-line arguments.
     """
     surface_mapper = SurfaceMapper(sys.argv[1], sys.argv[2])
