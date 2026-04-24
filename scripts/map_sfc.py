@@ -1100,8 +1100,8 @@ def run(append=True):
     
     if append:
         surface_mapper.update_running_total_file(var_list=[
-                                           self.pwv_var,
-                                           self.lhtfl_var,
+                                           surface_mapper.pwv_var,
+                                           surface_mapper.lhtfl_var,
                                        ],
                                        time_var='time',
                                        append=True)
