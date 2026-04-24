@@ -358,36 +358,36 @@ class SurfaceMapper(object):
                 time = ds.variables[time_var]
                 time_dt = cftime.num2date(time[0], units=time.units, calendar=time.calendar)
 
-            if time_dt.strftime("%Y%m%dT%H") == self.initial_cycle_point_datetime_obj.strftime("%Y%m%dT%H"):
-                if append:
-                    for var_name in var_list:
-                        append_file_path = os.path.join(self.share_dir, f"{var_name}_{APPEND_FILE_BASE}")
-                        subprocess.run(
-                                    ["ncks", "-v", var_name, "--mk_rec_dmn", time_var, file_path, append_file_path],
-                                    check=True
-                                )
-                
-                else:
-                    shutil.copy(file_path, self.total_file_path)
-                
-            else:
-                if append:
-                    units_corr = self.initial_cycle_point_datetime_obj.strftime("hours since %Y-%m-%d %H:%M:%S")
-                    time_corr = cftime.date2num(time_dt, units=units_corr, calendar=time.calendar)
-                    time_dt[0] = time_corr
-                    time.units = units_corr
-                    
-                    for var_name in var_list:
-                        append_file_path = os.path.join(self.share_dir, f"{var_name}_{APPEND_FILE_BASE}")
-                        subprocess.run(
-                            ["ncrcat", "-O", append_file_path, file_path, append_file_path],
-                            check=True
-                        )
-                        
-                else:
-                    with Dataset(self.total_file_path, 'r+') as dst:
+                if time_dt.strftime("%Y%m%dT%H") == self.initial_cycle_point_datetime_obj.strftime("%Y%m%dT%H"):
+                    if append:
                         for var_name in var_list:
-                            dst.variables[var_name][:] += ds.variables[var_name][:]
+                            append_file_path = os.path.join(self.share_dir, f"{var_name}_{APPEND_FILE_BASE}")
+                            subprocess.run(
+                                        ["ncks", "-v", var_name, "--mk_rec_dmn", time_var, file_path, append_file_path],
+                                        check=True
+                                    )
+                
+                    else:
+                        shutil.copy(file_path, self.total_file_path)
+                
+                else:
+                    if append:
+                        units_corr = self.initial_cycle_point_datetime_obj.strftime("hours since %Y-%m-%d %H:%M:%S")
+                        time_corr = cftime.date2num(time_dt, units=units_corr, calendar=time.calendar)
+                        time[0] = time_corr
+                        time.units = units_corr
+                    
+                        for var_name in var_list:
+                            append_file_path = os.path.join(self.share_dir, f"{var_name}_{APPEND_FILE_BASE}")
+                            subprocess.run(
+                                ["ncrcat", "-O", append_file_path, file_path, append_file_path],
+                                check=True
+                            )
+                        
+                    else:
+                        with Dataset(self.total_file_path, 'r+') as dst:
+                            for var_name in var_list:
+                                dst.variables[var_name][:] += ds.variables[var_name][:]
                             
             if append:
                 os.remove(file_path)
