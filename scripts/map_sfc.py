@@ -145,6 +145,7 @@ class SurfaceMapper(object):
         self.total_file_path = os.path.join(self.share_dir, SHARE_DATA_FILE)
         if self.integrate:
             self.update_running_total_file(var_list=[self.sw_ave_var,
+                                                     self.swd_ave_var,
                                                      self.lw_ave_var,
                                                      self.lw_ave_var_cstoa,
                                                      self.sw_ave_var_cstoa,
@@ -268,7 +269,7 @@ class SurfaceMapper(object):
                            fv3pwv_var = 'pwat',
                            fv3lhtfl_var = 'lhtfl_ave',
                            fv3pressfc_var = 'pressfc',
-                           fv3albedo_var = 'albdo_ave'
+                           fv3atm_swd_ave_var = 'dswrf_ave'
                            ):
         """Regrid and clean downloaded NetCDF surface files using `ncremap`.
 
@@ -292,7 +293,7 @@ class SurfaceMapper(object):
         self.pwv_var = fv3pwv_var
         self.lhtfl_var = fv3lhtfl_var
         self.pressfc_var = fv3pressfc_var
-        self.albedo_var = fv3albedo_var
+        self.swd_ave_var = fv3atm_swd_ave_var
         
         # top of atmosphere variables
         self.lw_ave_var_cstoa = fv3cstoa_lw_ave_var
@@ -309,7 +310,7 @@ class SurfaceMapper(object):
             self.rgr_file_path_icec.append(f"{base}_rgr_icec{ext}")
             
             if self.integrate:
-                cmd = f'ncremap -v {self.albedo_var},{self.lhtfl_var},{self.pressfc_var},{self.pwv_var},{self.lw_var},{self.sw_var},{self.lw_ave_var},{self.sw_ave_var},{self.land_mask},{self.lw_ave_var_cstoa},{self.sw_ave_var_cstoa},{self.lw_ave_var_toa},{self.sw_ave_var_toa} -R "--rgr lat_nm_in={self.lat_var} --rgr lon_nm_in={self.lon_var}" -d {file_path} {file_path} {self.rgr_file_path[file_path_idx]}'
+                cmd = f'ncremap -v {self.swd_ave_var},{self.lhtfl_var},{self.pressfc_var},{self.pwv_var},{self.lw_var},{self.sw_var},{self.lw_ave_var},{self.sw_ave_var},{self.land_mask},{self.lw_ave_var_cstoa},{self.sw_ave_var_cstoa},{self.lw_ave_var_toa},{self.sw_ave_var_toa} -R "--rgr lat_nm_in={self.lat_var} --rgr lon_nm_in={self.lon_var}" -d {file_path} {file_path} {self.rgr_file_path[file_path_idx]}'
             else:
                 cmd = f'ncremap -v {self.lw_var},{self.sw_var},{self.land_mask} -R "--rgr lat_nm_in={self.lat_var} --rgr lon_nm_in={self.lon_var}" -d {file_path} {file_path} {self.rgr_file_path[file_path_idx]}'
             
@@ -431,7 +432,7 @@ class SurfaceMapper(object):
             if use_albedo:
                 ax.pcolormesh(lon,
                               lat,
-                              albedo_vals,
+                              albedo_vals.filled(0),
                               #cmap=cc.cm.CET_CBL3,
                               cmap=cc.cm.CET_L1,
                               vmin=0,
@@ -664,33 +665,28 @@ class SurfaceMapper(object):
                         dpi=300)
             plt.close()
             
-    def view_sfc_albedo(self, file_path, return_ax=False, sea_ice=False,
+    def view_sfc_albedo(self, return_ax=False, sea_ice=False,
                      projection=ccrs.Mercator(central_longitude=180.)):
         """Generate and save a plot of the accumulated average TOA radiation.
         """
-        rootgrp = Dataset(file_path)
-        time = rootgrp.variables['time']
-        time_dt = cftime.num2date(time[0],
-                                    units=time.units,
-                                    calendar=time.calendar)
-        time_str = time_dt.strftime("%Y%m%dT%H")
-        time_label = time_dt.strftime("%Y-%m-%d %H:%M:%S")
+        rootgrp = Dataset(os.path.join(self.share_dir, SHARE_DATA_FILE))
         
         lon = rootgrp.variables[self.lon_var][:]
         lat = rootgrp.variables[self.lat_var][:]
-        albedo_vals = rootgrp.variables[self.albedo_var][0,:,:]
+        albedo_vals = rootgrp.variables[self.sw_ave_var][0,:,:] / rootgrp.variables[self.swd_ave_var][0,:,:]
     
         ax = self.map_surface(lon, lat, None, None, None, None, sea_ice=sea_ice,
                               use_albedo=True, albedo_vals=albedo_vals,
-                              projection=projection, surface_contours=True)
+                              projection=projection, surface_contours=False)
         
         rootgrp.close()
             
         if return_ax:
             return ax
         else:
-            plt.title(time_label, fontsize=FONTSIZE, fontname=FONTNAME, color=FONTCOLOR)
-            plt.savefig(os.path.join(self.work_dir, f'fv3sfc_albedo_{time_str}.png'),
+            plt.title(f'start: {self.initial_cycle_point_str}; end: {self.cycle_str}',
+                  fontsize=FONTSIZE, fontname=FONTNAME, color=FONTCOLOR)
+            plt.savefig(os.path.join(self.share_dir, f'fv3sfc_albedo.png'),
                         dpi=300)
             plt.close()
         
@@ -722,7 +718,7 @@ class SurfaceMapper(object):
                                               sw_vals)
             np.ma.masked_where(sw_dark_vals == 0, sw_dark_vals, copy=False)
         
-            ax = self.view_sfc_albedo(file_path, return_ax=True,
+            ax = self.view_sfc_albedo(return_ax=True,
                                    projection=
                                       ccrs.EqualEarth(
                                           central_longitude=180.0, globe=None))
@@ -887,9 +883,9 @@ class SurfaceMapper(object):
             sic_model = np.ma.masked_where(rootgrp.variables[self.land_mask][0,:,:] == 1,
                                            rootgrp.variables[self.icec][0,:,:])
             
-            ax_list = self.view_sfc_albedo(file_path, return_ax=True, sea_ice=True)
-            ax_list_model = self.view_sfc_albedo(file_path, return_ax=True, sea_ice=True)
-            ax_list_cdr = self.view_sfc_albedo(file_path, return_ax=True, sea_ice=True)
+            ax_list = self.view_sfc_albedo(return_ax=True, sea_ice=True)
+            ax_list_model = self.view_sfc_albedo(return_ax=True, sea_ice=True)
+            ax_list_cdr = self.view_sfc_albedo(return_ax=True, sea_ice=True)
 
             plt.sca(ax_list[0])
             if self.do_nh_sea_ice:
