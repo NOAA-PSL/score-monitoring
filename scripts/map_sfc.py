@@ -762,7 +762,7 @@ class SurfaceMapper(object):
             plt.close()
             
             # Plot latent heat flux
-            ax = self.view_sfc_albedo(file_path, return_ax=True,
+            ax = self.view_sfc_albedo(return_ax=True,
                                    projection=
                                       ccrs.EqualEarth(
                                           central_longitude=180.0, globe=None))
