@@ -376,22 +376,23 @@ class SurfaceMapper(object):
                             for var_name in var_list:
                                 dest.variables[var_name][:] += ds.variables[var_name][:]
                             
-            for var_name in var_list:
-                append_file_path = os.path.join(self.share_dir, f"{var_name}_{APPEND_FILE_BASE}")
+            if append:
+                for var_name in var_list:
+                    append_file_path = os.path.join(self.share_dir, f"{var_name}_{APPEND_FILE_BASE}")
                 
-                if append and create_share_file:
-                    subprocess.run(
-                                ["ncks", "-v", var_name, "--mk_rec_dmn", time_var, file_path, append_file_path],
-                                check=True
-                            )
+                    if create_share_file:
+                        subprocess.run(
+                                    ["ncks", "-v", var_name, "--mk_rec_dmn", time_var, file_path, append_file_path],
+                                    check=True
+                                    )
                             
-                elif append and not create_share_file:
-                    subprocess.run(
-                        ["ncrcat", "-O", append_file_path, file_path, append_file_path],
-                        check=True
-                    )
+                    else:
+                        subprocess.run(
+                            ["ncrcat", "-O", append_file_path, file_path, append_file_path],
+                            check=True
+                            )
                 
-            os.remove(file_path)
+                os.remove(file_path)
 
     def map_surface(self, lon, lat, sw_vals, sw_max_val, sw_dark_vals, lw_vals,
                     sea_ice = False, surface_contours=True, use_albedo=False, albedo_vals=None,
