@@ -153,7 +153,7 @@ class SurfaceMapper(object):
                                            append=False,
                                            )
         if append:
-            self.update_append_files(var_list=[self.icec,
+            self.update_runnint_total_file(var_list=[self.icec,
                                                self.pwv_var,
                                                self.lhtfl_var,
                                            ],
