@@ -359,38 +359,39 @@ class SurfaceMapper(object):
                 time_dt = cftime.num2date(time[0], units=time.units, calendar=time.calendar)
 
                 if time_dt.strftime("%Y%m%dT%H") == self.initial_cycle_point_datetime_obj.strftime("%Y%m%dT%H"):
-                    if append:
-                        for var_name in var_list:
-                            append_file_path = os.path.join(self.share_dir, f"{var_name}_{APPEND_FILE_BASE}")
-                            subprocess.run(
-                                        ["ncks", "-v", var_name, "--mk_rec_dmn", time_var, file_path, append_file_path],
-                                        check=True
-                                    )
-                
-                    else:
+                    create_share_file = True
+                    if not append:
                         shutil.copy(file_path, self.total_file_path)
                 
                 else:
+                    create_share_file = False
                     if append:
                         units_corr = self.initial_cycle_point_datetime_obj.strftime("hours since %Y-%m-%d %H:%M:%S")
                         time_corr = cftime.date2num(time_dt, units=units_corr, calendar=time.calendar)
                         time[0] = time_corr
                         time.units = units_corr
                     
-                        for var_name in var_list:
-                            append_file_path = os.path.join(self.share_dir, f"{var_name}_{APPEND_FILE_BASE}")
-                            subprocess.run(
-                                ["ncrcat", "-O", append_file_path, file_path, append_file_path],
+                    else:
+                        with Dataset(self.total_file_path, 'r+') as dest:
+                            for var_name in var_list:
+                                dest.variables[var_name][:] += ds.variables[var_name][:]
+                            
+            for var_name in var_list:
+                append_file_path = os.path.join(self.share_dir, f"{var_name}_{APPEND_FILE_BASE}")
+                
+                if append and create_share_file:
+                    subprocess.run(
+                                ["ncks", "-v", var_name, "--mk_rec_dmn", time_var, file_path, append_file_path],
                                 check=True
                             )
-                        
-                    else:
-                        with Dataset(self.total_file_path, 'r+') as dst:
-                            for var_name in var_list:
-                                dst.variables[var_name][:] += ds.variables[var_name][:]
                             
-            if append:
-                os.remove(file_path)
+                elif append and not create_share_file:
+                    subprocess.run(
+                        ["ncrcat", "-O", append_file_path, file_path, append_file_path],
+                        check=True
+                    )
+                
+            os.remove(file_path)
 
     def map_surface(self, lon, lat, sw_vals, sw_max_val, sw_dark_vals, lw_vals,
                     sea_ice = False, surface_contours=True, use_albedo=False, albedo_vals=None,
