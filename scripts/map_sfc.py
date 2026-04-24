@@ -117,7 +117,7 @@ def generate_file4ncremap(inputfilename, outputfilename):
 class SurfaceMapper(object):
     """Handles retrieval, processing, accumulation, and visualization of FV3 surface radiation data.
     """
-    def __init__(self, input_cycle, input_env, integrate=True, append=True,
+    def __init__(self, input_cycle, input_env, integrate=True,
                  sw_exposure=0.7 # 0 to 1
                  ):
         """
@@ -153,14 +153,6 @@ class SurfaceMapper(object):
                                            time_var='time',
                                            append=False,
                                            )
-        if append:
-            self.update_running_total_file(var_list=[
-                                               self.pwv_var,
-                                               self.lhtfl_var,
-                                           ],
-                                           time_var='time',
-                                           append=True)
-                                           
 
     def parse_datetime(self, input_cycle):
         """Parse and store input cycle datetime information.
@@ -276,6 +268,7 @@ class SurfaceMapper(object):
                            fv3pwv_var = 'pwat',
                            fv3lhtfl_var = 'lhtfl_ave',
                            fv3pressfc_var = 'pressfc',
+                           fv3albedo_var = 'albdo_ave'
                            ):
         """Regrid and clean downloaded NetCDF surface files using `ncremap`.
 
@@ -299,6 +292,7 @@ class SurfaceMapper(object):
         self.pwv_var = fv3pwv_var
         self.lhtfl_var = fv3lhtfl_var
         self.pressfc_var = fv3pressfc_var
+        self.albedo_var = fv3albedo_var
         
         # top of atmosphere variables
         self.lw_ave_var_cstoa = fv3cstoa_lw_ave_var
@@ -315,7 +309,7 @@ class SurfaceMapper(object):
             self.rgr_file_path_icec.append(f"{base}_rgr_icec{ext}")
             
             if self.integrate:
-                cmd = f'ncremap -v {self.lhtfl_var},{self.pressfc_var},{self.pwv_var},{self.lw_var},{self.sw_var},{self.lw_ave_var},{self.sw_ave_var},{self.land_mask},{self.lw_ave_var_cstoa},{self.sw_ave_var_cstoa},{self.lw_ave_var_toa},{self.sw_ave_var_toa} -R "--rgr lat_nm_in={self.lat_var} --rgr lon_nm_in={self.lon_var}" -d {file_path} {file_path} {self.rgr_file_path[file_path_idx]}'
+                cmd = f'ncremap -v {self.albedo_var},{self.lhtfl_var},{self.pressfc_var},{self.pwv_var},{self.lw_var},{self.sw_var},{self.lw_ave_var},{self.sw_ave_var},{self.land_mask},{self.lw_ave_var_cstoa},{self.sw_ave_var_cstoa},{self.lw_ave_var_toa},{self.sw_ave_var_toa} -R "--rgr lat_nm_in={self.lat_var} --rgr lon_nm_in={self.lon_var}" -d {file_path} {file_path} {self.rgr_file_path[file_path_idx]}'
             else:
                 cmd = f'ncremap -v {self.lw_var},{self.sw_var},{self.land_mask} -R "--rgr lat_nm_in={self.lat_var} --rgr lon_nm_in={self.lon_var}" -d {file_path} {file_path} {self.rgr_file_path[file_path_idx]}'
             
@@ -388,7 +382,7 @@ class SurfaceMapper(object):
                             dst.variables[var_name][:] += src.variables[var_name][:]
 
     def map_surface(self, lon, lat, sw_vals, sw_max_val, sw_dark_vals, lw_vals,
-                    sea_ice = False, surface_contours=True,
+                    sea_ice = False, surface_contours=True, use_albedo=False, albedo_vals=None,
                     projection=ccrs.Mercator(central_longitude=180.,
                                                    #min_latitude=-70.,
                                                    #max_latitude=70.
@@ -434,47 +428,64 @@ class SurfaceMapper(object):
             gl.xlabel_style = {'fontname': FONTNAME, 'fontsize': FONTSIZE, 'color': FONTCOLOR}
             gl.ylabel_style = {'fontname': FONTNAME, 'fontsize': FONTSIZE, 'color': FONTCOLOR}
 
-            ax.pcolormesh(lon,
-                          lat,
-                          sw_vals,
-                          #cmap=cc.cm.CET_CBL3,
-                          cmap=cc.cm.CET_L1,
-                          vmin=0,
-                          vmax=self.luminosity_scalar*sw_max_val,
-                          shading='nearest',
-                          rasterized=True,
-                          antialiased=False,
-                          zorder=0,
-                          transform=ccrs.PlateCarree()
-            )
+            if use_albedo:
+                ax.pcolormesh(lon,
+                              lat,
+                              albedo_vals,
+                              #cmap=cc.cm.CET_CBL3,
+                              cmap=cc.cm.CET_L1,
+                              vmin=0,
+                              vmax=1,
+                              shading='nearest',
+                              rasterized=True,
+                              antialiased=False,
+                              zorder=0,
+                              transform=ccrs.PlateCarree()
+                )
+            
+            else:
+            
+                ax.pcolormesh(lon,
+                              lat,
+                              sw_vals,
+                              #cmap=cc.cm.CET_CBL3,
+                              cmap=cc.cm.CET_L1,
+                              vmin=0,
+                              vmax=self.luminosity_scalar*sw_max_val,
+                              shading='nearest',
+                              rasterized=True,
+                              antialiased=False,
+                              zorder=0,
+                              transform=ccrs.PlateCarree()
+                )
         
-            ax.pcolormesh(lon,
-                          lat,
-                          sw_dark_vals,
-                          cmap=cc.cm.CET_L5,
-                          #vmin=0,
-                          #vmax=0.003333*sw_max_val,
-                          shading='nearest',
-                          rasterized=True,
-                          antialiased=False,
-                          zorder=2,
-                          transform=ccrs.PlateCarree()
-            )                                      
-            ax.pcolormesh(lon,
-                          lat,
-                          np.ma.masked_where(sw_vals > 0, lw_vals),
-                          cmap=cc.cm.CET_L8,
-                          shading='nearest',
-                          rasterized=True,
-                          #alpha=0.667,
-                          antialiased=False,
-                          zorder=3,
-                          transform=ccrs.PlateCarree()
-            )
+                ax.pcolormesh(lon,
+                              lat,
+                              sw_dark_vals,
+                              cmap=cc.cm.CET_L5,
+                              #vmin=0,
+                              #vmax=0.003333*sw_max_val,
+                              shading='nearest',
+                              rasterized=True,
+                              antialiased=False,
+                              zorder=2,
+                              transform=ccrs.PlateCarree()
+                )                                      
+                ax.pcolormesh(lon,
+                              lat,
+                              np.ma.masked_where(sw_vals > 0, lw_vals),
+                              cmap=cc.cm.CET_L8,
+                              shading='nearest',
+                              rasterized=True,
+                              #alpha=0.667,
+                              antialiased=False,
+                              zorder=3,
+                              transform=ccrs.PlateCarree()
+                )
             if surface_contours:
                 ax.contour(lon, lat, self.pressfc_data,
                            levels = np.exp(np.linspace(np.log(MEAN_SLP/2), np.log(MEAN_SLP), 6)),
-                           color='#565A5C', linewidth=0.5, alpha=1., zorder=5)
+                           colors='#565A5C', linewidths=0.5, alpha=1., zorder=5)
         
         if sea_ice:
             return ax_list
@@ -652,6 +663,36 @@ class SurfaceMapper(object):
             plt.savefig(os.path.join(self.share_dir, figname),
                         dpi=300)
             plt.close()
+            
+    def view_sfc_albedo(self, file_path, return_ax=False, sea_ice=False,
+                     projection=ccrs.Mercator(central_longitude=180.)):
+        """Generate and save a plot of the accumulated average TOA radiation.
+        """
+        rootgrp = Dataset(file_path)
+        time = rootgrp.variables['time']
+        time_dt = cftime.num2date(time[0],
+                                    units=time.units,
+                                    calendar=time.calendar)
+        time_str = time_dt.strftime("%Y%m%dT%H")
+        time_label = time_dt.strftime("%Y-%m-%d %H:%M:%S")
+        
+        lon = rootgrp.variables[self.lon_var][:]
+        lat = rootgrp.variables[self.lat_var][:]
+        albedo_vals = rootgrp.variables[self.albedo_var][:]
+    
+        ax = self.map_surface(lon, lat, None, None, None, None, sea_ice=sea_ice,
+                              use_albedo=True, albedo_vals=albedo_vals,
+                              projection=projection, surface_contours=True)
+        
+        rootgrp.close()
+            
+        if return_ax:
+            return ax
+        else:
+            plt.title(time_label, fontsize=FONTSIZE, fontname=FONTNAME, color=FONTCOLOR)
+            plt.savefig(os.path.join(self.work_dir, f'fv3sfc_albedo_{time_str}.png'),
+                        dpi=300)
+            plt.close()
         
     def map_pwv(self):
         """
@@ -681,7 +722,7 @@ class SurfaceMapper(object):
                                               sw_vals)
             np.ma.masked_where(sw_dark_vals == 0, sw_dark_vals, copy=False)
         
-            ax = self.view_toa_ave(clearsky=True, return_ax=True,
+            ax = self.view_sfc_albedo(file_path, return_ax=True,
                                    projection=
                                       ccrs.EqualEarth(
                                           central_longitude=180.0, globe=None))
@@ -725,7 +766,7 @@ class SurfaceMapper(object):
             plt.close()
             
             # Plot latent heat flux
-            ax = self.view_toa_ave(clearsky=True, return_ax=True,
+            ax = self.view_sfc_albedo(file_path, return_ax=True,
                                    projection=
                                       ccrs.EqualEarth(
                                           central_longitude=180.0, globe=None))
@@ -846,9 +887,9 @@ class SurfaceMapper(object):
             sic_model = np.ma.masked_where(rootgrp.variables[self.land_mask][0,:,:] == 1,
                                            rootgrp.variables[self.icec][0,:,:])
             
-            ax_list = self.view_toa_ave(clearsky=True, return_ax=True, sea_ice=True)
-            ax_list_model = self.view_toa_ave(clearsky=True, return_ax=True, sea_ice=True)
-            ax_list_cdr = self.view_toa_ave(clearsky=True, return_ax=True, sea_ice=True)
+            ax_list = self.view_sfc_albedo(file_path, return_ax=True, sea_ice=True)
+            ax_list_model = self.view_sfc_albedo(file_path, return_ax=True, sea_ice=True)
+            ax_list_cdr = self.view_sfc_albedo(file_path, return_ax=True, sea_ice=True)
 
             plt.sca(ax_list[0])
             if self.do_nh_sea_ice:
@@ -1038,7 +1079,7 @@ class SurfaceMapper(object):
 
         return pmesh
                 
-def run():
+def run(append=False):
     """Run the SurfaceMapper with command-line arguments.
     """
     surface_mapper = SurfaceMapper(sys.argv[1], sys.argv[2])
@@ -1050,6 +1091,14 @@ def run():
     
     if surface_mapper.do_nh_sea_ice or surface_mapper.do_sh_sea_ice:
         surface_mapper.map_sea_ice()
+    
+    if append:
+        surface_mapper.update_running_total_file(var_list=[
+                                           self.pwv_var,
+                                           self.lhtfl_var,
+                                       ],
+                                       time_var='time',
+                                       append=True)
 
 def main():
     """Main entry point.
