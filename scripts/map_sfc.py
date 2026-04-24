@@ -678,7 +678,7 @@ class SurfaceMapper(object):
         
         lon = rootgrp.variables[self.lon_var][:]
         lat = rootgrp.variables[self.lat_var][:]
-        albedo_vals = rootgrp.variables[self.albedo_var][:]
+        albedo_vals = rootgrp.variables[self.albedo_var][0,:,:]
     
         ax = self.map_surface(lon, lat, None, None, None, None, sea_ice=sea_ice,
                               use_albedo=True, albedo_vals=albedo_vals,
