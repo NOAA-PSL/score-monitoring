@@ -141,6 +141,8 @@ class SurfaceMapper(object):
         self.download_output_files()
         self.process_ref_data()
         self.clean_output_files()
+        
+        self.total_file_path = os.path.join(self.share_dir, SHARE_DATA_FILE)
         if self.integrate:
             self.update_running_total_file(var_list=[self.sw_ave_var,
                                                      self.lw_ave_var,
@@ -149,7 +151,6 @@ class SurfaceMapper(object):
                                                      self.lw_ave_var_toa,
                                                      self.sw_ave_var_toa],
                                            time_var='time',
-                                           total_file_path = os.path.join(self.share_dir, SHARE_DATA_FILE),
                                            append=False,
                                            )
         if append:
@@ -349,7 +350,7 @@ class SurfaceMapper(object):
             os.remove(file_path)
 
     def update_running_total_file(self, var_list, time_var='time',
-                                  append=False, total_file_path=None):
+                                  append=False):
         """Accumulate specified variables over time into a persistent NetCDF file.
 
         Args:
@@ -362,7 +363,7 @@ class SurfaceMapper(object):
                 time = ds.variables[time_var]
                 time_dt = cftime.num2date(time[0], units=time.units, calendar=time.calendar)
 
-            if time_dt.strftime("%Y%m%dT%H") == self.initial_cycle_point_datetime_obj.strftime("%Y%m%dT%H") or not os.path.exists(total_file_path):
+            if time_dt.strftime("%Y%m%dT%H") == self.initial_cycle_point_datetime_obj.strftime("%Y%m%dT%H"):
                 if append:
                     for var_name in var_list:
                         append_file_path = os.path.join(self.share_dir, f"{var_name}_{APPEND_FILE_BASE}")
@@ -371,7 +372,7 @@ class SurfaceMapper(object):
                                     check=True
                                 )
                 else:
-                    shutil.copy(file_path, total_file_path)
+                    shutil.copy(file_path, self.total_file_path)
                 
             else:
                 if append:
@@ -382,7 +383,7 @@ class SurfaceMapper(object):
                             check=True
                         )
                 else:
-                    with Dataset(file_path) as src, Dataset(total_file_path, 'r+') as dst:
+                    with Dataset(file_path) as src, Dataset(self.total_file_path, 'r+') as dst:
                         for var_name in var_list:
                             dst.variables[var_name][:] += src.variables[var_name][:]
 
