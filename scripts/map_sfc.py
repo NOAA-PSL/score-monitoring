@@ -1037,7 +1037,7 @@ class SurfaceMapper(object):
             pmesh = ax.pcolormesh(
                 lon,
                 lat,
-                hemi_sie_diff,
+                np.ma.masked_where(hemi_sie_diff < 0.05, hemi_sie_diff),
                 cmap=cc.cm.CET_D1A,
                 vmin=-0.5,
                 vmax=0.5,
