@@ -268,8 +268,18 @@ class SurfaceMapper(object):
                            fv3toa_sw_ave_var = 'uswrf_avetoa',
                            fv3pwv_var = 'pwat',
                            fv3lhtfl_var = 'lhtfl_ave',
+                           fv3shtfl_var = 'shtfl_ave',
                            fv3pressfc_var = 'pressfc',
-                           fv3atm_swd_ave_var = 'dswrf_ave'
+                           fv3sfc_t_var = 'tmpsfc',
+                           fv3atm_t2m_var = 'tmp2m',
+                           fv3atm_swd_ave_var = 'dswrf_ave',
+                           fv3snowcover_var = 'snowc_ave',
+                           fv3snowdepth_var = 'snod',
+                           fv3precip_rate_var = 'prateb_ave',
+                           fv3_10m_u_wind_var = 'ugrd10m',
+                           fv3_10m_v_wind_var = 'vgrd10m',
+                           fv3soil_t1_var = 'soilt1',
+                           fv3soil_w1_var = 'soilw1',
                            ):
         """Regrid and clean downloaded NetCDF surface files using `ncremap`.
 
@@ -292,8 +302,18 @@ class SurfaceMapper(object):
         self.icetk = fv3atm_icetk_var
         self.pwv_var = fv3pwv_var
         self.lhtfl_var = fv3lhtfl_var
+        self.shtfl_var = fv3shtfl_var
         self.pressfc_var = fv3pressfc_var
+        self.sfc_t_var = fv3sfc_t_var
+        self.t2m_var = fv3atm_t2m_var
         self.swd_ave_var = fv3atm_swd_ave_var
+        self.snow_cover_var = fv3snowcover_var
+        self.snow_depth_var = fv3snowdepth_var
+        self.precip_rate_var = fv3precip_rate_var
+        self.u_wind_10m_var = fv3_10m_u_wind_var
+        self.v_wind_10m_var = fv3_10m_v_wind_var
+        self.soil_t1_var = fv3soil_t1_var
+        self.soil_w1_var = fv3soil_w1_var
         
         # top of atmosphere variables
         self.lw_ave_var_cstoa = fv3cstoa_lw_ave_var
@@ -310,7 +330,7 @@ class SurfaceMapper(object):
             self.rgr_file_path_icec.append(f"{base}_rgr_icec{ext}")
             
             if self.integrate:
-                cmd = f'ncremap -v {self.swd_ave_var},{self.lhtfl_var},{self.pressfc_var},{self.pwv_var},{self.lw_var},{self.sw_var},{self.lw_ave_var},{self.sw_ave_var},{self.land_mask},{self.lw_ave_var_cstoa},{self.sw_ave_var_cstoa},{self.lw_ave_var_toa},{self.sw_ave_var_toa} -R "--rgr lat_nm_in={self.lat_var} --rgr lon_nm_in={self.lon_var}" -d {file_path} {file_path} {self.rgr_file_path[file_path_idx]}'
+                cmd = f'ncremap -v {self.soil_t1_var},{self.soil_w1_var},{self.u_wind_10m_var},{self.v_wind_10m_var},{self.precip_rate_var},{self.snow_cover_var},{self.snow_depth_var},{self.swd_ave_var},{self.t2m_var},{self.sfc_t_var},{self.shtfl_var},{self.lhtfl_var},{self.pressfc_var},{self.pwv_var},{self.lw_var},{self.sw_var},{self.lw_ave_var},{self.sw_ave_var},{self.land_mask},{self.lw_ave_var_cstoa},{self.sw_ave_var_cstoa},{self.lw_ave_var_toa},{self.sw_ave_var_toa} -R "--rgr lat_nm_in={self.lat_var} --rgr lon_nm_in={self.lon_var}" -d {file_path} {file_path} {self.rgr_file_path[file_path_idx]}'
             else:
                 cmd = f'ncremap -v {self.lw_var},{self.sw_var},{self.land_mask} -R "--rgr lat_nm_in={self.lat_var} --rgr lon_nm_in={self.lon_var}" -d {file_path} {file_path} {self.rgr_file_path[file_path_idx]}'
             
@@ -1104,6 +1124,16 @@ def run(append=True):
         surface_mapper.update_running_total_file(var_list=[
                                            surface_mapper.pwv_var,
                                            surface_mapper.lhtfl_var,
+                                           surface_mapper.shtfl_var,
+                                           surface_mapper.sfc_t_var,
+                                           surface_mapper.t2m_var,
+                                           surface_mapper.snow_cover_var,
+                                           surface_mapper.snow_depth_var,
+                                           surface_mapper.precip_rate_var,
+                                           surface_mapper.u_wind_10m_var,
+                                           surface_mapper.v_wind_10m_var,
+                                           surface_mapper.soil_t1_var,
+                                           surface_mapper.soil_w1_var
                                        ],
                                        time_var='time',
                                        append=True)
