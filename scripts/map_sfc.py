@@ -203,6 +203,12 @@ class SurfaceMapper(object):
         fv3sfc_file_name1 = os.getenv('FV3SFC_FILE_NAME1')
         ref_file_name_nh = os.getenv('REF_FILE_NAME_NH')
         ref_file_name_sh = os.getenv('REF_FILE_NAME_SH')
+        
+        replay_offset = os.getenv('REPLAY_OFFSET')
+        effective_dt = self.datetime_obj
+        
+        if replay_offset not in [None, '']:
+            effective_dt = self.datetime_obj + dt.timedelta(hours = int(replay_offset))
 
         if ref_file_name_nh is None:
             self.do_nh_sea_ice = False
@@ -215,13 +221,13 @@ class SurfaceMapper(object):
             self.do_sh_sea_ice = True
 
         if fv3atm_file_key == '' or fv3atm_file_key == None:
-            prefix = self.datetime_obj.strftime(os.getenv('STORAGE_LOCATION_KEY') + "/")
+            prefix = effective_dt.strftime(os.getenv('STORAGE_LOCATION_KEY') + "/")
         else:
-            prefix = self.datetime_obj.strftime(os.getenv('STORAGE_LOCATION_KEY') + "/" + fv3atm_file_key + "/")
+            prefix = effective_dt.strftime(os.getenv('STORAGE_LOCATION_KEY') + "/" + fv3atm_file_key + "/")
 
         self.dest_file_path = list()
         for fv3sfc_file_idx, fv3sfc_file in enumerate([fv3sfc_file_name, fv3sfc_file_name1]):
-            target_file_name = datetime.strftime(self.datetime_obj,
+            target_file_name = datetime.strftime(effective_dt,
                                                  format = fv3sfc_file)
             self.dest_file_path.append(os.path.join(self.work_dir, target_file_name))
             
@@ -238,7 +244,7 @@ class SurfaceMapper(object):
 
         if self.do_nh_sea_ice:
             ref_target_file_name_nh = datetime.strftime(
-                self.datetime_obj,
+                effective_dt,
                 format = ref_file_name_nh)
 
             self.ref_file_path_nh = os.path.join(self.work_dir,
@@ -246,7 +252,7 @@ class SurfaceMapper(object):
 
         if self.do_sh_sea_ice:
             ref_target_file_name_sh = datetime.strftime(
-                self.datetime_obj,
+                effective_dt,
                 format = ref_file_name_sh)
 
             self.ref_file_path_sh = os.path.join(self.work_dir,
