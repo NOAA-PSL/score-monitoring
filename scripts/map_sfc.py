@@ -7,6 +7,7 @@ optionally accumulate averages, and render surface radiation maps.
 import sys
 import shutil
 from datetime import datetime
+from datetime import timedelta
 from dotenv import load_dotenv
 import os
 import pathlib
@@ -208,7 +209,7 @@ class SurfaceMapper(object):
         effective_dt = self.datetime_obj
         
         if replay_offset not in [None, '']:
-            effective_dt = self.datetime_obj + datetime.timedelta(hours = int(replay_offset))
+            effective_dt = self.datetime_obj + timedelta(hours = int(replay_offset))
 
         if ref_file_name_nh is None:
             self.do_nh_sea_ice = False
