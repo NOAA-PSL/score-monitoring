@@ -1030,7 +1030,7 @@ class SurfaceMapper(object):
                             dpi=300)
             plt.close()
             
-            plt.sca(ax_list_ice_tk[0])
+            plt.sca(ax_list_sea_ice_tk[0])
             if self.do_nh_sea_ice:
                 pmesh_nh = self.map_sea_ice_hemi_tk(ax_list_sea_ice_tk[0], lon, lat,
                                                     rootgrp.variables[self.icetk][0,:,:])
@@ -1041,7 +1041,7 @@ class SurfaceMapper(object):
                         dpi=300)
             plt.close()
 
-            plt.sca(ax_list_ice_tk[1])
+            plt.sca(ax_list_sea_ice_tk[1])
             if self.do_sh_sea_ice:
                 pmesh_sh = self.map_sea_ice_hemi_tk(ax_list_sea_ice_tk[1], lon, lat,
                                                     rootgrp.variables[self.icetk][0,:,:])
