@@ -343,7 +343,7 @@ class SurfaceMapper(object):
             
             subprocess.run(cmd, check=True, shell=True)
             if self.do_nh_sea_ice or self.do_sh_sea_ice:
-                cmd2 = f'ncremap -a conserve -v {self.icec},{self.land_mask} -R "--rgr lat_nm_in={self.lat_var} --rgr lon_nm_in={self.lon_var}" -d {file_path} {file_path} {self.rgr_file_path_icec[file_path_idx]}'
+                cmd2 = f'ncremap -a conserve -v {self.icetk},{self.icec},{self.land_mask} -R "--rgr lat_nm_in={self.lat_var} --rgr lon_nm_in={self.lon_var}" -d {file_path} {file_path} {self.rgr_file_path_icec[file_path_idx]}'
                 subprocess.run(cmd2, check=True, shell=True)
         
         if self.do_nh_sea_ice:
@@ -921,10 +921,12 @@ class SurfaceMapper(object):
             gridcell_areas = rootgrp.variables['area'][:]
             sic_model = np.ma.masked_where(rootgrp.variables[self.land_mask][0,:,:] == 1,
                                            rootgrp.variables[self.icec][0,:,:])
-            
+                                                       
             ax_list = self.view_sfc_albedo(return_ax=True, sea_ice=True)
             ax_list_model = self.view_sfc_albedo(return_ax=True, sea_ice=True)
             ax_list_cdr = self.view_sfc_albedo(return_ax=True, sea_ice=True)
+            
+            ax_list_sea_ice_tk = self.view_sfc_albedo(return_ax=True, sea_ice=True)
 
             plt.sca(ax_list[0])
             if self.do_nh_sea_ice:
@@ -937,8 +939,8 @@ class SurfaceMapper(object):
                           fontsize=FONTSIZE, fontname=FONTNAME, color=FONTCOLOR)
                 #rootgrp_ref_nh.close()
             
-            plt.savefig(os.path.join(self.work_dir, f'fv3nhsic_{time_str}.png'),
-                            dpi=300)
+                plt.savefig(os.path.join(self.work_dir, f'fv3nhsic_{time_str}.png'),
+                        dpi=300)
             plt.close()
                 
             plt.sca(ax_list[1])
@@ -953,9 +955,9 @@ class SurfaceMapper(object):
                           fontsize=FONTSIZE, fontname=FONTNAME, color=FONTCOLOR)
                 #rootgrp_ref_sh.close()    
         
-            plt.savefig(os.path.join(self.work_dir, f'fv3shsic_{time_str}.png'),
+                plt.savefig(os.path.join(self.work_dir, f'fv3shsic_{time_str}.png'),
                             dpi=300)
-            plt.close()               
+            plt.close()
             #rootgrp.close()
 
             plt.sca(ax_list_model[0])
@@ -971,7 +973,7 @@ class SurfaceMapper(object):
                           fontsize=FONTSIZE, fontname=FONTNAME, color=FONTCOLOR)
                 #rootgrp_ref_nh.close()
 
-            plt.savefig(os.path.join(self.work_dir, f'modelfv3nhsic_{time_str}.png'),
+                plt.savefig(os.path.join(self.work_dir, f'modelfv3nhsic_{time_str}.png'),
                             dpi=300)
             plt.close()
 
@@ -989,7 +991,7 @@ class SurfaceMapper(object):
                           fontsize=FONTSIZE, fontname=FONTNAME, color=FONTCOLOR)
                 #rootgrp_ref_sh.close()
 
-            plt.savefig(os.path.join(self.work_dir, f'modelfv3shsic_{time_str}.png'),
+                plt.savefig(os.path.join(self.work_dir, f'modelfv3shsic_{time_str}.png'),
                             dpi=300)
             plt.close()
 
@@ -1006,7 +1008,7 @@ class SurfaceMapper(object):
                           fontsize=FONTSIZE, fontname=FONTNAME, color=FONTCOLOR)
                 #rootgrp_ref_nh.close()
 
-            plt.savefig(os.path.join(self.work_dir, f'pmnhsic_{time_str}.png'),
+                plt.savefig(os.path.join(self.work_dir, f'pmnhsic_{time_str}.png'),
                             dpi=300)
             plt.close()
 
@@ -1024,10 +1026,56 @@ class SurfaceMapper(object):
                           fontsize=FONTSIZE, fontname=FONTNAME, color=FONTCOLOR)
                 #rootgrp_ref_sh.close()
 
-            plt.savefig(os.path.join(self.work_dir, f'pmshsic_{time_str}.png'),
+                plt.savefig(os.path.join(self.work_dir, f'pmshsic_{time_str}.png'),
                             dpi=300)
             plt.close()
             
+            plt.sca(ax_list_ice_tk[0])
+            if self.do_nh_sea_ice:
+                pmesh_nh = self.map_sea_ice_hemi_tk(ax_list_sea_ice_tk[0], lon, lat,
+                                                    rootgrp.variables[self.icetk][0,:,:])
+                                                    
+                plt.title(f'Model Arctic sea ice thickness ({time_label})',
+                          fontsize=FONTSIZE, fontname=FONTNAME, color=FONTCOLOR)
+                plt.savefig(os.path.join(self.work_dir, f'fv3nhsitk_{time_str}.png'),
+                        dpi=300)
+            plt.close()
+
+            plt.sca(ax_list_ice_tk[1])
+            if self.do_sh_sea_ice:
+                pmesh_sh = self.map_sea_ice_hemi_tk(ax_list_sea_ice_tk[1], lon, lat,
+                                                    rootgrp.variables[self.icetk][0,:,:])
+                                                    
+                plt.title(f'Model Antarctic sea ice thickness ({time_label})',
+                          fontsize=FONTSIZE, fontname=FONTNAME, color=FONTCOLOR)
+                plt.savefig(os.path.join(self.work_dir, f'fv3shsitk_{time_str}.png'),
+                        dpi=300)
+            plt.close()
+            
+    def map_sea_ice_hemi_tk(self, ax, lon, lat, icetk):
+        pmesh = ax.pcolormesh(
+            lon,
+            lat,
+            np.ma.masked_where(icetk == 0, icetk),
+            cmap=cc.cm.CET_L7,
+            vmin=0.25,
+            vmax=4.75,
+            shading='nearest',
+            rasterized=True,
+            antialiased=False,
+            alpha=1,
+            zorder=4,
+            transform=ccrs.PlateCarree()
+        )
+        
+        cbar = plt.colorbar(pmesh, ax=ax)
+        cbar.set_ticks(np.arange(0.25, 5, 0.25))
+        cbar.ax.tick_params(labelsize=FONTSIZE, labelcolor=FONTCOLOR)
+        cbar.set_label('Sea ice thickness (m)', fontsize=FONTSIZE,
+                       fontname=FONTNAME, color=FONTCOLOR)
+                       
+        return pmesh
+    
     def map_sea_ice_hemi(self, ax, lon, lat, sic_cdr_hemi, sic_model, model_only=False, cdr_only=False):
         """
         Compare modeled and observed sea ice concentration (SIC) over a hemisphere.
