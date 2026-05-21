@@ -784,6 +784,7 @@ class SurfaceMapper(object):
 
             # Add colorbar
             fig = ax.get_figure()
+            plt.rcParams['font.family'] = FONTNAME
             cbar = fig.colorbar(
                 pcm,
                 ax=ax,
@@ -822,6 +823,7 @@ class SurfaceMapper(object):
 
             # Add colorbar
             fig = ax.get_figure()
+            plt.rcParams['font.family'] = FONTNAME
             cbar = fig.colorbar(
                 pcm,
                 ax=ax,
@@ -929,6 +931,7 @@ class SurfaceMapper(object):
             ax_list_sea_ice_tk = self.view_sfc_albedo(return_ax=True, sea_ice=True)
 
             plt.sca(ax_list[0])
+            plt.rcParams['font.family'] = FONTNAME
             if self.do_nh_sea_ice:
                 assert np.allclose(gridcell_areas, ref_gridcell_areas_nh)
                 pmesh_nh = self.map_sea_ice_hemi(ax_list[0], lon, lat,
@@ -944,6 +947,7 @@ class SurfaceMapper(object):
             plt.close()
                 
             plt.sca(ax_list[1])
+            plt.rcParams['font.family'] = FONTNAME
             if self.do_sh_sea_ice:
                 assert np.allclose(gridcell_areas, ref_gridcell_areas_sh)
                 
@@ -961,6 +965,7 @@ class SurfaceMapper(object):
             #rootgrp.close()
 
             plt.sca(ax_list_model[0])
+            plt.rcParams['font.family'] = FONTNAME
             if self.do_nh_sea_ice:
                 assert np.allclose(gridcell_areas, ref_gridcell_areas_nh)
                 pmesh_nh = self.map_sea_ice_hemi(ax_list_model[0], lon, lat,
@@ -978,6 +983,7 @@ class SurfaceMapper(object):
             plt.close()
 
             plt.sca(ax_list_model[1])
+            plt.rcParams['font.family'] = FONTNAME
             if self.do_sh_sea_ice:
                 assert np.allclose(gridcell_areas, ref_gridcell_areas_sh)
 
@@ -996,6 +1002,7 @@ class SurfaceMapper(object):
             plt.close()
 
             plt.sca(ax_list_cdr[0])
+            plt.rcParams['font.family'] = FONTNAME
             if self.do_nh_sea_ice:
                 assert np.allclose(gridcell_areas, ref_gridcell_areas_nh)
                 pmesh_nh = self.map_sea_ice_hemi(ax_list_cdr[0], lon, lat,
@@ -1013,6 +1020,7 @@ class SurfaceMapper(object):
             plt.close()
 
             plt.sca(ax_list_cdr[1])
+            plt.rcParams['font.family'] = FONTNAME
             if self.do_sh_sea_ice:
                 assert np.allclose(gridcell_areas, ref_gridcell_areas_sh)
 
@@ -1031,6 +1039,7 @@ class SurfaceMapper(object):
             plt.close()
             
             plt.sca(ax_list_sea_ice_tk[0])
+            plt.rcParams['font.family'] = FONTNAME
             if self.do_nh_sea_ice:
                 pmesh_nh = self.map_sea_ice_hemi_tk(ax_list_sea_ice_tk[0], lon, lat,
                                                     rootgrp.variables[self.icetk][0,:,:])
@@ -1042,6 +1051,7 @@ class SurfaceMapper(object):
             plt.close()
 
             plt.sca(ax_list_sea_ice_tk[1])
+            plt.rcParams['font.family'] = FONTNAME
             if self.do_sh_sea_ice:
                 pmesh_sh = self.map_sea_ice_hemi_tk(ax_list_sea_ice_tk[1], lon, lat,
                                                     rootgrp.variables[self.icetk][0,:,:])
@@ -1058,8 +1068,8 @@ class SurfaceMapper(object):
             lat,
             np.ma.masked_where(icetk == 0, icetk),
             cmap=cc.cm.CET_L7,
-            vmin=0.25,
-            vmax=4.75,
+            vmin=0,
+            vmax=5.,
             shading='nearest',
             rasterized=True,
             antialiased=False,
@@ -1069,7 +1079,7 @@ class SurfaceMapper(object):
         )
         
         cbar = plt.colorbar(pmesh, ax=ax)
-        cbar.set_ticks(np.arange(0.25, 5, 0.25))
+        cbar.set_ticks(np.arange(0, 5.25, 0.5))
         cbar.ax.tick_params(labelsize=FONTSIZE, labelcolor=FONTCOLOR)
         cbar.set_label('Sea ice thickness (m)', fontsize=FONTSIZE,
                        fontname=FONTNAME, color=FONTCOLOR)
