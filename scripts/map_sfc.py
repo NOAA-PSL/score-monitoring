@@ -1091,12 +1091,9 @@ class SurfaceMapper(object):
         Compare modeled and observed sea ice concentration (SIC) over a hemisphere.
         Masks open water, normalizes binary ice regions, and plots the difference field.
         """
-
-        model_valid = ~np.ma.getmaskarray(sic_model)
-        cdr_valid = ~np.ma.getmaskarray(sic_cdr_hemi)
         
         # 1. Mask where both SIC_model and SIC_CDR < 0.15 (open water)
-        mask_both_zero = (model_valid & cdr_valid & (sic_model < 0.15) & (sic_cdr_hemi < 0.15))
+        mask_both_zero = (np.ma.filled(sic_model, 0) < 0.15) & (np.ma.filled(sic_cdr_hemi, 0) < 0.15)
         model_combined_mask = mask_both_zero | np.ma.getmaskarray(sic_model)
         cdr_combined_mask = mask_both_zero | np.ma.getmaskarray(sic_cdr_hemi)
 
