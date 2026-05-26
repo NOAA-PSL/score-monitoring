@@ -460,7 +460,7 @@ class SurfaceMapper(object):
             lat_grid_ints = 15
         
         for ax in ax_list:
-            gl = ax.gridlines(draw_labels=True, linewidth=0.5, color='#A2A4A3', alpha=1.0, linestyle=':', zorder=10)
+            gl = ax.gridlines(draw_labels=True, linewidth=0.5, color='#A2A4A3', alpha=1.0, linestyle=':')
             gl.xlocator = mticker.FixedLocator(np.arange(-180, 181, lon_grid_ints))
             gl.ylocator = mticker.FixedLocator(np.arange(-90+lat_grid_ints, 90, lat_grid_ints))
             gl.top_labels = False
@@ -479,7 +479,7 @@ class SurfaceMapper(object):
                               shading='nearest',
                               rasterized=True,
                               antialiased=False,
-                              zorder=0,
+                              zorder=0.1,
                               transform=ccrs.PlateCarree()
                 )
             
@@ -495,7 +495,7 @@ class SurfaceMapper(object):
                               shading='nearest',
                               rasterized=True,
                               antialiased=False,
-                              zorder=0,
+                              zorder=0.1,
                               transform=ccrs.PlateCarree()
                 )
         
@@ -508,7 +508,7 @@ class SurfaceMapper(object):
                               shading='nearest',
                               rasterized=True,
                               antialiased=False,
-                              zorder=2,
+                              zorder=0.2,
                               transform=ccrs.PlateCarree()
                 )                                      
                 ax.pcolormesh(lon,
@@ -519,13 +519,13 @@ class SurfaceMapper(object):
                               rasterized=True,
                               #alpha=0.667,
                               antialiased=False,
-                              zorder=3,
+                              zorder=0.3,
                               transform=ccrs.PlateCarree()
                 )
             if surface_contours:
                 ax.contour(lon, lat, self.pressfc_data,
                            levels = np.exp(np.linspace(np.log(MEAN_SLP/2), np.log(MEAN_SLP), 6)),
-                           colors='#565A5C', linewidths=0.5, alpha=1., zorder=5)
+                           colors='#565A5C', linewidths=0.5, alpha=1., zorder=2.1)
         
         if sea_ice:
             return ax_list
@@ -580,7 +580,7 @@ class SurfaceMapper(object):
                           shading='nearest',
                           rasterized=True,
                           antialiased=False,
-                          zorder=1,
+                          zorder=1.1,
                           transform=ccrs.PlateCarree()
             )
             '''
@@ -616,7 +616,7 @@ class SurfaceMapper(object):
                           shading='nearest',
                           rasterized=True,
                           antialiased=False,
-                          zorder=1,
+                          zorder=1.2,
                           transform=ccrs.PlateCarree()
             )
             
@@ -778,7 +778,7 @@ class SurfaceMapper(object):
                 shading='nearest',
                 rasterized=True,
                 antialiased=False,
-                zorder=9,
+                zorder=1.1,
                 transform=ccrs.PlateCarree()
             )
 
@@ -817,7 +817,7 @@ class SurfaceMapper(object):
                 shading='nearest',
                 rasterized=True,
                 antialiased=False,
-                zorder=4,
+                zorder=1.1,
                 transform=ccrs.PlateCarree()
             )
 
@@ -875,7 +875,7 @@ class SurfaceMapper(object):
                                s=np.clip(max_size / (depths + 0.01), 5, max_size),
                                alpha=0.9,
                                transform=ccrs.PlateCarree(),
-                               zorder=4,
+                               zorder=1.1,
                                cmap=cc.cm.CET_D9)
                 soca_obs_exist = True
 
@@ -1074,7 +1074,7 @@ class SurfaceMapper(object):
             rasterized=True,
             antialiased=False,
             alpha=1,
-            zorder=4,
+            zorder=1.1,
             transform=ccrs.PlateCarree()
         )
         
@@ -1130,7 +1130,7 @@ class SurfaceMapper(object):
                 rasterized=True,
                 antialiased=False,
                 alpha=1,
-                zorder=4,
+                zorder=1.1,
                 transform=ccrs.PlateCarree()
             )
 
@@ -1159,7 +1159,7 @@ class SurfaceMapper(object):
                 rasterized=True,
                 antialiased=False,
                 alpha=1,
-                zorder=4,
+                zorder=1.1,
                 transform=ccrs.PlateCarree()
             )
 
