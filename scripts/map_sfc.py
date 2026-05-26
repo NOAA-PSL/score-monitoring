@@ -1093,7 +1093,7 @@ class SurfaceMapper(object):
         """
         
         # 1. Mask where both SIC_model and SIC_CDR < 0.15 (open water)
-        mask_both_zero = (np.ma.filled(sic_model, 0) < 0.15) & (np.ma.filled(sic_cdr_hemi, 0) < 0.15)
+        mask_both_zero = (np.ma.filled(sic_model, 1) < 0.15) & (np.ma.filled(sic_cdr_hemi, 1) < 0.15)
         model_combined_mask = mask_both_zero | np.ma.getmaskarray(sic_model)
         cdr_combined_mask = mask_both_zero | np.ma.getmaskarray(sic_cdr_hemi)
 
@@ -1110,7 +1110,7 @@ class SurfaceMapper(object):
         """
         if not model_only and not cdr_only:
             # 3. Replace elements of both fields with 1 where both > 0.15
-            both_ice = (sic_model_masked > 0.15) & (sic_cdr_masked > 0.15)
+            both_ice = (np.ma.filled(sic_model_masked, 0) > 0.15) & (np.ma.filled(sic_cdr_masked, 0) > 0.15)
             sic_cdr_fixed   = np.ma.where(both_ice, 1.0, sic_cdr_masked)
             sic_model_fixed = np.ma.where(both_ice, 1.0, sic_model_masked)
             
@@ -1141,20 +1141,18 @@ class SurfaceMapper(object):
             cbar.set_label('Fractional error', fontsize=FONTSIZE,
                            fontname=FONTNAME, color=FONTCOLOR)
         else:
-            sic_cdr_fixed = sic_cdr_masked
-            sic_model_fixed = sic_model_masked
             if model_only:
-                to_plot = sic_model_fixed
+                to_plot = sic_model
             elif cdr_only:
-                to_plot = sic_cdr_fixed
+                to_plot = sic_cdr
                         # 5. Plot
             pmesh = ax.pcolormesh(
                 lon,
                 lat,
                 to_plot,
                 cmap=cc.cm.CET_CBTL3,
-                vmin=0.05,
-                vmax=0.95,
+                vmin=0.,
+                vmax=1.,
                 shading='nearest',
                 rasterized=True,
                 antialiased=False,
@@ -1165,7 +1163,7 @@ class SurfaceMapper(object):
 
             # 6. Colorbar
             cbar = plt.colorbar(pmesh, ax=ax)
-            cbar.set_ticks(np.arange(0.1, 0.91, 0.1))
+            cbar.set_ticks(np.arange(0, 1.1, 0.1))
             cbar.ax.tick_params(labelsize=FONTSIZE, labelcolor=FONTCOLOR)
             cbar.set_label('Sea ice fraction', fontsize=FONTSIZE,
                            fontname=FONTNAME, color=FONTCOLOR)
