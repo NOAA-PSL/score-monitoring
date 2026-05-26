@@ -1011,11 +1011,11 @@ class SurfaceMapper(object):
                                       model_only=False,
                                       cdr_only=True
                                       )
-                plt.title(f'PM Arctic SIC ({time_label})',
+                plt.title(f'PM Arctic SIE ({time_label})',
                           fontsize=FONTSIZE, fontname=FONTNAME, color=FONTCOLOR)
                 #rootgrp_ref_nh.close()
 
-                plt.savefig(os.path.join(self.work_dir, f'pmnhsic_{time_str}.png'),
+                plt.savefig(os.path.join(self.work_dir, f'pmnhsie_{time_str}.png'),
                             dpi=300)
             plt.close()
 
@@ -1030,11 +1030,11 @@ class SurfaceMapper(object):
                                       model_only=False,
                                       cdr_only=True
                                       )
-                plt.title(f'PM Antarctic SIC ({time_label})',
+                plt.title(f'PM Antarctic SIE ({time_label})',
                           fontsize=FONTSIZE, fontname=FONTNAME, color=FONTCOLOR)
                 #rootgrp_ref_sh.close()
 
-                plt.savefig(os.path.join(self.work_dir, f'pmshsic_{time_str}.png'),
+                plt.savefig(os.path.join(self.work_dir, f'pmshsie_{time_str}.png'),
                             dpi=300)
             plt.close()
             
@@ -1170,7 +1170,7 @@ class SurfaceMapper(object):
             cbar = plt.colorbar(pmesh, ax=ax)
             cbar.set_ticks(np.arange(0.1, 0.91, 0.1))
             cbar.ax.tick_params(labelsize=FONTSIZE, labelcolor=FONTCOLOR)
-            cbar.set_label('Sea ice concentration', fontsize=FONTSIZE,
+            cbar.set_label('Sea ice fraction', fontsize=FONTSIZE,
                            fontname=FONTNAME, color=FONTCOLOR)
 
         return pmesh
