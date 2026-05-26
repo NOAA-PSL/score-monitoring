@@ -1144,12 +1144,12 @@ class SurfaceMapper(object):
             if model_only:
                 to_plot = sic_model
             elif cdr_only:
-                to_plot = sic_cdr
+                to_plot = sic_cdr_hemi
                         # 5. Plot
             pmesh = ax.pcolormesh(
                 lon,
                 lat,
-                to_plot,
+                np.ma.masked_where(to_plot == 0, to_plot),
                 cmap=cc.cm.CET_CBTL3,
                 vmin=0.,
                 vmax=1.,
