@@ -166,6 +166,7 @@ class SurfaceMapper(object):
                     )
                     axes_list = list(axes.flat)
                     axes_iter = zip(axes_list, depth_bins)
+                    marker_size=10
                 else:
                     fig, ax = plt.subplots(
                         1, 1,
@@ -175,7 +176,7 @@ class SurfaceMapper(object):
                     )
                     axes_list = [ax]
                     axes_iter = [(ax, ("", (None, None)))]
-
+                    marker_size=5
                 sc = None
                 for ax, (label, (zmin, zmax)) in axes_iter:
 
@@ -215,7 +216,7 @@ class SurfaceMapper(object):
                         lons[depth_mask],
                         lats[depth_mask],
                         c=ombg_arr[depth_mask],
-                        s=10,
+                        s=marker_size,
                         alpha=0.9,
                         vmin=vmin,
                         vmax=vmax,
