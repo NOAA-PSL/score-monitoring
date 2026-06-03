@@ -103,7 +103,7 @@ class SurfaceMapper(object):
                 if err.response['Error']['Code'] == "404":
                     print(f"File {target_file_name} not found at {prefix}")
                     print(err)
-                    raise err
+                    continue#raise err
                 else:
                     print(err)
                     raise err
@@ -114,35 +114,63 @@ class SurfaceMapper(object):
         soca_obs_path = pathlib.Path(self.work_dir).parent / soca_obs_dir
         soca_diag_files = list(soca_obs_path.glob('*.nc')) + list(soca_obs_path.glob('*.nc4'))
         
-
+        ## parameters for depth binning and colorbar limits
         depth_bins = [
             ("1–10 m", (1,10)),
             ("10–100 m", (10,100)),
             ("100–500 m", (100,500)),
             ("500+ m", (500,np.inf)),
         ]
+        sfc_colorbar_limits = {
+            "seaIceFraction": 0.5,
+            "absoluteDynamicTopography": 0.5,
+            "seaSurfaceTemperature": 1.0,
+        }
+        depth_T_colorbar_limits = {
+            "mean": 1,
+            "std": 0.5,
+        }
+        ##### functions 
         def nice_limit(x):
-            exp = np.floor(np.log10(x))
-            frac = x / 10**exp
+            """Round x up to a nice value: 1, 2, 5, or 10 times a power of 10."""
+            if x <= 0:
+                print(
+                    f"Warning: non-positive limit value {x} encountered, defaulting to 1.0"
+                )
+                return 1.0
 
-            if frac <= 1:
-                nice = 1
-            elif frac <= 2:
-                nice = 2
-            elif frac <= 5:
-                nice = 5
+            exponent = np.floor(np.log10(x))
+            fraction = x / 10**exponent
+
+            if fraction <= 1:
+                nice_fraction = 1
+            elif fraction <= 2:
+                nice_fraction = 2
+            elif fraction <= 5:
+                nice_fraction = 5
             else:
-                nice = 10
+                nice_fraction = 10
 
-            return nice * 10**exp
+            return nice_fraction * 10**exponent
+        def determine_hemisphere(lat):
+            lat_mean = np.nanmean(lat)
+            if lat_mean >= 0:
+                return "NH"
+            else:
+                return "SH"
+        def size_from_n(n):
+            return 5 + 3 * np.sqrt(n)
+        #####  
 
-                
+        
         soca_obs_exist = bool(soca_diag_files)
         if not soca_obs_exist:
             print(f"No SOCA diagnostic files found in {soca_obs_path}")
             return  # or skip processing
         
+        ## loop through files
         for soca_diag_file in soca_diag_files:
+            print(soca_diag_file.name)
             rootgrp = Dataset(soca_diag_file)
             meta_grp = rootgrp.groups['MetaData']
             ombg_grp = rootgrp.groups['ombg']
@@ -158,30 +186,60 @@ class SurfaceMapper(object):
     
             depths = meta_grp.variables['depth'][:] if has_depth else None
 
+            ## loop through variables in ombg group 
             valid_geo = np.isfinite(lons) & np.isfinite(lats)
             for var, ombg in ombg_grp.variables.items():
-                
+                print(var)
                 # obsvals = obsvalue_grp[var][:] + 273.15 if var=='waterTemperature' else obsvalue_grp[var][:]
                 ombg_vals = ombg[:]
                 effQC0_vals = effectiveQC0_grp[var][:]
                 ombg_arr = np.where(effQC0_vals==0, ombg_vals, np.nan)
-
+                
+                print(var, "RAW min/max:", np.nanmin(ombg_vals[valid_geo]), np.nanmax(ombg_vals[valid_geo]))
+                print(var, "QC min/max:", np.nanmin(ombg_arr[valid_geo]), np.nanmax(ombg_arr[valid_geo]))
                 # relative_errs = (-1 * ombg[:]) / obsvals
 
                 # =========================================================
                 # CASE 1: NO DEPTH → SIMPLE SCATTER
                 # =========================================================
                 if not has_depth:
+                    ## determine projection based on variable type and hemisphere 
+                    if var == 'seaIceFraction':
+                        hemisphere = determine_hemisphere(lats[valid_geo])
+                        if hemisphere == "NH":
+
+                            fig, ax = plt.subplots(
+                                1, 1,
+                                figsize=(9, 4),
+                                subplot_kw={"projection": ccrs.NorthPolarStereo()},
+                                constrained_layout=True
+                            )
+                        elif hemisphere == "SH":
+                            fig, ax = plt.subplots(
+                                1, 1,
+                                figsize=(9, 4),
+                                subplot_kw={"projection": ccrs.SouthPolarStereo()},
+                                constrained_layout=True
+                            )
+                    else:
+                        fig, ax = plt.subplots(
+                            1, 1,
+                            figsize=(9, 4),
+                            subplot_kw={"projection": ccrs.PlateCarree(central_longitude=200)},
+                            constrained_layout=True
+                        )
+
+                ## plotting parameters and styling
                     markersize=2
-                    fig, ax = plt.subplots(
-                        1, 1,
-                        figsize=(9, 4),
-                        subplot_kw={"projection": ccrs.PlateCarree()},
-                        constrained_layout=True
-                    )
                     lon_grid_ints=60
                     lat_grid_ints=30
-                    ax.set_global()
+                    if var == 'seaIceFraction':
+                        if hemisphere == "NH":
+                            ax.set_extent([-180, 180, 45, 90], ccrs.PlateCarree())
+                        elif hemisphere == "SH":
+                            ax.set_extent([-180, 180, -90, -45], ccrs.PlateCarree())
+                    else:
+                        ax.set_global()
                     ax.coastlines(resolution='110m', linewidth=0.8)
                     ax.add_feature(cfeature.LAND, facecolor='lightgray')
                     ax.add_feature(cfeature.OCEAN, facecolor='white')
@@ -193,8 +251,12 @@ class SurfaceMapper(object):
                     gl.xlabel_style = {'fontname': FONTNAME, 'fontsize': FONTSIZE, 'color': FONTCOLOR}
                     gl.ylabel_style = {'fontname': FONTNAME, 'fontsize': FONTSIZE, 'color': FONTCOLOR}
 
-                    global_abs_max = np.nanmax(np.abs(ombg_arr[valid_geo]))
-                    limit = nice_limit(global_abs_max * 0.5)
+                    if var in sfc_colorbar_limits:
+                        limit = sfc_colorbar_limits[var]
+                    else:
+                        print('the var is not in the predefined colorbar limits list, using automatic limit')
+                        global_abs_max = np.nanmax(np.abs(ombg_arr[valid_geo]))
+                        limit = nice_limit(global_abs_max * 0.5)
 
                     nlevels = 21  # odd number so 0 sits in center
                     bounds = np.linspace(-limit, limit, nlevels)
@@ -213,276 +275,281 @@ class SurfaceMapper(object):
                         norm=norm,
                         transform=ccrs.PlateCarree()
                     )
+                    ## put the max and min values in the title for quick reference (after QC filtering)
                     vmin=np.nanmin(ombg_arr[valid_geo])
                     vmax=np.nanmax(ombg_arr[valid_geo])
-                    ax.set_title(f"{var} ,sfc (max: {vmax:.2f}, min: {vmin:.2f}), OmB")
-
-
                     base_name = soca_diag_file.stem
+                    ax.set_title(f"{base_name} (max: {vmax:.2f}, min: {vmin:.2f}), OmB")
+                    fig.colorbar(sc, ax=ax, orientation="horizontal",
+                                shrink=1.1,   # make it longer (default is 1.0)
+                                pad=0.08, fraction=0.05).set_label("Obs − Background")
+
                     outfile = os.path.join(
                         self.work_dir,
                         f"{base_name}_{self.datetime_str}_sfc.png"
                     )
 
-                    fig.colorbar(sc, ax=ax, orientation="horizontal",
-                                shrink=1.1,   # make it longer (default is 1.0)
-                                pad=0.08, fraction=0.05).set_label("Obs − Background")
-
                     fig.savefig(outfile, dpi=300, bbox_inches="tight")
                     plt.close(fig)
 
                     continue  # IMPORTANT: skip depth logic (things below are skipped if no depth variable)
-            # =========================================================
-            # CASE 2: DEPTH EXISTS → BIN + MEAN/STD
-            # =========================================================
-
-                fig_mean, axes_mean = plt.subplots(
-                    2, 2,
-                    figsize=(11, 6),
-                    subplot_kw={"projection": ccrs.PlateCarree()}
-                )
-                fig_mean.subplots_adjust(
-                    wspace=0.001,  # smaller → columns closer
-                    hspace=0.2    # larger → rows farther apart
-                )
-                fig_std, axes_std = plt.subplots(
-                    2, 2,
-                    figsize=(11, 6),
-                    subplot_kw={"projection": ccrs.PlateCarree()}
-                )
-                fig_std.subplots_adjust(
-                    wspace=0.001,  # smaller → columns closer
-                    hspace=0.2    # larger → rows farther apart
-                )
-
-                fig_mean.subplots_adjust(right=0.85)
-                fig_std.subplots_adjust(right=0.85)
-
-                axes_mean = axes_mean.flatten()
-                axes_std = axes_std.flatten()
-
-                has_any_depth_data = False
-
-                def size_from_n(n):
-                    return 5 + 3 * np.sqrt(n)
-
-
-                
-                all_mean_max_vals = []
-                all_std_max_vals = []
-                depth_results = []
-
-                for (label, (zmin, zmax)) in depth_bins:
-                    ### calculate the metrics and global min and max 
-                    # -------------------------
-                    # depth mask
-                    # -------------------------
-                    depth_mask = (
-                        (depths >= zmin) &
-                        (depths < zmax) &
-                        valid_geo
+                # =========================================================
+                # CASE 2: DEPTH EXISTS → BIN + MEAN/STD
+                # =========================================================
+                else:
+                    fig_mean, axes_mean = plt.subplots(
+                        2, 2,
+                        figsize=(11, 6),
+                        subplot_kw={"projection": ccrs.PlateCarree(central_longitude=200)}
+                    )
+                    fig_mean.subplots_adjust(
+                        wspace=0.001,  # smaller → columns closer
+                        hspace=0.2    # larger → rows farther apart
+                    )
+                    fig_std, axes_std = plt.subplots(
+                        2, 2,
+                        figsize=(11, 6),
+                        subplot_kw={"projection": ccrs.PlateCarree(central_longitude=200)}
+                    )
+                    fig_std.subplots_adjust(
+                        wspace=0.001,  # smaller → columns closer
+                        hspace=0.2    # larger → rows farther apart
                     )
 
-                    if not np.any(depth_mask):
-                        depth_results.append((label, None))
-                        print(f"{soca_diag_file.name}, {var}, {label}: no valid data in this depth range → skipping this subplot")
-                        continue
-                    has_any_depth_data = True
+                    fig_mean.subplots_adjust(right=0.85)
+                    fig_std.subplots_adjust(right=0.85)
 
-                    # -------------------------
-                    # bin lat/lon
-                    # -------------------------
-                    lon_bin = 2.0
-                    lat_bin = 2.0
+                    axes_mean = axes_mean.flatten()
+                    axes_std = axes_std.flatten()
 
-                    lon_binned = np.round(lons[depth_mask] / lon_bin) * lon_bin
-                    lat_binned = np.round(lats[depth_mask] / lat_bin) * lat_bin
+                    has_any_depth_data = False
 
-                    df = pd.DataFrame({
-                        "lon": lon_binned,
-                        "lat": lat_binned,
-                        "ombg": ombg_arr[depth_mask]
-                    })
 
-                    agg = df.groupby(["lon", "lat"]).agg(
-                        mean_ombg=("ombg", "mean"),
-                        std_ombg=("ombg", "std"),
-                        nobs=("ombg", "size")
-                    ).reset_index()
+                    all_mean_max_vals = []
+                    all_std_max_vals = []
+                    depth_results = []
 
-                    depth_results.append((label, agg))
+                    for (label, (zmin, zmax)) in depth_bins:
+
+                        # -------------------------
+                        # depth mask
+                        # -------------------------
+                        depth_mask = (
+                            (depths >= zmin) &
+                            (depths < zmax) &
+                            valid_geo
+                        )
+
+                        if not np.any(depth_mask):
+                            depth_results.append((label, None))
+                            print(f"{soca_diag_file.name}, {var}, {label}: no valid data in this depth range → skipping this subplot")
+                            continue
+                        has_any_depth_data = True
+
+                        # # -------------------------
+                        # # bin lat/lon (skipped for now)
+                        # # -------------------------
+                        # lon_bin = 2.0
+                        # lat_bin = 2.0
+
+                        # lon_binned = np.round(lons[depth_mask] / lon_bin) * lon_bin
+                        # lat_binned = np.round(lats[depth_mask] / lat_bin) * lat_bin
+
+                        # df = pd.DataFrame({
+                        #     "lon": lon_binned,
+                        #     "lat": lat_binned,
+                        #     "ombg": ombg_arr[depth_mask]
+                        # })
+                        df = pd.DataFrame({
+                            "lon": lons[depth_mask],
+                            "lat": lats[depth_mask],
+                            "ombg": ombg_arr[depth_mask]
+                        })
+
+                        ## calculate mean and std
+                        agg = df.groupby(["lon", "lat"]).agg(
+                            mean_ombg=("ombg", "mean"),
+                            std_ombg=("ombg", "std"),
+                            nobs=("ombg", "size")
+                        ).reset_index()
+
+                        depth_results.append((label, agg))
+                        
+                        if agg["mean_ombg"].notna().any():
+                            all_mean_max_vals.append(np.nanmax(np.abs(agg["mean_ombg"])))
+                        if agg["std_ombg"].notna().any():
+                            all_std_max_vals.append(np.nanmax(agg["std_ombg"]))
+
+
                     
-                    if agg["mean_ombg"].notna().any():
-                        all_mean_max_vals.append(np.nanmax(np.abs(agg["mean_ombg"])))
-                    if agg["std_ombg"].notna().any():
-                        all_std_max_vals.append(np.nanmax(agg["std_ombg"]))
+                    ### before plotting 4 subplots
+                    ### calculated the shared plot colorbar limits based on global min/max across subplots
+                    if len(all_mean_max_vals) == 0 or len(all_std_max_vals) == 0:
+                        print(f"{soca_diag_file.name}, {var}: no depth data in any bin")
+                        plt.close(fig_mean)
+                        plt.close(fig_std)
+                        continue
+                    
+
+                    if var == 'waterTemperature':
+                        limit_mean = depth_T_colorbar_limits['mean']
+                        limit_std = depth_T_colorbar_limits['std']
+                    else:
+                        print('Depth figs: the var is not in the predefined waterTemperature limits list, using automatic limit')
+                        limit_mean = nice_limit(np.nanmax(all_mean_max_vals) * 0.5)
+                        limit_std = nice_limit(np.nanmax(all_std_max_vals) * 0.5)
+
+                    nlevels = 21
+                    bound_mean = np.linspace(-limit_mean, limit_mean, nlevels)
+                    norm_mean = BoundaryNorm(
+                        bound_mean,
+                        ncolors=cc.cm.CET_D9.N,
+                        clip=False
+                    )
+                    
+                    bound_std = np.linspace(0, limit_std, nlevels)
+                    norm_std = BoundaryNorm(
+                        bound_std,
+                        ncolors=cc.cm.CET_D9.N,
+                        clip=False
+                    )
+                    ## plotting loop for each depth bin subplot
+                    for i, ((ax_mean, ax_std), (label, agg)) in enumerate(zip(zip(axes_mean, axes_std), depth_results)):
+                        if agg is None:
+                            ax_mean.set_title(f"{label} (no data)")
+                            ax_std.set_title(f"{label} (no data)")
+                            continue
+                        col = i % 2
+                        row = i // 2
+                        # -------------------------
+                        # map styling
+                        # -------------------------
+                        for ax in [ax_mean, ax_std]:
+                            lon_grid_ints = 60
+                            lat_grid_ints = 30
+                            ax.set_global()
+                            ax.coastlines()
+                            ax.add_feature(cfeature.LAND, facecolor='lightgray')
+                            ax.add_feature(cfeature.OCEAN, facecolor='white')
+                            gl = ax.gridlines(draw_labels=True, linewidth=0.5, color='#A2A4A3', alpha=1.0, linestyle=':', zorder=10)
+                            gl.xlocator = mticker.FixedLocator(np.arange(-180, 181, lon_grid_ints))
+                            gl.ylocator = mticker.FixedLocator(np.arange(-90+lat_grid_ints, 90, lat_grid_ints))
+                            gl.top_labels = False
+                            gl.right_labels = False
+                            # remove duplicate labels
+                            if col == 1:
+                                gl.left_labels = False      # no latitude labels on right column
+                            if row == 0:
+                                gl.bottom_labels = False    # no longitude labels on top row
+
+                            gl.xlabel_style = {'fontname': FONTNAME, 'fontsize': FONTSIZE, 'color': FONTCOLOR}
+                            gl.ylabel_style = {'fontname': FONTNAME, 'fontsize': FONTSIZE, 'color': FONTCOLOR}
 
 
-                ### build share plot colorbar limits based on global min/max across subplots
-                ### before plotting 4 subplots
-                if len(all_mean_max_vals) == 0 or len(all_std_max_vals) == 0:
-                    print(f"{soca_diag_file.name}, {var}: no depth data in any bin")
+                        # -------------------------
+                        # MEAN PLOT
+                        # -------------------------
+                        sc_mean = ax_mean.scatter(
+                            agg["lon"], agg["lat"],
+                            c=agg["mean_ombg"],
+                            s=size_from_n(agg["nobs"]),
+                            cmap=cc.cm.CET_D9,
+                            norm=norm_mean,
+                            transform=ccrs.PlateCarree()
+                        )
+                        if agg["mean_ombg"].notna().any():
+                            vmin_mean=np.nanmin(agg["mean_ombg"])
+                            vmax_mean=np.nanmax(agg["mean_ombg"])
+                        else:
+                            vmin_mean, vmax_mean = np.nan, np.nan
+                        ax_mean.set_title(label + f" (max: {vmax_mean:.2f}, min: {vmin_mean:.2f})")
+
+                        # -------------------------
+                        # STD PLOT
+                        # -------------------------
+                        sc_std = ax_std.scatter(
+                            agg["lon"], agg["lat"],
+                            c=agg["std_ombg"],
+                            s=size_from_n(agg["nobs"]),
+                            cmap="viridis",
+                            norm=norm_std,
+                            transform=ccrs.PlateCarree()
+                        )
+                        if agg["std_ombg"].notna().any():
+                            vmin_std = np.nanmin(agg["std_ombg"])
+                            vmax_std = np.nanmax(agg["std_ombg"])
+                        else:
+                            vmin_std, vmax_std = np.nan, np.nan
+                        ax_std.set_title(label + f" (max: {vmax_std:.2f}, min: {vmin_std:.2f})")
+
+                    legend_vals = [5, 10, 25, 50, 100, 250, 500, 750, 1000]
+                    handles = [
+                        ax_mean.scatter([], [], s=size_from_n(v),
+                                        color="gray", alpha=0.6,
+                                        transform=ccrs.PlateCarree())
+                        for v in legend_vals
+                    ]
+
+                    fig_mean.legend(
+                        handles,
+                        [f"{v} obs" for v in legend_vals],
+                        title="# of obs",
+                        loc="center left",
+                        bbox_to_anchor=(0.86, 0.5),   # pushes it outside right side
+                        frameon=True,
+                        borderaxespad=0.0,
+                        fontsize=9,
+                        title_fontsize=10
+                    )
+                    fig_std.legend(
+                        handles,
+                        [f"{v} obs" for v in legend_vals],
+                        title="# of obs",
+                        loc="center left",
+                        bbox_to_anchor=(0.86, 0.5),
+                        frameon=True,
+                        borderaxespad=0.0,
+                        fontsize=9,
+                        title_fontsize=10
+                    )
+                    # =========================================================
+                    # SAVE OUTPUTS
+                    # =========================================================
+
+                    base_name = soca_diag_file.stem
+                    if not has_any_depth_data:
+                        print(f"{soca_diag_file.name}: no valid depth data")
+                        plt.close(fig_mean)
+                        plt.close(fig_std)
+                        continue
+
+                    fig_mean.colorbar(sc_mean, ax=axes_mean,
+                                    orientation="horizontal",
+                                    shrink=1.1,   #  make it longer (default is 1.0)
+                                    pad=0.05, fraction=0.05).set_label("Mean (Obs − Background)")
+
+                    fig_std.colorbar(sc_std, ax=axes_std,
+                                    orientation="horizontal",
+                                    shrink=1.1,   # make it longer (default is 1.0)
+                                    pad=0.05, fraction=0.05).set_label("Std (Obs − Background)")
+
+                    fig_mean.suptitle(f"{var}, {base_name}, {self.datetime_str}, Mean OmB")
+                    fig_std.suptitle(f"{var}, {base_name}, {self.datetime_str}, Std OmB")
+
+
+                    fig_mean.savefig(
+                        os.path.join(self.work_dir, f"{base_name}_{self.datetime_str}_Depth_mean.png"),
+                        dpi=300, bbox_inches="tight"
+                    )
+
+                    fig_std.savefig(
+                        os.path.join(self.work_dir, f"{base_name}_{self.datetime_str}_Depth_std.png"),
+                        dpi=300, bbox_inches="tight"
+                    )
+
                     plt.close(fig_mean)
                     plt.close(fig_std)
-                    continue
-                global_mean_limit = np.nanmax(all_mean_max_vals)
-                global_std_limit = np.nanmax(all_std_max_vals)
-
-
-                nlevels = 21
-                limit_mean = nice_limit(global_mean_limit * 0.5)
-                bound_mean = np.linspace(-limit_mean, limit_mean, nlevels)
-                norm_mean = BoundaryNorm(
-                    bound_mean,
-                    ncolors=cc.cm.CET_D9.N,
-                    clip=False
-                )
-                
-                limit_std = nice_limit(global_std_limit * 0.5)
-                bound_std = np.linspace(0, limit_std, nlevels)
-                norm_std = BoundaryNorm(
-                    bound_std,
-                    ncolors=cc.cm.CET_D9.N,
-                    clip=False
-                )
-
-
-
-
-
-                for i, ((ax_mean, ax_std), (label, agg)) in enumerate(zip(zip(axes_mean, axes_std), depth_results)):
-
-                    col = i % 2
-                    row = i // 2
-                    # -------------------------
-                    # map styling
-                    # -------------------------
-                    for ax in [ax_mean, ax_std]:
-                        lon_grid_ints = 60
-                        lat_grid_ints = 30
-                        ax.set_global()
-                        ax.coastlines()
-                        ax.add_feature(cfeature.LAND, facecolor='lightgray')
-                        ax.add_feature(cfeature.OCEAN, facecolor='white')
-                        gl = ax.gridlines(draw_labels=True, linewidth=0.5, color='#A2A4A3', alpha=1.0, linestyle=':', zorder=10)
-                        gl.xlocator = mticker.FixedLocator(np.arange(-180, 181, lon_grid_ints))
-                        gl.ylocator = mticker.FixedLocator(np.arange(-90+lat_grid_ints, 90, lat_grid_ints))
-                        gl.top_labels = False
-                        gl.right_labels = False
-                        # remove duplicate labels
-                        if col == 1:
-                            gl.left_labels = False      # no latitude labels on right column
-                        if row == 0:
-                            gl.bottom_labels = False    # no longitude labels on top row
-
-                        gl.xlabel_style = {'fontname': FONTNAME, 'fontsize': FONTSIZE, 'color': FONTCOLOR}
-                        gl.ylabel_style = {'fontname': FONTNAME, 'fontsize': FONTSIZE, 'color': FONTCOLOR}
-
-
-                    # -------------------------
-                    # MEAN PLOT
-                    # -------------------------
-                    sc_mean = ax_mean.scatter(
-                        agg["lon"], agg["lat"],
-                        c=agg["mean_ombg"],
-                        s=size_from_n(agg["nobs"]),
-                        cmap=cc.cm.CET_D9,
-                        norm=norm_mean,
-                        transform=ccrs.PlateCarree()
-                    )
-                    if agg["mean_ombg"].notna().any():
-                        vmin_mean=np.nanmin(agg["mean_ombg"])
-                        vmax_mean=np.nanmax(agg["mean_ombg"])
-                    else:
-                        vmin_mean, vmax_mean = np.nan, np.nan
-                    ax_mean.set_title(label + f" (max: {vmax_mean:.2f}, min: {vmin_mean:.2f})")
-
-                    # -------------------------
-                    # STD PLOT
-                    # -------------------------
-                    sc_std = ax_std.scatter(
-                        agg["lon"], agg["lat"],
-                        c=agg["std_ombg"],
-                        s=size_from_n(agg["nobs"]),
-                        cmap="viridis",
-                        norm=norm_std,
-                        transform=ccrs.PlateCarree()
-                    )
-                    if agg["std_ombg"].notna().any():
-                        vmin_std = np.nanmin(agg["std_ombg"])
-                        vmax_std = np.nanmax(agg["std_ombg"])
-                    else:
-                        vmin_std, vmax_std = np.nan, np.nan
-                    ax_std.set_title(label + f" (max: {vmax_std:.2f}, min: {vmin_std:.2f})")
-
-                legend_vals = [5, 10, 25, 50, 100, 250, 500, 750, 1000]
-                handles = [
-                    ax_mean.scatter([], [], s=size_from_n(v),
-                                    color="gray", alpha=0.6,
-                                    transform=ccrs.PlateCarree())
-                    for v in legend_vals
-                ]
-
-                fig_mean.legend(
-                    handles,
-                    [f"{v} obs" for v in legend_vals],
-                    title="# of obs",
-                    loc="center left",
-                    bbox_to_anchor=(0.86, 0.5),   # pushes it outside right side
-                    frameon=True,
-                    borderaxespad=0.0,
-                    fontsize=9,
-                    title_fontsize=10
-                )
-                fig_std.legend(
-                    handles,
-                    [f"{v} obs" for v in legend_vals],
-                    title="# of obs",
-                    loc="center left",
-                    bbox_to_anchor=(0.86, 0.5),
-                    frameon=True,
-                    borderaxespad=0.0,
-                    fontsize=9,
-                    title_fontsize=10
-                )
-                # =========================================================
-                # SAVE OUTPUTS
-                # =========================================================
-
-                base_name = soca_diag_file.stem
-                if not has_any_depth_data:
-                    print(f"{soca_diag_file.name}: no valid depth data")
-                    plt.close(fig_mean)
-                    plt.close(fig_std)
-                    continue
-
-                fig_mean.colorbar(sc_mean, ax=axes_mean,
-                                orientation="horizontal",
-                                shrink=1.1,   #  make it longer (default is 1.0)
-                                pad=0.05, fraction=0.05).set_label("Mean (Obs − Background)")
-
-                fig_std.colorbar(sc_std, ax=axes_std,
-                                orientation="horizontal",
-                                shrink=1.1,   # make it longer (default is 1.0)
-                                pad=0.05, fraction=0.05).set_label("Std (Obs − Background)")
-
-                fig_mean.suptitle(f"{var}, {base_name}, {self.datetime_str}, Mean OmB")
-                fig_std.suptitle(f"{var}, {base_name}, {self.datetime_str}, Std OmB")
-
-
-                fig_mean.savefig(
-                    os.path.join(self.work_dir, f"{base_name}_{self.datetime_str}_Depth_mean.png"),
-                    dpi=300, bbox_inches="tight"
-                )
-
-                fig_std.savefig(
-                    os.path.join(self.work_dir, f"{base_name}_{self.datetime_str}_Depth_std.png"),
-                    dpi=300, bbox_inches="tight"
-                )
-
-                plt.close(fig_mean)
-                plt.close(fig_std)
-            rootgrp.close()        
+                rootgrp.close()        
 
                 
 def run():
@@ -494,10 +561,13 @@ def run():
     # surface_mapper.map_soca_obs(soca_obs_dir='store_data_soca_obsfit')
     
     # for plotting diags associated with specific output
-    surface_mapper.download_output_files(['wod_t_pfl.nc',
+    surface_mapper.download_output_files(['adt_rads_all.nc',
+                                          'wod_t_pfl.nc',
                                           'wod_t_gld.nc',
                                           'wod_t_drb.nc',
                                           'wod_t_xbt.nc',
+                                          'wod_t_osd.nc',
+                                          'wod_t_ctd.nc',
                                           'sst_viirs_n20_l3u.nc',
                                           'sst_viirs_npp_l3u.nc',
                                           'sst_avhrr_mc_l3u.nc',
