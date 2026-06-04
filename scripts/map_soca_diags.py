@@ -130,34 +130,16 @@ class SurfaceMapper(object):
             "mean": 1,
             "std": 0.5,
         }
+
         ##### functions 
-        def nice_limit(x):
-            """Round x up to a nice value: 1, 2, 5, or 10 times a power of 10."""
-            if x <= 0:
-                print(
-                    f"Warning: non-positive limit value {x} encountered, defaulting to 1.0"
-                )
-                return 1.0
 
-            exponent = np.floor(np.log10(x))
-            fraction = x / 10**exponent
-
-            if fraction <= 1:
-                nice_fraction = 1
-            elif fraction <= 2:
-                nice_fraction = 2
-            elif fraction <= 5:
-                nice_fraction = 5
-            else:
-                nice_fraction = 10
-
-            return nice_fraction * 10**exponent
         def determine_hemisphere(lat):
             lat_mean = np.nanmean(lat)
             if lat_mean >= 0:
                 return "NH"
             else:
                 return "SH"
+            
         def size_from_n(n):
             return 5 + 3 * np.sqrt(n)
         #####  
@@ -232,7 +214,7 @@ class SurfaceMapper(object):
                 ## plotting parameters and styling
                     markersize=2
                     lon_grid_ints=60
-                    lat_grid_ints=30
+                    lat_grid_ints=30            
                     if var == 'seaIceFraction':
                         if hemisphere == "NH":
                             ax.set_extent([-180, 180, 45, 90], ccrs.PlateCarree())
@@ -240,6 +222,7 @@ class SurfaceMapper(object):
                             ax.set_extent([-180, 180, -90, -45], ccrs.PlateCarree())
                     else:
                         ax.set_global()
+
                     ax.coastlines(resolution='110m', linewidth=0.8)
                     ax.add_feature(cfeature.LAND, facecolor='lightgray')
                     ax.add_feature(cfeature.OCEAN, facecolor='white')
@@ -255,8 +238,7 @@ class SurfaceMapper(object):
                         limit = sfc_colorbar_limits[var]
                     else:
                         print('the var is not in the predefined colorbar limits list, using automatic limit')
-                        global_abs_max = np.nanmax(np.abs(ombg_arr[valid_geo]))
-                        limit = nice_limit(global_abs_max * 0.5)
+                        limit = np.percentile(np.abs(ombg_arr[valid_geo]), 95)
 
                     nlevels = 21  # odd number so 0 sits in center
                     bounds = np.linspace(-limit, limit, nlevels)
@@ -373,6 +355,8 @@ class SurfaceMapper(object):
                             nobs=("ombg", "size")
                         ).reset_index()
 
+                        ### save the agg results for this depth bin to use in plotting loop below,
+                        # and also to calculate global colorbar limits across all subplots
                         depth_results.append((label, agg))
                         
                         if agg["mean_ombg"].notna().any():
@@ -389,16 +373,15 @@ class SurfaceMapper(object):
                         plt.close(fig_mean)
                         plt.close(fig_std)
                         continue
-                    
 
                     if var == 'waterTemperature':
                         limit_mean = depth_T_colorbar_limits['mean']
                         limit_std = depth_T_colorbar_limits['std']
                     else:
                         print('Depth figs: the var is not in the predefined waterTemperature limits list, using automatic limit')
-                        limit_mean = nice_limit(np.nanmax(all_mean_max_vals) * 0.5)
-                        limit_std = nice_limit(np.nanmax(all_std_max_vals) * 0.5)
-
+                        limit_mean = np.percentile(np.abs(all_mean_max_vals), 95)
+                        limit_std = np.percentile(np.abs(all_std_max_vals), 95)
+                        
                     nlevels = 21
                     bound_mean = np.linspace(-limit_mean, limit_mean, nlevels)
                     norm_mean = BoundaryNorm(
@@ -419,6 +402,7 @@ class SurfaceMapper(object):
                             ax_mean.set_title(f"{label} (no data)")
                             ax_std.set_title(f"{label} (no data)")
                             continue
+
                         col = i % 2
                         row = i // 2
                         # -------------------------
