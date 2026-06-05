@@ -1,2 +1,4 @@
 .env
 __pycache__
+/media/darr/share/Ho-hsuan.Wei/score/score-monitoring/*/bin/*.py
+*/bin/*.py
