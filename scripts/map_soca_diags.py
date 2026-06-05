@@ -261,7 +261,7 @@ class SurfaceMapper(object):
                     vmin=np.nanmin(ombg_arr[valid_geo])
                     vmax=np.nanmax(ombg_arr[valid_geo])
                     base_name = soca_diag_file.stem
-                    ax.set_title(f"{base_name} (max: {vmax:.2f}, min: {vmin:.2f}), OmB")
+                    ax.set_title(f"{base_name}, {self.datetime_str} (max: {vmax:.2f}, min: {vmin:.2f}), OmB")
                     fig.colorbar(sc, ax=ax, orientation="horizontal",
                                 shrink=1.1,   # make it longer (default is 1.0)
                                 pad=0.08, fraction=0.05).set_label("Obs − Background")
@@ -552,6 +552,7 @@ def run():
                                           'wod_t_xbt.nc',
                                           'wod_t_osd.nc',
                                           'wod_t_ctd.nc',
+                                          'wod_s_apb.nc',
                                           'sst_viirs_n20_l3u.nc',
                                           'sst_viirs_npp_l3u.nc',
                                           'sst_avhrr_mc_l3u.nc',
