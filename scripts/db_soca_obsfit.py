@@ -32,13 +32,12 @@ from score_db import file_utils
 
 score_hv_harvester = 'soca_diags'
 
-variables = [#'sst',
-             #'icec',
-             #'salinity',
+variables = ['seaIceFraction',
+             'salinity',
              'waterTemperature',
-             #'seaSurfaceSalinity',
-             #'seaSurfaceTemperature'
+             'seaSurfaceTemperature'
              ]
+             
 statistics = ['rms', 'mean', 'median','StdDev', 'minimum', 'maximum', 'count']
 
 input_cycle = sys.argv[1]
@@ -98,10 +97,14 @@ for obj_idx, obj in enumerate(bucket.objects.filter(Prefix=prefix)):
 
 #harvest: build harvest config, build yaml, call subprocess, statistic/variable 
 #combo needs to be registered to be saved in db
+
+#TODO: update config dict with required ocean depth intervals
 harvest_config = {'harvester_name': score_hv_harvester,
                      'filenames': file_path_list,
                      'variables': variables,
                      'statistics': statistics}
+                     
+#TODO: will we need two calls, one for arrays and one for scalar metrics?
 yaml_file = db_yaml_generator.generate_harvest_metrics_yaml(
                                         os.getenv('EXPERIMENT_NAME'),
                                         os.getenv('EXPERIMENT_WALLCLOCK_START'),
