@@ -82,7 +82,8 @@ class SurfaceMapper(object):
 
         self.bucket = s3.Bucket(os.getenv('STORAGE_LOCATION_BUCKET'))
 
-    def download_output_files(self, soca_diags_file_names):
+    # def download_output_files(self, soca_diags_file_names):
+    def download_output_files(self, soca_diags_file_names=None):
         """Download files from the S3 bucket to the working directory.
         """
         soca_diags_key = os.getenv('SOCA_DIAGS_KEY') 
@@ -95,18 +96,36 @@ class SurfaceMapper(object):
 
         self.dest_file_path = list()
         
+        # -----------------------------
+        # NEW: auto-discover files if not provided
+        # -----------------------------
+        if soca_diags_file_names is None:
+            soca_diags_file_names = [
+                os.path.basename(obj.key)
+                for obj in self.bucket.objects.filter(Prefix=prefix)
+                if obj.key.endswith((".nc", ".nc4"))
+            ]
+
+            soca_diags_file_names.sort()
+
+        self.dest_file_path = []
+
         for target_file_name_idx, target_file_name in enumerate(soca_diags_file_names):
-            self.dest_file_path.append(os.path.join(self.work_dir, target_file_name))
+            dest_path = os.path.join(self.work_dir, target_file_name)
+            self.dest_file_path.append(dest_path)
+
             try:
-                self.bucket.download_file(prefix + target_file_name, self.dest_file_path[target_file_name_idx])
+                self.bucket.download_file(prefix + target_file_name, dest_path)
+
             except ClientError as err:
-                if err.response['Error']['Code'] == "404":
-                    print(f"File {target_file_name} not found at {prefix}")
-                    print(err)
-                    continue#raise err
-                else:
-                    print(err)
-                    raise err
+                error_code = err.response["Error"]["Code"]
+
+                if error_code in ["404", "NoSuchKey", "NotFound"]:
+                    print(f"WARNING: {target_file_name} not found at {prefix}")
+                    continue
+
+                print(err)
+                raise err
 
     def map_soca_obs(self, soca_obs_dir='soca_diags_mapper', max_size=100):
         """ figure mapper function
@@ -545,22 +564,23 @@ def run():
     # surface_mapper.map_soca_obs(soca_obs_dir='store_data_soca_obsfit')
     
     # for plotting diags associated with specific output
-    surface_mapper.download_output_files(['adt_rads_all.nc',
-                                          'wod_t_pfl.nc',
-                                          'wod_t_gld.nc',
-                                          'wod_t_drb.nc',
-                                          'wod_t_xbt.nc',
-                                          'wod_t_osd.nc',
-                                          'wod_t_ctd.nc',
-                                          'wod_s_apb.nc',
-                                          'sst_viirs_n20_l3u.nc',
-                                          'sst_viirs_npp_l3u.nc',
-                                          'sst_avhrr_mc_l3u.nc',
-                                          'sst_avhrr_mb_l3u.nc',
-                                          'icec_amsr2_north.nc',
-                                          'icec_amsr2_south.nc',
-                                          #'...'
-                                          ])
+    # surface_mapper.download_output_files(['adt_rads_all.nc',
+    #                                       'wod_t_pfl.nc',
+    #                                       'wod_t_gld.nc',
+    #                                       'wod_t_drb.nc',
+    #                                       'wod_t_xbt.nc',
+    #                                       'wod_t_osd.nc',
+    #                                       'wod_t_ctd.nc',
+    #                                       'wod_s_apb.nc',
+    #                                       'sst_viirs_n20_l3u.nc',
+    #                                       'sst_viirs_npp_l3u.nc',
+    #                                       'sst_avhrr_mc_l3u.nc',
+    #                                       'sst_avhrr_mb_l3u.nc',
+    #                                       'icec_amsr2_north.nc',
+    #                                       'icec_amsr2_south.nc',
+    #                                       #'...'
+    #                                       ])
+    surface_mapper.download_output_files()
     surface_mapper.map_soca_obs(soca_obs_dir='soca_diags_mapper')
 
 def main():
