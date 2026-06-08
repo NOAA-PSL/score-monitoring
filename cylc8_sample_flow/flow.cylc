@@ -28,9 +28,9 @@
 
 # parameters 
 {% set MAIL_ADDRESS = '<EMAIL_ADDRESS>@noaa.gov' %}
-{% set INITIAL_CYCLE_POINT = '20230101T12' %}
-{% set FINAL_CYCLE_POINT = '20230102T12' %}
-{% set ENV_PATH = 'weakly_coupled_scoutrun_monitoring.env' %}
+{% set INITIAL_CYCLE_POINT = '20230805T12' %}
+{% set FINAL_CYCLE_POINT = '20230806T12' %}
+{% set ENV_PATH = 'weakly_coupled_scoutrun_v2_monitoring.env' %}
 
 [task parameters]
     stats = file_count, gsi_obsfit
