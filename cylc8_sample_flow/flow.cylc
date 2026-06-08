@@ -60,11 +60,11 @@
         T12 = """
             file_check => store_data => soca_diags_mapper
             
-            file_check[-PT12H] & file_check[-PT6H] & file_check & file_check[+PT6H] &
-            file_check[+PT12H] => store_data_daily_bg
+            # file_check[-PT12H] & file_check[-PT6H] & file_check & file_check[+PT6H] &
+            # file_check[+PT12H] => store_data_daily_bg
 
-            file_check[-PT6H] & file_check & file_check[+PT6H] & file_check[+PT12H] &
-            file_check[+PT18H] => store_data_daily_an
+            # file_check[-PT6H] & file_check & file_check[+PT6H] & file_check[+PT12H] &
+            # file_check[+PT18H] => store_data_daily_an
         """
 [runtime]
     [[root]]
