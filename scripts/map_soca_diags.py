@@ -149,7 +149,10 @@ class SurfaceMapper(object):
             "mean": 1,
             "std": 0.5,
         }
-
+        depth_s_colorbar_limits = {
+            "mean": 0.5,
+            "std": 0.25,
+        }
         ##### functions 
 
         def determine_hemisphere(lat):
@@ -347,20 +350,7 @@ class SurfaceMapper(object):
                             continue
                         has_any_depth_data = True
 
-                        # # -------------------------
-                        # # bin lat/lon (skipped for now)
-                        # # -------------------------
-                        # lon_bin = 2.0
-                        # lat_bin = 2.0
 
-                        # lon_binned = np.round(lons[depth_mask] / lon_bin) * lon_bin
-                        # lat_binned = np.round(lats[depth_mask] / lat_bin) * lat_bin
-
-                        # df = pd.DataFrame({
-                        #     "lon": lon_binned,
-                        #     "lat": lat_binned,
-                        #     "ombg": ombg_arr[depth_mask]
-                        # })
                         df = pd.DataFrame({
                             "lon": lons[depth_mask],
                             "lat": lats[depth_mask],
@@ -396,6 +386,9 @@ class SurfaceMapper(object):
                     if var == 'waterTemperature':
                         limit_mean = depth_T_colorbar_limits['mean']
                         limit_std = depth_T_colorbar_limits['std']
+                    elif var == 'salinity':
+                        limit_mean = depth_s_colorbar_limits['mean']
+                        limit_std = depth_s_colorbar_limits['std']
                     else:
                         print('Depth figs: the var is not in the predefined waterTemperature limits list, using automatic limit')
                         limit_mean = np.percentile(np.abs(all_mean_max_vals), 95)
@@ -455,7 +448,7 @@ class SurfaceMapper(object):
                         sc_mean = ax_mean.scatter(
                             agg["lon"], agg["lat"],
                             c=agg["mean_ombg"],
-                            s=size_from_n(agg["nobs"]),
+                            s=markersize,
                             cmap=cc.cm.CET_D9,
                             norm=norm_mean,
                             transform=ccrs.PlateCarree()
@@ -493,28 +486,7 @@ class SurfaceMapper(object):
                         for v in legend_vals
                     ]
 
-                    fig_mean.legend(
-                        handles,
-                        [f"{v} obs" for v in legend_vals],
-                        title="# of obs",
-                        loc="center left",
-                        bbox_to_anchor=(0.86, 0.5),   # pushes it outside right side
-                        frameon=True,
-                        borderaxespad=0.0,
-                        fontsize=9,
-                        title_fontsize=10
-                    )
-                    fig_std.legend(
-                        handles,
-                        [f"{v} obs" for v in legend_vals],
-                        title="# of obs",
-                        loc="center left",
-                        bbox_to_anchor=(0.86, 0.5),
-                        frameon=True,
-                        borderaxespad=0.0,
-                        fontsize=9,
-                        title_fontsize=10
-                    )
+                
                     # =========================================================
                     # SAVE OUTPUTS
                     # =========================================================
@@ -563,23 +535,6 @@ def run():
     # for plotting all diags downloaded during score-hv/score-db harvesting
     # surface_mapper.map_soca_obs(soca_obs_dir='store_data_soca_obsfit')
     
-    # for plotting diags associated with specific output
-    # surface_mapper.download_output_files(['adt_rads_all.nc',
-    #                                       'wod_t_pfl.nc',
-    #                                       'wod_t_gld.nc',
-    #                                       'wod_t_drb.nc',
-    #                                       'wod_t_xbt.nc',
-    #                                       'wod_t_osd.nc',
-    #                                       'wod_t_ctd.nc',
-    #                                       'wod_s_apb.nc',
-    #                                       'sst_viirs_n20_l3u.nc',
-    #                                       'sst_viirs_npp_l3u.nc',
-    #                                       'sst_avhrr_mc_l3u.nc',
-    #                                       'sst_avhrr_mb_l3u.nc',
-    #                                       'icec_amsr2_north.nc',
-    #                                       'icec_amsr2_south.nc',
-    #                                       #'...'
-    #                                       ])
     surface_mapper.download_output_files()
     surface_mapper.map_soca_obs(soca_obs_dir='soca_diags_mapper')
 
