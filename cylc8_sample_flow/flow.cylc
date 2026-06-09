@@ -52,7 +52,7 @@
     [[graph]]
         # File check dependencies for each cycle point (T00, T06, T18) for the current day
         T00, T06, T12, T18 = """
-            file_check => store_data => soca_diags_mapper
+            file_check => store_data:succeed-all => soca_diags_mapper
         """
 
         

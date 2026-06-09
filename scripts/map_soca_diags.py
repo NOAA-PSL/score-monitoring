@@ -162,8 +162,7 @@ class SurfaceMapper(object):
             else:
                 return "SH"
             
-        def size_from_n(n):
-            return 5 + 3 * np.sqrt(n)
+
         #####  
 
         
@@ -301,6 +300,7 @@ class SurfaceMapper(object):
                 # CASE 2: DEPTH EXISTS → BIN + MEAN/STD
                 # =========================================================
                 else:
+                    markersize = 15
                     fig_mean, axes_mean = plt.subplots(
                         2, 2,
                         figsize=(11, 6),
@@ -466,7 +466,7 @@ class SurfaceMapper(object):
                         sc_std = ax_std.scatter(
                             agg["lon"], agg["lat"],
                             c=agg["std_ombg"],
-                            s=size_from_n(agg["nobs"]),
+                            s=markersize,
                             cmap="viridis",
                             norm=norm_std,
                             transform=ccrs.PlateCarree()
@@ -478,13 +478,7 @@ class SurfaceMapper(object):
                             vmin_std, vmax_std = np.nan, np.nan
                         ax_std.set_title(label + f" (max: {vmax_std:.2f}, min: {vmin_std:.2f})")
 
-                    legend_vals = [5, 10, 25, 50, 100, 250, 500, 750, 1000]
-                    handles = [
-                        ax_mean.scatter([], [], s=size_from_n(v),
-                                        color="gray", alpha=0.6,
-                                        transform=ccrs.PlateCarree())
-                        for v in legend_vals
-                    ]
+
 
                 
                     # =========================================================
