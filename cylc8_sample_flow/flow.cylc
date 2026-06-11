@@ -33,7 +33,7 @@
 {% set ENV_PATH = 'weakly_coupled_scoutrun_v2_monitoring.env' %}
 
 [task parameters]
-    stats = file_count
+    stats = file_count, soca_obsfit
     daily_background_stats = daily_mean_surface_background
     daily_analysis_stats = daily_mean_surface_analysis
 

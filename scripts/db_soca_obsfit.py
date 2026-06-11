@@ -33,9 +33,9 @@ from score_db import file_utils
 score_hv_harvester = 'soca_diags'
 
 variables = ['seaIceFraction',
-             'salinity',
-             'waterTemperature',
-             'seaSurfaceTemperature'
+             #'salinity',
+             #'waterTemperature',
+             #'seaSurfaceTemperature'
              ]
              
 statistics = ['rms', 'mean', 'median','StdDev', 'minimum', 'maximum', 'count']
