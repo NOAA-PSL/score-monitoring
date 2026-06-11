@@ -87,7 +87,6 @@ class SurfaceMapper(object):
         """Download files from the S3 bucket to the working directory.
         """
         soca_diags_key = os.getenv('SOCA_DIAGS_KEY') 
-        print('hello world! - need to download files')
 
         if soca_diags_key == '' or soca_diags_key == None:
             prefix = self.datetime_obj.strftime(os.getenv('STORAGE_LOCATION_KEY') + "/")
@@ -153,17 +152,8 @@ class SurfaceMapper(object):
             "mean": 0.5,
             "std": 0.25,
         }
-        ##### functions 
 
-        def determine_hemisphere(lat):
-            lat_mean = np.nanmean(lat)
-            if lat_mean >= 0:
-                return "NH"
-            else:
-                return "SH"
-            
 
-        #####  
 
         
         soca_obs_exist = bool(soca_diag_files)
@@ -208,6 +198,12 @@ class SurfaceMapper(object):
                 if not has_depth:
                     ## determine projection based on variable type and hemisphere 
                     if var == 'seaIceFraction':
+                        def determine_hemisphere(lat):
+                            lat_mean = np.nanmean(lat)
+                            if lat_mean >= 0:
+                                return "NH"
+                            else:
+                                return "SH"
                         hemisphere = determine_hemisphere(lats[valid_geo])
                         if hemisphere == "NH":
 

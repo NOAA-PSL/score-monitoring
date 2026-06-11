@@ -3,5 +3,5 @@ __pycache__
 #based on /score/score-monitoring/
 */bin/*.py
 */*.env
-*/*.cylc
+# */*.cylc
 cp_run.sh
