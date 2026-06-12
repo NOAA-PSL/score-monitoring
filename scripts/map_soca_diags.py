@@ -198,15 +198,15 @@ class SurfaceMapper(object):
                 if not has_depth:
                     ## determine projection based on variable type and hemisphere 
                     if var == 'seaIceFraction':
-                        def determine_hemisphere(lat):
-                            lat_mean = np.nanmean(lat)
-                            if lat_mean >= 0:
-                                return "NH"
-                            else:
-                                return "SH"
-                        hemisphere = determine_hemisphere(lats[valid_geo])
-                        if hemisphere == "NH":
+                        ## determine hermisphere based on latitude (mean)
+                        lat_mean = np.nanmean(lats[valid_geo])
+                        if lat_mean >= 0:
+                            hemisphere = "NH"
+                        else:
+                            hemisphere = "SH"
 
+                        ## set up different projection for sea ice based on hemisphere
+                        if hemisphere == "NH":
                             fig, ax = plt.subplots(
                                 1, 1,
                                 figsize=(9, 4),
