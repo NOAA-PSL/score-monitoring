@@ -149,6 +149,8 @@ def put_region(region_name='global', min_lat=-90., max_lat=90., east_lon=0., wes
 def put_these_regions():
     put_region('nh', min_lat=0., max_lat=90.)
     put_region('sh', min_lat=-90., max_lat=0.)
+    put_region('north', min_lat=0., max_lat=90.)
+    put_region('south', min_lat=-90., max_lat=0.)
     put_region('equatorial', min_lat=-5., max_lat=5.)
     put_region('n_midlats', min_lat=30., max_lat=65.)
     put_region('s_midlats', min_lat=-65., max_lat=-30.)
@@ -345,6 +347,7 @@ def put_these_sats():
     "DMSP-F19": {"sat_id": 39630, "short_name": "f19"},
     "DMSP-F20": {"sat_id": 41705, "short_name": "f20"},
     "GCOM-W": {"sat_id": 1000, "short_name": "gcom-w1"},
+    "GCOM-W1": {"sat_id": 1001, "short_name": "GCOM-W1"},
     #"CHAMP": {"sat_id": 41, "short_name": "CHAMP"},
     #"COSMIC-1": {"sat_id": 740, "short_name": "COSMIC-1"},
     #"COSMIC-2": {"sat_id": 741, "short_name": "COSMIC-2"},
@@ -428,7 +431,7 @@ def put_these_data2():
                           measurement_units='K', stat_type=stat,
                           description=None)
 
-def put_these_data3():
+def put_these_data3(do_seaIceFraction=True):
     my_instruments = ['ctd', 'xbt',
                       'mbt',
                       'osd'
@@ -441,9 +444,14 @@ def put_these_data3():
                 'maximum',
                 'count']
     my_vars = ['waterTemperature']
+    if do_seaIceFraction:
+        my_instruments = ['amsr2']
+        my_vars = ['seaIceFraction']
+
     groups = ('ObsValue','oman','ombg', 'ObsError')
 
     for instrument in my_instruments:
+        obs_platform='ship'
         if instrument == 'ctd':
             long_name = 'conductivity, temperature, and depth (CTD)'
         elif instrument == 'xbt':
@@ -452,6 +460,9 @@ def put_these_data3():
             long_name = 'mechanical bathyhermograph (MBT)'
         elif instrument == 'osd':
             long_name = "ocean station data (OSD)"
+        elif instrument == 'amsr2':
+            long_name = 'Advanced Microwave Scanning Radiometer 2 (AMSR2)'
+            obs_platform='satellite'
         else:
             long_name = None
         
@@ -460,6 +471,7 @@ def put_these_data3():
                 
                 if var == 'waterTemperature':
                     units = 'C'
+
                 else:
                     units = None
                 
@@ -469,7 +481,7 @@ def put_these_data3():
                         name,
                         var,
                         instrument_meta_name=instrument,
-                        obs_platform='ship',
+                        obs_platform=obs_platform,
                         long_name=long_name,
                         measurement_units=units, stat_type=stat,
                         description=None
@@ -1204,9 +1216,9 @@ def run(request='array_metric_types'):
     #put_these_sats()
     #put_these_data()
     #put_these_data2()
-    #put_these_data3()
-    put_whole_atm_conv_scalar_metrics()
-    put_these_conventional_data()
+    put_these_data3()
+    #put_whole_atm_conv_scalar_metrics()
+    #put_these_conventional_data()
     #put_these_regions()
 
 def main():
