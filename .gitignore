@@ -1,2 +1,6 @@
 .env
 __pycache__
+#based on /score/score-monitoring/
+*/bin/*.py
+*/*.env
+cp_run.sh
