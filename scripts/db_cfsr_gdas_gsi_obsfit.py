@@ -15,10 +15,11 @@ of the score-db executable. Folder structure is assumed to be BUCKET/KEY/files.
 """
 
 import sys
-import boto3
-from botocore import UNSIGNED
-from botocore.client import Config
-from botocore.errorfactory import ClientError
+import shutil
+#import boto3
+#from botocore import UNSIGNED
+#from botocore.client import Config
+#from botocore.errorfactory import ClientError
 import db_yaml_generator 
 import os
 import pathlib
@@ -64,8 +65,8 @@ input_env = sys.argv[2]
 env_path = os.path.join(pathlib.Path(__file__).parent.parent.resolve(), input_env)
 load_dotenv(env_path)
 
-aws_access_key_id = os.getenv('AWS_ACCESS_KEY_ID')
-aws_secret_access_key = os.getenv('AWS_SECRET_ACCESS_KEY')
+#aws_access_key_id = os.getenv('AWS_ACCESS_KEY_ID')
+#aws_secret_access_key = os.getenv('AWS_SECRET_ACCESS_KEY')
 gsi_fit_file_name_format = os.getenv('GSI_FIT_FILE_NAME_FORMAT')
 gsi_fit_file_key = os.getenv('GSI_FIT_FILE_KEY')
 
@@ -74,19 +75,19 @@ if gsi_fit_file_name_format == '' or gsi_fit_file_name_format == None:
                      'specify a format for the GSI fit file in your '
                      'environment configuration file')
     
-if aws_access_key_id == '' or aws_access_key_id == None:
+#if aws_access_key_id == '' or aws_access_key_id == None:
     # move forward with unsigned request
-    s3_config_signature_version = UNSIGNED
-else:
-    s3_config_signature_version = 's3v4'
+#    s3_config_signature_version = UNSIGNED
+#else:
+#    s3_config_signature_version = 's3v4'
 
-s3 = boto3.resource(
-    's3',
-    aws_access_key_id=aws_access_key_id,    
-    aws_secret_access_key=aws_secret_access_key, 
-    config=Config(signature_version=s3_config_signature_version))
+#s3 = boto3.resource(
+#    's3',
+#    aws_access_key_id=aws_access_key_id,    
+#    aws_secret_access_key=aws_secret_access_key, 
+#    config=Config(signature_version=s3_config_signature_version))
 
-bucket = s3.Bucket(os.getenv('STORAGE_LOCATION_BUCKET'))
+#bucket = s3.Bucket(os.getenv('STORAGE_LOCATION_BUCKET'))
 
 if gsi_fit_file_key == '' or gsi_fit_file_key == None:
     prefix = datetime_obj.strftime(os.getenv('STORAGE_LOCATION_KEY') + "/")
@@ -99,7 +100,8 @@ file_name = dt.datetime.strftime(datetime_obj,
 work_dir = os.getenv('CYLC_TASK_WORK_DIR')
 file_path =  os.path.join(work_dir, f'gsistats.{datetime_str}_{ensemble_member}')
 try:
-    bucket.download_file(prefix + file_name, file_path)
+    shutil.copy(prefix + file_name, file_path)
+    #bucket.download_file(prefix + file_name, file_path)
 except ClientError as err:
     if err.response['Error']['Code'] == "404":
         print(f"File {file_name} not found at {prefix}")
