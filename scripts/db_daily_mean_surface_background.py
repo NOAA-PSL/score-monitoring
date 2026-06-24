@@ -33,7 +33,7 @@ HOURS_PER_DAY = 24. # hours
 DA_WINDOW = 6. # hours
 
 #stats and variables passed in for harvest
-statistics = ['mean', 'variance', 'minimum', 'maximum']
+statistics = ['integral']
 
 """Variables of interest that come from the background forecast data are listed
 below. Commented out variables could be uncommented to generate gridcell
@@ -42,31 +42,31 @@ supported.
 """
 variables = [
     'icec',        # sea ice concentration (ice=1; no ice=2)
-    'icetk',       # sea ice thickness (m)
-    'lhtfl_ave',   # surface latent heat flux (W/m**2)
-    'shtfl_ave',   # surface sensible heat flux (W/m**2)
-    'dlwrf_ave',   # surface downward longwave flux (W/m**2)
-    'dswrf_ave',   # averaged surface downward shortwave flux (W/m**2)
-    'ulwrf_ave',   # surface upward longwave flux (W/m**2)
-    'uswrf_ave',   # averaged surface upward shortwave flux (W/m**2)
-    'netrf_avetoa',# top of atmosphere net radiative flux (SW and LW) (W/m**2)
-    'netef_ave',   # surface energy balance (W/m**2)
-    'nsst',        # near sea surface temperature(K), using tref over the ocean 
+#    'icetk',       # sea ice thickness (m)
+#    'lhtfl_ave',   # surface latent heat flux (W/m**2)
+#    'shtfl_ave',   # surface sensible heat flux (W/m**2)
+#    'dlwrf_ave',   # surface downward longwave flux (W/m**2)
+#    'dswrf_ave',   # averaged surface downward shortwave flux (W/m**2)
+#    'ulwrf_ave',   # surface upward longwave flux (W/m**2)
+#    'uswrf_ave',   # averaged surface upward shortwave flux (W/m**2)
+#    'netrf_avetoa',# top of atmosphere net radiative flux (SW and LW) (W/m**2)
+#    'netef_ave',   # surface energy balance (W/m**2)
+#    'nsst',        # near sea surface temperature(K), using tref over the ocean 
                    # only
-    'prateb_ave',   # bucket surface precip rate (mm weq. s^-1)
-    'prate_ave',   # surface precip rate (mm weq. s^-1)
-    'pressfc',     # surface pressure (Pa)
+#    'prateb_ave',   # bucket surface precip rate (mm weq. s^-1)
+#    'prate_ave',   # surface precip rate (mm weq. s^-1)
+#    'pressfc',     # surface pressure (Pa)
     'snowc_ave',   # snow cover - GFS lsm
-    'snod',        # surface snow depth (m)
-    'soilm',       # total column soil moisture content (mm weq.)
-    'soilt4',      # soil temperature unknown layer 4 (K)
-    'sst',         # sea surface temperature (K), using tmpsfc over the ocean 
+#    'snod',        # surface snow depth (m)
+#    'soilm',       # total column soil moisture content (mm weq.)
+#    'soilt4',      # soil temperature unknown layer 4 (K)
+#    'sst',         # sea surface temperature (K), using tmpsfc over the ocean 
                    # only
-    'tg3',         # deep soil temperature (K)
-    'tmp2m',       # 2m (surface air) temperature (K)
-    'tsnowp',      # accumulated surface snow (kg/m**2)
-    'ulwrf_avetoa', # top of atmosphere upward longwave flux (W m^-2)
-    'weasd',       # surface snow water equivalent (kg/m**2)
+#    'tg3',         # deep soil temperature (K)
+#    'tmp2m',       # 2m (surface air) temperature (K)
+#    'tsnowp',      # accumulated surface snow (kg/m**2)
+#    'ulwrf_avetoa', # top of atmosphere upward longwave flux (W m^-2)
+#    'weasd',       # surface snow water equivalent (kg/m**2)
     ]
 
 input_cycle = sys.argv[1]
@@ -157,7 +157,8 @@ harvest_config = {'harvester_name': 'daily_bfg',
                   'filenames': file_path_list,
                   'segment': 'background',
                   'statistic': statistics,
-                  'variable': variables,}
+                  'variable': variables,
+                  'regions': {'nh':{'south_lat':0}}}
 yaml_file = db_yaml_generator.generate_harvest_metrics_yaml(
                                         os.getenv('EXPERIMENT_NAME'),
                                         os.getenv('EXPERIMENT_WALLCLOCK_START'),
