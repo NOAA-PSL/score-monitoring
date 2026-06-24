@@ -836,7 +836,7 @@ def get_conventional_instruments():
                 'long_name': 'surface land (METAR)'
             },
 
-            '199': {
+            199: {
                 'instrument': 'temperature sensor (GEOS-IT)',
                 'obs_platform': 'unknown (GEOS-IT)',
                 'long_name': 'unknown temperature observation type from GEOS-IT assimilation'
@@ -1002,9 +1002,9 @@ def get_conventional_instruments():
                 'long_name': 'Japan Meteorological Agency infrared (long-wave) and visible cloud drift (Himawari)'
             },
             243: {
-                'instrument': 'radiometer / cloud imager (Meteosat)',
+                'instrument': 'radiometer / low cloud imager (Meteosat)',
                 'obs_platform': 'satellite (Meteosat)',
-                'long_name': 'European Organisation for the Exploitation of Meteorological Satellites infrared (long-wave) and visible cloud drift (Meteosat)'
+                'long_name': 'European Organisation for the Exploitation of Meteorological Satellites infrared (long-wave) and visible cloud drift (Meteosat) below 850mb'
             },
             244: {'instrument': 'radiometer (AVHRR)',
                 'obs_platform': 'satellite (POES/MetOp)',
@@ -1043,7 +1043,7 @@ def get_conventional_instruments():
             253: {
                 'instrument': 'radiometer / cloud imager (Meteosat)',
                 'obs_platform': 'satellite (Meteosat)',
-                'long_name': 'European Organisation for the Exploitation of Meteorological Satellites infrared (long-wave) and visible cloud drift (Meteosat)'
+                'long_name': 'European Organisation for the Exploitation of Meteorological Satellites infrared (long-wave) and visible cloud drift (Meteosat) above 850mb'
             },
             254: {
                 'instrument': 'water vapor imager (Meteosat)',
@@ -1134,7 +1134,7 @@ def get_conventional_instruments():
                 'obs_platform': 'Advanced Scatterometer (ASCAT)',
                 'long_name': 'non-superobed scatterometer winds over ocean (ASCAT)'
             },
-            '299': {
+            299: {
                 'instrument': 'wind velocity detector (GEOS-IT)',
                 'obs_platform': 'unknown (GEOS-IT)',
                 'long_name': 'unknown wind velocity observation type from GEOS-IT assimilation'
