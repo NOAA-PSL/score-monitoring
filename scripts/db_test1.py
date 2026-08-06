@@ -149,8 +149,8 @@ def put_region(region_name='global', min_lat=-90., max_lat=90., east_lon=0., wes
 def put_these_regions():
     put_region('nh', min_lat=0., max_lat=90.)
     put_region('sh', min_lat=-90., max_lat=0.)
-    put_region('north', min_lat=0., max_lat=90.)
-    put_region('south', min_lat=-90., max_lat=0.)
+    #put_region('north', min_lat=0., max_lat=90.)
+    #put_region('south', min_lat=-90., max_lat=0.)
     put_region('equatorial', min_lat=-5., max_lat=5.)
     put_region('n_midlats', min_lat=30., max_lat=65.)
     put_region('s_midlats', min_lat=-65., max_lat=-30.)
@@ -247,6 +247,7 @@ def put_these_data():
                       'atms': 22,
                       'avhrr2': 3,
                       'avhrr3': 3,
+                      'avhrr':3,
                       'cris': 399,
                       'cris-fsr': 431,
                       'gmi': 13,
@@ -304,6 +305,7 @@ def put_these_sats():
     "MetOp-B": {"sat_id": 3, "short_name": "metop-b"},
     "MetOp-C": {"sat_id": 5, "short_name": "metop-c"},
     "MetOp-SG-A1": {"sat_id": 6, "short_name": "metop-sg-a1"},
+    "MetOp": {"sat_id":66666, "short_name": "metop"},
     "Aqua": {"sat_id": 784, "short_name": "aqua"},
     "Suomi NPP": {"sat_id": 224, "short_name": "npp"},
     "ISSA-J1": {"sat_id": 225, "short_name": "j1"},
@@ -346,6 +348,7 @@ def put_these_sats():
     "DMSP-F18": {"sat_id": 286, "short_name": "f18"},
     "DMSP-F19": {"sat_id": 39630, "short_name": "f19"},
     "DMSP-F20": {"sat_id": 41705, "short_name": "f20"},
+    "DMSP" : {"sat_id":20000, "short_name":"dmsp"},
     "GCOM-W": {"sat_id": 1000, "short_name": "gcom-w1"},
     "GCOM-W1": {"sat_id": 1001, "short_name": "GCOM-W1"},
     #"CHAMP": {"sat_id": 41, "short_name": "CHAMP"},
@@ -431,7 +434,7 @@ def put_these_data2():
                           measurement_units='K', stat_type=stat,
                           description=None)
 
-def put_these_data3(do_seaIceFraction=True):
+def put_these_data3(do_seaIceFraction=True, do_seaSurfaceTemperature=False):
     my_instruments = ['ctd', 'xbt',
                       'mbt',
                       'osd'
@@ -445,8 +448,11 @@ def put_these_data3(do_seaIceFraction=True):
                 'count']
     my_vars = ['waterTemperature']
     if do_seaIceFraction:
-        my_instruments = ['amsr2']
+        my_instruments = ['amsr2', 'ssmis']
         my_vars = ['seaIceFraction']
+    if do_seaSurfaceTemperature:
+        my_instruments = ['avhrr', 'viirs']
+        my_vars = ['seaSurfaceTemperature']
 
     groups = ('ObsValue','oman','ombg', 'ObsError')
 
@@ -463,13 +469,19 @@ def put_these_data3(do_seaIceFraction=True):
         elif instrument == 'amsr2':
             long_name = 'Advanced Microwave Scanning Radiometer 2 (AMSR2)'
             obs_platform='satellite'
+        elif instrument == 'avhrr':
+            long_name = 'Advanced Very-High-Resolution Radiometer (AVHRR)'
+            obs_platform ='satellite'
+        elif instrument == 'viirs':
+            long_name = 'Visible Infrared Imaging Radiometer Suite (VIIRS)'
+            obs_platform = 'satellite'
         else:
             long_name = None
         
         for stat in my_stats:
             for var in my_vars:
                 
-                if var == 'waterTemperature':
+                if var == 'waterTemperature' or var=='seaSurfaceTemperature':
                     units = 'C'
 
                 else:
@@ -848,7 +860,7 @@ def get_conventional_instruments():
                 'long_name': 'surface land (METAR)'
             },
 
-            '199': {
+            199: {
                 'instrument': 'temperature sensor (GEOS-IT)',
                 'obs_platform': 'unknown (GEOS-IT)',
                 'long_name': 'unknown temperature observation type from GEOS-IT assimilation'
@@ -1014,9 +1026,9 @@ def get_conventional_instruments():
                 'long_name': 'Japan Meteorological Agency infrared (long-wave) and visible cloud drift (Himawari)'
             },
             243: {
-                'instrument': 'radiometer / cloud imager (Meteosat)',
+                'instrument': 'radiometer / low cloud imager (Meteosat)',
                 'obs_platform': 'satellite (Meteosat)',
-                'long_name': 'European Organisation for the Exploitation of Meteorological Satellites infrared (long-wave) and visible cloud drift (Meteosat)'
+                'long_name': 'European Organisation for the Exploitation of Meteorological Satellites infrared (long-wave) and visible cloud drift (Meteosat) below 850mb'
             },
             244: {'instrument': 'radiometer (AVHRR)',
                 'obs_platform': 'satellite (POES/MetOp)',
@@ -1055,7 +1067,7 @@ def get_conventional_instruments():
             253: {
                 'instrument': 'radiometer / cloud imager (Meteosat)',
                 'obs_platform': 'satellite (Meteosat)',
-                'long_name': 'European Organisation for the Exploitation of Meteorological Satellites infrared (long-wave) and visible cloud drift (Meteosat)'
+                'long_name': 'European Organisation for the Exploitation of Meteorological Satellites infrared (long-wave) and visible cloud drift (Meteosat) above 850mb'
             },
             254: {
                 'instrument': 'water vapor imager (Meteosat)',
@@ -1146,7 +1158,7 @@ def get_conventional_instruments():
                 'obs_platform': 'Advanced Scatterometer (ASCAT)',
                 'long_name': 'non-superobed scatterometer winds over ocean (ASCAT)'
             },
-            '299': {
+            299: {
                 'instrument': 'wind velocity detector (GEOS-IT)',
                 'obs_platform': 'unknown (GEOS-IT)',
                 'long_name': 'unknown wind velocity observation type from GEOS-IT assimilation'
@@ -1173,6 +1185,7 @@ def get_instrument_channels():
         'amsua': [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
         'amsub': [1, 2, 3, 4, 5],
         'atms': [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22],
+        'avhrr':[3,4,5],
         'avhrr2': [3, 4, 5],
         'avhrr3': [3, 4, 5],
         'cris': [27, 28, 31, 32, 33, 37, 49, 51, 53, 59, 61, 63, 64, 65, 67, 69, 71, 73, 75, 79, 80, 81, 83, 85, 87, 88, 89, 93, 95, 96, 99, 101, 102, 104, 106, 107, 111, 113, 116, 120, 123, 124, 125, 126, 130, 132, 133, 136, 137, 138, 142, 143, 144, 145, 147, 148, 150, 151, 153, 154, 155, 157, 158, 159, 160, 161, 162, 163, 164, 165, 166, 168, 170, 171, 173, 175, 181, 183, 198, 208, 211, 216, 224, 228, 236, 238, 242, 248, 266, 268, 279, 283, 311, 317, 330, 333, 334, 338, 340, 341, 342, 349, 352, 358, 361, 364, 366, 367, 368, 378, 390, 391, 392, 394, 395, 396, 397, 398, 399, 404, 427, 447, 464, 473, 482, 484, 501, 529, 556, 557, 558, 560, 561, 562, 564, 565, 566, 569, 573, 574, 577, 580, 581, 584, 585, 587, 590, 591, 594, 597, 598, 601, 604, 607, 611, 614, 616, 617, 619, 622, 626, 628, 634, 637, 638, 640, 641, 642, 644, 646, 647, 650, 651, 652, 654, 655, 657, 659, 663, 667, 670, 707, 710, 713, 716, 730, 735, 736, 739, 743, 744, 746, 748, 751, 754, 755, 756, 757, 758, 760, 761, 762, 763, 766, 767, 768, 771, 772, 773, 776, 777, 778, 779, 780, 782, 783, 784, 785, 786, 787, 788, 789, 790, 791, 792, 794, 796, 798, 800, 802, 803, 804, 806, 807, 808, 809, 811, 812, 814, 816, 819, 820, 821, 822, 823, 824, 825, 826, 827, 828, 829, 830, 831, 832, 833, 834, 835, 836, 838, 839, 840, 842, 843, 844, 845, 846, 847, 848, 849, 850, 851, 852, 853, 854, 856, 861, 862, 864, 865, 866, 867, 869, 871, 872, 874, 876, 878, 879, 880, 884, 886, 887, 888, 889, 890, 900, 921, 924, 927, 945, 991, 994, 1007, 1015, 1030, 1094, 1106, 1130, 1132, 1133, 1135, 1142, 1147, 1148, 1149, 1150, 1151, 1152, 1153, 1154, 1155, 1156, 1157, 1158, 1159, 1160, 1161, 1162, 1163, 1164, 1165, 1166, 1167, 1168, 1169, 1170, 1171, 1172, 1173, 1174, 1175, 1177, 1178, 1179, 1180, 1181, 1187, 1189, 1190, 1192, 1193, 1194, 1196, 1197, 1198, 1199, 1200, 1202, 1203, 1204, 1206, 1207, 1208, 1210, 1212, 1214, 1215, 1217, 1218, 1220, 1222, 1224, 1226, 1228, 1229, 1231, 1232, 1234, 1235, 1236, 1237, 1238, 1239, 1241, 1242, 1243, 1244, 1245, 1247, 1250, 1270, 1271, 1282, 1285, 1288, 1290, 1293, 1298, 1301],
@@ -1226,4 +1239,3 @@ def main():
 
 if __name__=='__main__':
     main()
-
