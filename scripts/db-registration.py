@@ -22,8 +22,8 @@ from score_db import score_db_base
 #registers an experiment, datetimes are expected in format: "%Y-%m-%d %H:%M:%S"
 def register_experiment(experiment_configuration):
     #USER DEFINED VARIABLES
-    cycle_start = "1979-01-01 00:00:00"
-    cycle_end = "2019-01-01 00:00:00"
+    cycle_start = "1978-10-01 00:00:00"
+    cycle_end = "2026-10-01 00:00:00"
     owner_id = "score-monitoring.generated"
     group_id = "gsienkf"
     experiment_type = "scout_runs"
@@ -42,7 +42,7 @@ def register_experiment(experiment_configuration):
 #register the storage location, utilizes environment variables
 def register_storage_location():
     #USER DEFINED VARIABLES
-    name = "scoutrun_2009stream"
+    name = "scoutrun_restart_v21"
     platform_region = "n/a"
     #END USER DEFINED VARIABLES
 
@@ -99,7 +99,7 @@ def main():
     print(f"{args.input_env} environment loaded.")
 
     #USER SHOULD COMMENT / UNCOMMENT CALLS AS APPROPRIATE
-    #register_experiment("scout runs (GSI3DVar) 1979stream")
+    register_experiment("scout runs (GSI3DVar) restart v0.21")
     register_storage_location()
     #register_file_type()
     #register_metric_type()

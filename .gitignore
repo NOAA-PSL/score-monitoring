@@ -4,3 +4,4 @@ __pycache__
 */bin/*.py
 */*.env
 cp_run.sh
+cylc_*
