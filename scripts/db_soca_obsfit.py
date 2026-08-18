@@ -35,7 +35,8 @@ score_hv_harvester = 'soca_diags'
 variables = ['seaIceFraction',
              #'salinity',
              #'waterTemperature',
-             'seaSurfaceTemperature'
+             'seaSurfaceTemperature',
+             'absoluteDynamicTopography',
              ]
              
 statistics = ['rms', 'mean', 'median','StdDev', 'minimum', 'maximum', 'count']
