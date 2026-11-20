@@ -291,6 +291,7 @@ def put_these_data():
                       "NASA Radar Altimeter": None,
                       "Radar Altimeter - 2": None,
                       "GFO-Radar Altimeter": None,
+                      "multiple": None,
                   }
     for instrument, num_channels in my_instruments.items():
         register_instrument_meta(instrument, num_channels)
@@ -419,6 +420,8 @@ def put_these_sats():
     "Envisat": {"sat_id": 3010, "short_name": "envisat"},
     "GEOSat Follow-on": {"sat_id": 3011, "short_name": "gfo"},
     
+    "Global Ocean - SST Multi-sensor":{"sat_id":9956, "short_name": "ODYSSEA"},
+
     #"PlanetiQ GNOMES-": {"sat_id": 687, "short_name": "PlanetiQ GNOMES"},
     #"Aura": {"sat_id": 296, "short_name": "AURA"},
     #"NIMBUS 7": {"sat_id": 16, "short_name": "nim07"}
@@ -463,7 +466,7 @@ def put_these_data2():
                           measurement_units='K', stat_type=stat,
                           description=None)
 
-def put_these_data3(do_seaIceFraction=True, do_seaSurfaceTemperature=False):
+def put_these_data3(do_seaIceFraction=False, do_seaSurfaceTemperature=True):
     my_instruments = ['ctd', 'xbt',
                       'mbt',
                       'osd'
@@ -480,7 +483,7 @@ def put_these_data3(do_seaIceFraction=True, do_seaSurfaceTemperature=False):
         my_instruments = ['amsr2', 'ssmis']
         my_vars = ['seaIceFraction']
     if do_seaSurfaceTemperature:
-        my_instruments = ['avhrr', 'viirs']
+        my_instruments = ['avhrr', 'viirs', 'multiple']
         my_vars = ['seaSurfaceTemperature']
 
     groups = ('ObsValue','oman','ombg', 'ObsError')
@@ -504,6 +507,9 @@ def put_these_data3(do_seaIceFraction=True, do_seaSurfaceTemperature=False):
         elif instrument == 'viirs':
             long_name = 'Visible Infrared Imaging Radiometer Suite (VIIRS)'
             obs_platform = 'satellite'
+        elif instrument == 'multiple':
+            long_name="ODYSSEA Global Ocean - Sea Surface Temperature Multi-sensor L3 Observations"
+            obs_platform = "satellite"
         else:
             long_name = None
         
