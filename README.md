@@ -62,6 +62,64 @@ metadata in the register_metric_type() function and then comment out the
 register_experiment() and register_storage_location() functions from the main() 
 function "#register_experiment() and #register_storage_location()".
 
+## Observation Usage Dashboard
+`scripts/obs_usage_dashboard.py` draws a one-page-per-month stop-light chart
+of every satellite radiance sensor, ozone sensor and conventional (PrepBUFR)
+data type. For each GSI cycle it compares the **intended** usage in
+build_gsinfo (satinfo/ozinfo/convinfo `iuse`) with what GSI **actually did**
+according to that cycle's gsistat log. It answers "were the observations we
+intend to assimilate staged and assimilated, and the ones we intend to
+monitor left unassimilated?"; observation counts are already plotted by
+score-plotting. It runs standalone and needs only matplotlib, numpy and git.
+
+```
+python scripts/obs_usage_dashboard.py --gsistat-dir /path/to/gsistats \
+    --start 2015-05 --end 2015-05 --title "scout run 1.0" --output-dir dashboard
+```
+
+* One gsistat log per cycle is expected, named by the strftime pattern
+  `--file-format` (default `$GSI_FIT_FILE_NAME_FORMAT` or
+  `gsistats.%Y%m%d%H_control`); `--cycle-hours` sets the cycle interval.
+  Missing or unreadable logs are drawn grey.
+* `--resolution cycle` (default) draws one column per cycle and one PNG per
+  month. `--resolution month` draws one column per month; a month is only
+  green if every cycle was, and cells show how many cycles failed.
+* Intent comes from [build_gsinfo-fix](https://github.com/NOAA-PSL/build_gsinfo-fix),
+  branch `psl-develop`, using the dated file in effect at each cycle. Use
+  `--gsinfo-ref` for another branch, tag or commit, and `--gsinfo` for
+  another repository URL (e.g. `https://github.com/NOAA-PSL/build_gsinfo.git`)
+  or a local clone (`--gsinfo-ref ''` reads its working tree as-is). Remote
+  repositories are cached under `--cache-dir` (default
+  `~/.cache/score-monitoring`).
+* A satellite sensor is one row: if any intended channel is not assimilated
+  the sensor is not green for that cycle. `--iterations` chooses which GSI
+  outer iterations must show assimilation (default: all).
+* Rows never intended and never used are hidden unless `--show-inactive`.
+* Outputs: `*_dashboard.png` pages, a `*_status.csv` (status per row and
+  column, with failing-cycle counts), an `*_evidence.csv` (per-cycle reasons
+  and the gsistat file used) and a `*_summary.json` (provenance and counts).
+
+| Colour | Status | Meaning |
+|---|---|---|
+| green | assimilated | intended for assimilation and assimilated |
+| black | not used | intended for assimilation but not staged, or staged and not assimilated |
+| orange | partial | intended; only some channels, levels, subtypes or iterations assimilated |
+| vermillion | unexpected | not intended for assimilation but assimilated |
+| sky blue | monitored | intended for monitoring; staged and not assimilated |
+| white | unused | not intended and not used |
+| grey | missing | gsistat log missing or unreadable |
+
+A ◆ after a row name means the `use` flags in the run's gsistat log differ
+from build_gsinfo. The colours are from the Okabe-Ito palette, and every
+pair remains distinguishable under simulated protanopia, deuteranopia and
+tritanopia (CIELAB ΔE ≥ 16).
+
+Limitations: build_gsinfo-fix has no dated convinfo before 2022, so earlier
+cycles are judged against `convinfo/1900010100` (the merged convinfo), which
+also lists platforms not yet launched. Conventional rows cover the types GSI
+summarises in gsistat (ps, t, q, uv, gps); other convinfo types cannot be
+checked.
+
 # How To Run a Workflow
 
 ## Setup
