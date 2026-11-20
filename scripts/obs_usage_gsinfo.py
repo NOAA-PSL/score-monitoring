@@ -21,10 +21,12 @@ local checkout can also be read as-is by passing an empty ref.
 """
 
 import bisect
+import fcntl
 import hashlib
 import os
 import re
 import subprocess
+import time
 from functools import lru_cache
 from pathlib import Path
 
@@ -45,21 +47,34 @@ def _is_url(location):
     return '://' in str(location) or str(location).startswith('git@')
 
 
-def _cached_clone(url, cache_dir=None):
+def _cached_clone(url, cache_dir=None, refresh_minutes=None):
+    """Bare clone of ``url`` in a shared cache, fetched at most every
+    ``refresh_minutes`` ($OBS_USAGE_GSINFO_REFRESH_MINUTES, default 60) so
+    that thousands of cycle tasks do not each contact the git server."""
     root = Path(cache_dir or os.environ.get(
         'OBS_USAGE_CACHE', Path.home() / '.cache' / 'score-monitoring'))
+    if refresh_minutes is None:
+        refresh_minutes = float(os.environ.get('OBS_USAGE_GSINFO_REFRESH_MINUTES', 60))
     name = re.sub(r'\.git$', '', url.rstrip('/').split('/')[-1])
     repo = root / f'{name}-{hashlib.sha1(url.encode()).hexdigest()[:8]}.git'
-    if not repo.exists():
-        root.mkdir(parents=True, exist_ok=True)
-        subprocess.run(['git', 'clone', '--quiet', '--bare', url, str(repo)],
-                       check=True)
-    else:
+    root.mkdir(parents=True, exist_ok=True)
+    with open(repo.with_suffix('.lock'), 'w') as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        if not repo.exists():
+            subprocess.run(['git', 'clone', '--quiet', '--bare', url, str(repo)],
+                           check=True)
+            (repo / 'FETCH_HEAD').touch()
+            return repo
+        stamp = repo / 'FETCH_HEAD'
+        age = time.time() - (stamp.stat().st_mtime if stamp.exists() else 0)
+        if age < refresh_minutes * 60:
+            return repo
         try:
             subprocess.run(['git', '--git-dir', str(repo), 'fetch', '--quiet',
                             '--prune', url, '+refs/heads/*:refs/heads/*',
                             '+refs/tags/*:refs/tags/*'],
                            check=True, capture_output=True)
+            stamp.touch()
         except subprocess.CalledProcessError as error:
             print(f'warning: could not update {repo} from {url}; using cached '
                   f'copy ({error.stderr.decode().strip()})')
@@ -76,7 +91,14 @@ class GsinfoSource:
         self.repo = (_cached_clone(self.location, cache_dir)
                      if _is_url(location) else Path(location))
         if self.ref:
-            self.commit = self._resolve(self.ref)
+            try:
+                self.commit = self._resolve(self.ref)
+            except ValueError:
+                if not _is_url(location):
+                    raise
+                # the ref may have been pushed since the last throttled fetch
+                self.repo = _cached_clone(self.location, cache_dir, refresh_minutes=0)
+                self.commit = self._resolve(self.ref)
             listing = _git(self.repo, 'ls-tree', '-r', '-z', self.commit)
             entries = [item.split('\t', 1) for item in listing.split('\0') if item]
             self.files = {path for _, path in entries}

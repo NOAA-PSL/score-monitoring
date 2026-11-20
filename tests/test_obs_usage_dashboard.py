@@ -2,6 +2,7 @@
 
 import csv
 import datetime as dt
+import gzip
 import os
 import subprocess
 import sys
@@ -12,6 +13,9 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'scripts'))
 
 import obs_usage_dashboard  # noqa: E402
+import obs_usage_record  # noqa: E402
+from obs_usage_archive import (append_record, make_record, month_path,  # noqa: E402
+                               parse_workflow_id, read_month, select_latest)
 from obs_usage_gsinfo import GsinfoInventory, GsinfoSource  # noqa: E402
 from obs_usage_gsistat import parse_lines  # noqa: E402
 from obs_usage_status import (CONVENTIONAL, OZONE, RADIANCE,  # noqa: E402
@@ -112,6 +116,16 @@ def test_gsinfo_resolves_dated_files_and_symlinks(gsinfo_repo, ref):
     assert path == 'convinfo/2020010100' and ('t', 120) not in convinfo
 
 
+def test_new_gsinfo_ref_is_fetched_despite_throttle(gsinfo_repo, tmp_path, monkeypatch):
+    monkeypatch.delenv('OBS_USAGE_GSINFO_REFRESH_MINUTES', raising=False)
+    url, cache = f'file://{gsinfo_repo}', tmp_path / 'cache'
+    head = GsinfoSource(url, 'HEAD', cache_dir=cache).commit
+    git(gsinfo_repo, 'tag', 'v2')
+    assert GsinfoSource(url, 'v2', cache_dir=cache).commit == head
+    with pytest.raises(ValueError, match='not found'):
+        GsinfoSource(url, 'no-such-ref', cache_dir=cache)
+
+
 def test_cycle_statuses(gsinfo_repo):
     results = evaluate(gsistat(), gsinfo_repo)
     assert status(results, RADIANCE, 'amsua_n15') == 'assimilated'
@@ -157,11 +171,11 @@ def test_dashboard_end_to_end(gsinfo_repo, tmp_path):
                               '--gsinfo-ref', 'HEAD', '--output-dir', str(out)])
     assert (out / 'obs_usage_201505_6h_dashboard.png').stat().st_size > 0
     rows = {(row['row'], row['period']): row['status'] for row in
-            csv.DictReader((out / 'obs_usage_201505_201505_6h_status.csv').open())}
+            csv.DictReader((out / 'obs_usage_201505_6h_status.csv').open())}
     assert rows[('amsua_n15', '2015050100')] == 'assimilated'
     assert rows[('amsua_n15', '2015050106')] == 'partial'
     assert rows[('amsua_n15', '2015050112')] == 'missing'
-    evidence = (out / 'obs_usage_201505_201505_6h_evidence.csv').read_text()
+    evidence = (out / 'obs_usage_201505_6h_evidence.csv').read_text()
     assert 'unreadable' in evidence and '1/2 intended channels' in evidence
 
     obs_usage_dashboard.main(['--gsistat-dir', str(logs), '--start', '2015-05',
@@ -171,3 +185,129 @@ def test_dashboard_end_to_end(gsinfo_repo, tmp_path):
     rows = {row['row']: row['status'] for row in csv.DictReader(
         (out / 'obs_usage_201505_201505_monthly_status.csv').open())}
     assert rows['amsua_n15'] == 'partial' and rows['hirs4_n19'] == 'missing'
+
+
+@pytest.mark.parametrize('workflow_id, expected', [
+    ('score-monitoring/cylc_scout_sfs/test_sfs_2023_gdas_gsi_install0/run2',
+     ('test_sfs_2023_gdas_gsi', 0, 2)),
+    ('reanl_install3/run1', ('reanl', 3, 1)),
+    ('reanl', ('reanl', 0, 0)),
+])
+def test_workflow_id(workflow_id, expected):
+    info = parse_workflow_id(workflow_id)
+    assert (info['workflow'], info['install'], info['run']) == expected
+
+
+def test_cycle_points():
+    parse = obs_usage_record.parse_cycle
+    assert parse('20230101T12') == dt.datetime(2023, 1, 1, 12)
+    assert parse('20230103T0600Z') == dt.datetime(2023, 1, 3, 6)
+    assert parse('2023010318') == dt.datetime(2023, 1, 3, 18)
+    with pytest.raises(ValueError):
+        parse('2023-01-03')
+
+
+def test_archive_keeps_versions_and_selects_latest(tmp_path, capsys):
+    def append(hour, outcome, workflow_id, created):
+        record = make_record(dt.datetime(2023, 1, 3, hour),
+                             {(RADIANCE, 'amsua_n15'): CycleResult('assimilate', outcome)},
+                             source=parse_workflow_id(workflow_id))
+        append_record(tmp_path, 'expt', record | {'created': created})
+
+    append(0, 'partial', 'flow_install0/run1', '2026-01-01T00:00:00Z')
+    append(6, 'partial', 'flow_install0/run1', '2026-01-01T06:00:00Z')
+    append(6, 'assimilated', 'flow_install0/run2', '2026-01-02T00:00:00Z')  # rewind
+    append(6, 'not_staged', 'flow_install1/run1', '2026-01-03T00:00:00Z')  # new install
+    path = month_path(tmp_path, 'expt', dt.datetime(2023, 1, 1))
+    with path.open('ab') as stream:  # a writer that crashed mid-record
+        stream.write(gzip.compress(b'{"cycle": "2023010312"}\n')[:-6])
+    append(0, 'assimilated', 'flow_install0/run1', '2026-01-04T00:00:00Z')  # re-record
+    assert 'dropping' in capsys.readouterr().out
+    assert gzip.decompress(path.read_bytes()).decode().count('\n') == 5
+
+    records = read_month(tmp_path, 'expt', dt.datetime(2023, 1, 1))
+
+    def latest(**version):
+        return {cycle.hour: (record['install'], record['run'], record['rows'][0][3])
+                for cycle, record in select_latest(records, **version).items()}
+
+    assert latest() == {0: (0, 1, 'assimilated'), 6: (1, 1, 'not_staged')}
+    assert latest(upto=(0, 2)) == {0: (0, 1, 'assimilated'), 6: (0, 2, 'assimilated')}
+    assert latest(as_of='2026-01-01T12:00') == {0: (0, 1, 'partial'), 6: (0, 1, 'partial')}
+
+
+def test_streams_are_joined_oldest_first(tmp_path):
+    """A newer stream's spin-up does not replace the older stream unless the
+    newer one is given a start (NAME@START)."""
+    for name, days, outcome in [('s1988', (1, 2, 3), 'assimilated'),
+                                ('s1993', (2, 3, 4), 'partial')]:
+        for day in days:
+            append_record(tmp_path, name, make_record(
+                dt.datetime(2023, 1, day),
+                {(RADIANCE, 'amsua_n15'): CycleResult('assimilate', outcome)},
+                source=parse_workflow_id(f'{name}_install0/run1')))
+
+    def chart(experiments, *extra):
+        out = tmp_path / 'out' / '_'.join(experiments).replace('@', '-')
+        obs_usage_dashboard.main(['--archive', str(tmp_path), '--experiment', *experiments,
+                                  '--start', '2023-01', '--end', '2023-01', '--cycle-hours',
+                                  '24', '--output-dir', str(out), *extra])
+        status = {int(row['period'][6:8]): row['status'] for row in
+                  csv.DictReader((out / 'obs_usage_202301_24h_status.csv').open())
+                  if row['row'] == 'amsua_n15'}
+        sources = {row['source'] for row in
+                   csv.DictReader((out / 'obs_usage_202301_24h_evidence.csv').open())
+                   if row['row'] == 'amsua_n15'}
+        return [status[day] for day in range(1, 6)], sources
+
+    assert chart(['s1988', 's1993']) == (
+        ['assimilated'] * 3 + ['partial', 'missing'], {'s1993/install0/run1'})
+    assert chart(['s1988', 's1993@2023-01-03'])[0] == (
+        ['assimilated'] * 2 + ['partial'] * 2 + ['missing'])
+    for experiments, extra in [(['s1993@2023-01-03', 's1988@2023-01-01'], []),
+                               (['s1988', 's1993'], ['--upto', 'install0/run1'])]:
+        with pytest.raises(SystemExit):
+            chart(experiments, *extra)
+
+
+def test_record_task_and_archive_dashboard(gsinfo_repo, tmp_path, monkeypatch):
+    """Record two cylc runs, the second rewinding 06Z, and chart them."""
+    logs = {('run1', '20150501T00'): gsistat(),
+            ('run1', '20150501T06'): gsistat(amsua_nobs=(500, 0)),
+            ('run1', '20150501T12'): ['truncated\n'],
+            ('run2', '20150501T06'): gsistat()}
+    archive, out = tmp_path / 'archive', tmp_path / 'out'
+    for variable, value in [('OBS_USAGE_ARCHIVE_DIR', archive), ('EXPERIMENT_NAME', 'expt'),
+                            ('OBS_USAGE_GSINFO_URL', gsinfo_repo),
+                            ('OBS_USAGE_GSINFO_REF', 'HEAD')]:
+        monkeypatch.setenv(variable, str(value))
+
+    def record(run, point, lines):
+        work = tmp_path / 'cylc-run' / 'flow_install0' / run / 'work'
+        task = work / point / 'store_data_gsi_obsfit'
+        task.mkdir(parents=True)
+        (task / f"gsistats.{point.replace('T', '')}_control").write_text(''.join(lines))
+        monkeypatch.setenv('CYLC_WORKFLOW_ID', f'score-monitoring/flow_install0/{run}')
+        monkeypatch.setenv('CYLC_WORKFLOW_WORK_DIR', str(work))
+        return obs_usage_record.main([point])
+
+    for (run, point), lines in logs.items():
+        record(run, point, lines)
+    chart = ['--archive', str(archive), '--experiment', 'expt', '--start', '2015-05',
+             '--end', '2015-05', '--output-dir', str(out), '--compare-upto',
+             'install0/run1']
+    obs_usage_dashboard.main(chart)
+    status = {(row['row'], row['period']): row['status'] for row in
+              csv.DictReader((out / 'obs_usage_201505_6h_status.csv').open())}
+    assert status[('amsua_n15', '2015050100')] == 'assimilated'
+    assert status[('amsua_n15', '2015050106')] == 'assimilated'  # run2 replaced run1
+    assert status[('amsua_n15', '2015050112')] == 'missing'  # unreadable log
+    changes = list(csv.DictReader((out / 'obs_usage_201505_6h_changes.csv').open()))
+    assert {row['period'] for row in changes} == {'2015050106'}
+    assert ('amsua_n15', 'improved', 'partial', 'assimilated', 'install0/run2') in {
+        (row['row'], row['change'], row['baseline_status'], row['current_status'],
+         row['current_source']) for row in changes}
+
+    assert obs_usage_dashboard.main(chart + ['--changed-only']) == []
+    record('run2', '20150501T12', gsistat())
+    assert obs_usage_dashboard.main(chart + ['--changed-only'])

@@ -70,7 +70,9 @@ build_gsinfo (satinfo/ozinfo/convinfo `iuse`) with what GSI **actually did**
 according to that cycle's gsistat log. It answers "were the observations we
 intend to assimilate staged and assimilated, and the ones we intend to
 monitor left unassimilated?"; observation counts are already plotted by
-score-plotting. It runs standalone and needs only matplotlib, numpy and git.
+score-plotting. In production a cylc task records every cycle in a small
+file archive and the dashboard is drawn from it (see *Production* below);
+neither uses score-db. For a quick look at a directory of gsistat logs:
 
 ```
 python scripts/obs_usage_dashboard.py --gsistat-dir /path/to/gsistats \
@@ -78,7 +80,7 @@ python scripts/obs_usage_dashboard.py --gsistat-dir /path/to/gsistats \
 ```
 
 * One gsistat log per cycle is expected, named by the strftime pattern
-  `--file-format` (default `$GSI_FIT_FILE_NAME_FORMAT` or
+  `--file-format` (default `$OBS_USAGE_FILE_FORMAT` or
   `gsistats.%Y%m%d%H_control`); `--cycle-hours` sets the cycle interval.
   Missing or unreadable logs are drawn grey.
 * `--resolution cycle` (default) draws one column per cycle and one PNG per
@@ -119,6 +121,79 @@ cycles are judged against `convinfo/1900010100` (the merged convinfo), which
 also lists platforms not yet launched. Conventional rows cover the types GSI
 summarises in gsistat (ps, t, q, uv, gps); other convinfo types cannot be
 checked.
+
+### Production: record every cycle, chart from the archive
+The `obs_usage` task of `cylc_scout_gdas_gsi_soca_diags/flow.cylc` runs
+`obs_usage_record.py` after `store_data_gsi_obsfit` and appends one compact
+record per cycle (the intent, outcome and failure reasons of every row, plus
+provenance) to a file archive:
+
+```
+store_data<stats=gsi_obsfit> => obs_usage?   # optional: never stalls the workflow
+
+[[obs_usage]]
+    script = obs_usage_record.py $CYLC_TASK_CYCLE_POINT {{ ENV_PATH }}
+    execution retry delays = 2*PT5M
+```
+
+* The gsistat log already downloaded by `store_data_gsi_obsfit` is reused
+  (tasks listed in `$OBS_USAGE_GSISTAT_TASKS`); it is only downloaded from
+  S3 again if that copy is gone.
+* Environment file: `OBS_USAGE_ARCHIVE_DIR` (required; keep it outside
+  `cylc-run` so `cylc clean` cannot remove it) and `EXPERIMENT_NAME` (one
+  archive directory per experiment: keep it the same for every install and
+  run of a stream). Optional: `OBS_USAGE_GSINFO_URL` and
+  `OBS_USAGE_GSINFO_REF` (default build_gsinfo-fix `psl-develop`),
+  `OBS_USAGE_ITERATIONS`, `OBS_USAGE_CACHE` and
+  `OBS_USAGE_GSINFO_REFRESH_MINUTES` (git fetches at most every 60 minutes).
+* Archive layout: `$OBS_USAGE_ARCHIVE_DIR/<EXPERIMENT_NAME>/YYYY/YYYYMM.jsonl.gz`,
+  one gzip member per record (`zcat` reads it). Records are only appended,
+  never replaced, so every version stays available.
+* Re-record or backfill outside cylc with `obs_usage_record.py CYCLE ENV_FILE
+  --gsistat FILE --workflow-id NAME_installN/runM`.
+
+**Versions.** For each cycle the dashboard uses the record from the highest
+cylc install (`..._installN`), then run (`runN`), then time, so a rewound run
+replaces only the cycles it re-ran and a new install replaces the cycles it
+covers. A strip above the chart shows the install/run of every column.
+`--as-of TIME` or `--upto installN/runM` draw an earlier version, and
+`--compare-as-of` / `--compare-upto` add a `*_change.png` and
+`*_changes.csv` of what was fixed or got worse since then (e.g. after
+correcting an obs config and rewinding).
+
+```
+python scripts/obs_usage_dashboard.py --archive $OBS_USAGE_ARCHIVE_DIR \
+    --experiment $EXPERIMENT_NAME --start 1993-01 --end 1996-12 \
+    --resolution month --output-dir dashboard
+python scripts/obs_usage_dashboard.py --archive $OBS_USAGE_ARCHIVE_DIR \
+    --experiment $EXPERIMENT_NAME --start 1993-01 --end 1996-12 \
+    --changed-only --output-dir dashboard
+```
+
+The first command draws the monthly overview, the second one page per month
+of 6-hourly cycles. `--changed-only` skips pages whose records did not change
+since the last run into the same `--output-dir`, so these can run from cron
+(e.g. daily) instead of in every cycle.
+
+**Streams.** Each reanalysis stream (1988, 1993, ...) is its own experiment
+and gets its own charts. To chart the full period, list the streams oldest
+first:
+
+```
+python scripts/obs_usage_dashboard.py --archive $OBS_USAGE_ARCHIVE_DIR \
+    --experiment stream1988 stream1993@1993 stream1997@1997 ... stream2023@2023 \
+    --start 1988-01 --end 2025-12 --resolution month --output-dir dashboard_full
+```
+
+`NAME@START` (`YYYY`, `YYYY-MM`, `YYYY-MM-DD` or `YYYYMMDDHH`) uses a stream
+from START on, replacing the older stream, so spin-up periods are not shown.
+Without a START, the oldest stream that recorded a cycle is used. The source
+strip then also shows the experiment.
+
+**Cost.** A record is about 1.2 kB, so 1988-2025 (55,520 cycles) is about
+70 MB in 456 monthly files, and recording adds no S3 downloads. A page of one
+month of cycles takes about 2 s, a 5-year monthly overview about 5 s and the
+38-year overview about 45 s (250 MB of memory).
 
 # How To Run a Workflow
 
@@ -169,8 +244,11 @@ STORAGE_LOCATION_KEY = 'location/date_format/sub-directories' # no trailing "/"
 AWS_ACCESS_KEY_ID = ''
 AWS_SECRET_ACCESS_KEY = ''
 GSI_FIT_FILE_NAME_FORMAT = 'gsistats.%Y%m%d%H_control'
+OBS_USAGE_ARCHIVE_DIR = '~/obs_usage_archive' # obs usage records (obs_usage_record.py); outside cylc-run
 ```
 
+OBS_USAGE_ARCHIVE_DIR is only needed by the obs_usage task (see
+[Observation Usage Dashboard](#observation-usage-dashboard)).
 EXPERIMENT_NAME and EXPERIMENT_WALLCLOCK_START are user defined values which 
 are used for registering experiments and then referencing that experiment when 
 storing other data, including file counts and metrics. Once registered, these 

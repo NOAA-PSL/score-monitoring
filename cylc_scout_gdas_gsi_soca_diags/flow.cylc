@@ -53,6 +53,8 @@
         # File check dependencies for each cycle point (T00, T06, T18) for the current day
         T00, T06, T12, T18 = """
             file_check => store_data & fv3gfs_sfc_mapper
+            # obs usage vs. build_gsinfo intent (optional: never stalls the workflow)
+            store_data<stats=gsi_obsfit> => obs_usage?
         """
 
 [runtime]
@@ -100,3 +102,11 @@
         script = """
             map_sfc.py $CYLC_TASK_CYCLE_POINT {{ ENV_PATH }}
         """
+
+    [[obs_usage]]
+        # append this cycle's obs usage record to $OBS_USAGE_ARCHIVE_DIR (no
+        # score-db); reuses the gsistat log downloaded by store_data_gsi_obsfit
+        script = """
+            obs_usage_record.py $CYLC_TASK_CYCLE_POINT {{ ENV_PATH }}
+        """
+        execution retry delays = 2*PT5M

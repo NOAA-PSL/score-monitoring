@@ -41,6 +41,7 @@ UNEXPECTED = 'unexpected'
 MONITORED = 'monitored'
 ABSENT = 'absent'
 MISSING = 'missing'
+FAILURES = (UNEXPECTED, NOT_ASSIMILATED, NOT_STAGED, PARTIAL)
 
 # dashboard statuses, most severe first: (label, color). Black, white, gray
 # and Okabe & Ito (2008) colors; every pair keeps a CIELAB difference >= 16
