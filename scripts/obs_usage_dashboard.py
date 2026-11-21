@@ -9,7 +9,9 @@ build_gsinfo (default: NOAA-PSL/build_gsinfo-fix, branch psl-develop) with
 what GSI actually did according to the gsistat log of every cycle. By
 default every 6-hourly cycle is one column and one page is drawn per month;
 ``--resolution month`` rolls cycles up into a conservative monthly overview
-(one column per month).
+(one column per month). Each page is drawn as one figure per group
+(satellite radiance, ozone, conventional), sized for AMS journals
+(``--width``, see obs_usage_figures.py).
 
 Production (cycles recorded by the obs_usage_record.py cylc task):
 
@@ -17,9 +19,10 @@ Production (cycles recorded by the obs_usage_record.py cylc task):
         --experiment $EXPERIMENT_NAME --start 1988-01 --end 2025-12 \\
         --resolution month --output-dir dashboard
 
-For each cycle the latest record wins (highest cylc install, then run, then
-time). ``--as-of`` / ``--upto`` show an earlier version and ``--compare-as-of``
-/ ``--compare-upto`` add charts of what changed since that version.
+For each cycle the newest record wins (e.g. a rewound run, a new install
+or a catch-up workflow). ``--as-of`` / ``--upto`` show an earlier version and
+``--compare-as-of`` / ``--compare-upto`` add charts of what changed since that
+version.
 
 Reanalysis streams (one experiment each) are joined into one record by
 listing them oldest first, e.g. for the full period at the end of production:
@@ -57,6 +60,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from obs_usage_archive import (month_path, parse_source, parse_time,  # noqa: E402
                                read_month, record_results, select_latest,
                                source_label)
+from obs_usage_figures import (AMS_WIDTHS, FORMATS, GROUP_FILES, Chart,  # noqa: E402
+                               FigureSizeError, figure_style)
 from obs_usage_gsinfo import (DEFAULT_GSINFO_REF, DEFAULT_GSINFO_URL,  # noqa: E402
                               GsinfoInventory, GsinfoSource)
 from obs_usage_gsistat import parse_gsistat  # noqa: E402
@@ -95,7 +100,6 @@ CHANGES = OrderedDict([
 ])
 SCORE = {'unexpected': 0, 'not_used': 0, 'partial': 1, 'assimilated': 2,
          'monitored': 2, 'unused': 2}
-SOURCE_COLORS = ['#FFFFFF', '#D9D9D9', '#8C8C8C', '#E8E8E8']  # none, A, B, mixed
 
 
 def parse_month(text):
@@ -267,7 +271,8 @@ class ArchiveSource:
             label = source_label(record)
             info = {'origin': record.get('gsistat', {}).get('origin', ''),
                     'source': label if len(self.streams) == 1 else f'{name}/{label}',
-                    'experiment': name, 'state': 'ok',
+                    'experiment': name, 'workflow': record.get('workflow', ''),
+                    'state': 'ok',
                     'gsinfo': gsinfo_label(record.get('build_gsinfo', {})),
                     'iterations': record.get('iterations', 'all')}
             results = record_results(record)
@@ -415,31 +420,6 @@ def write_changes(path, current, before, changes, resolution, labels,
                     baseline_sources.get(column, ''), sources.get(column, '')])
 
 
-def _text_color(hex_color):
-    red, green, blue = (int(hex_color[i:i + 2], 16) / 255 for i in (1, 3, 5))
-    return 'black' if 0.299 * red + 0.587 * green + 0.114 * blue > 0.6 else 'white'
-
-
-def _x_ticks(columns, resolution):
-    if resolution == 'cycle':
-        days = [(j, column) for j, column in enumerate(columns) if column.hour == 0]
-        step = max(1, round(len(days) / 31))
-        return ([j + 0.5 for j, _ in days[::step]],
-                [str(column.day) for _, column in days[::step]],
-                [j for j, _ in days if j])
-    years = len({column.year for column in columns})
-    if years > 3:
-        step = max(1, round(years / 20))
-        marks = [(j, column) for j, column in enumerate(columns)
-                 if column.month == 1 and column.year % step == 0]
-        return ([j + 0.5 for j, _ in marks], [str(column.year) for _, column in marks],
-                [j for j, column in enumerate(columns) if j and column.month == 1])
-    step = max(1, len(columns) // 12)
-    return ([j + 0.5 for j in range(0, len(columns), step)],
-            [columns[j].strftime('%Y-%m') for j in range(0, len(columns), step)],
-            [j for j, column in enumerate(columns) if j and column.month == 1])
-
-
 def short_run(label):
     """``[experiment/]install1/run2`` -> ``i1/r2``."""
     return re.sub(r'^(?:.*/)?install(\d+)/run(\d+)$', r'i\1/r\2', label)
@@ -461,163 +441,6 @@ def short_names(names):
             for name, w in zip(names, words)}
 
 
-def source_strip(sources, columns, char_columns=0.0, shorten=short_run):
-    """Alternate two greys at every change of source; each change is labelled,
-    shortened from the left to fit before the next change (``char_columns``:
-    columns per character)."""
-    values, changes, previous, tone = [], [], None, 1
-    for j, column in enumerate(columns):
-        label = sources.get(column, '')
-        if not label:
-            values.append(0)
-        elif label == 'mixed':
-            values.append(3)
-        else:
-            if label != previous:
-                tone = 2 if previous is not None and tone == 1 else 1
-                changes.append((j, shorten(label)))
-            values.append(tone)
-        previous = label or previous
-    texts = {}
-    for (j, text), end in zip(changes, [j for j, _ in changes[1:]] + [len(columns)]):
-        room = int((end - j) / char_columns) - 1 if char_columns else len(text)
-        if len(text) > room:
-            text = '\u2026' + text[len(text) - room + 1:] if room > 1 else ''
-        if text:
-            texts[j] = text
-    return values, texts
-
-
-def plot_chart(cells, columns, resolution, palette, labels, path, header,
-               footnote, marks=None, cell_text=None, strips=None):
-    """Draw ``cells`` (``{row: {column: palette key}}``) as a stop-light chart,
-    under source strips ``[(label, {column: source}, shorten)]`` if given."""
-    import matplotlib
-    matplotlib.use('Agg')
-    import matplotlib.pyplot as plt
-    import numpy as np
-    from matplotlib.colors import ListedColormap
-    from matplotlib.patches import Patch
-
-    keys = list(palette)
-    cmap = ListedColormap([palette[key][1] for key in keys])
-    panels = [[row for row in cells if row[0] == group] for group in GROUPS]
-    panels = [panel for panel in panels if panel]
-    # radiance + ozone in one column and conventional in another keeps the
-    # chart on a single page
-    stacks = [[p for p in panels if p[0][0] != CONVENTIONAL],
-              [p for p in panels if p[0][0] == CONVENTIONAL]]
-    stacks = [stack for stack in stacks if stack] or [[]]
-    gap = 3.0  # rows of space for a panel title and x tick labels
-    strip_rows = len(strips) + gap if strips else 0
-    n_rows = max([strip_rows + sum(len(p) + gap for p in stack) for stack in stacks]
-                 or [1])
-    cell_h = 0.14
-    # one month of cycles, or up to 3 years of months, at a readable cell
-    # size; longer spans are squeezed into about 9 inches (one screen)
-    cell_w = 0.05 if resolution == 'cycle' else min(
-        0.32 if len(columns) <= 36 else 0.06, 9.0 / len(columns))
-    label_w = 2.3
-    data_w = max(len(columns) * cell_w, 0.96)
-    panel_w = label_w + data_w + 0.3
-    fig_w = max(8.0, panel_w * len(stacks) + 0.3)
-    legend_h = 1.0
-    footer_h = 0.3
-    info = []  # wrap the info line at its ' | ' separators to fit the width
-    for part in header[2].split('  |  '):
-        if info and len(info[-1]) + len(part) + 5 <= fig_w * 19:
-            info[-1] += '  |  ' + part
-        else:
-            info.append(part)
-    header = [header[0], header[1], '\n'.join(info)]
-    head_h = 0.85 + 0.1 * (len(info) - 1)
-    fig_h = n_rows * cell_h + head_h + legend_h + footer_h
-    fig = plt.figure(figsize=(fig_w, fig_h))
-    top = 1 - (head_h + gap * cell_h) / fig_h
-    ticks, tick_labels, separators = _x_ticks(columns, resolution)
-
-    def axes(left, y_top, n):
-        height = n * cell_h / fig_h
-        ax = fig.add_axes([left, y_top - height, data_w / fig_w, height])
-        ax.set_xlim(0, len(columns))
-        ax.set_ylim(n, 0)
-        ax.set_xticks(ticks)
-        ax.set_xticklabels(tick_labels, fontsize=4.5 if resolution == 'cycle' else 6,
-                           rotation=0 if resolution == 'cycle' or len(columns) <= 6
-                           or len(set(c.year for c in columns)) > 3 else 90)
-        ax.xaxis.tick_top()
-        ax.tick_params(length=0, pad=1.5)
-        for spine in ax.spines.values():
-            spine.set_color('0.4')
-            spine.set_linewidth(0.5)
-        return ax, y_top - height - gap * cell_h / fig_h
-
-    for s, stack in enumerate(stacks):
-        left = (s * panel_w + label_w + 0.2) / fig_w
-        y_top = top
-        if strips:
-            ax, y_top = axes(left, y_top, len(strips))
-            for i, (_, sources, shorten) in enumerate(strips):
-                # 4 pt text: about 0.6 * 4 / 72 inches per character
-                values, texts = source_strip(sources, columns, 0.6 * 4 / 72 / cell_w,
-                                             shorten)
-                ax.pcolormesh(np.arange(len(columns) + 1), np.array([i, i + 1]),
-                              [values], cmap=ListedColormap(SOURCE_COLORS),
-                              vmin=-0.5, vmax=3.5)
-                for j, text in texts.items():
-                    ax.text(j + 0.3, i + 0.5, text, fontsize=4, va='center',
-                            ha='left', color='black', clip_on=True)
-            ax.hlines(np.arange(1, len(strips)), 0, len(columns), color='0.4',
-                      linewidth=0.4)
-            ax.set_yticks(np.arange(len(strips)) + 0.5)
-            ax.set_yticklabels([label for label, _, _ in strips], fontsize=5.5)
-            ax.set_title('Source of each column', fontsize=7,
-                         fontweight='bold', loc='left', pad=8)
-        for panel in stack:
-            n = len(panel)
-            ax, next_top = axes(left, y_top, n)
-            y_top = next_top
-            matrix = np.array([[keys.index(cells[row][column]) for column in columns]
-                               for row in panel])
-            ax.pcolormesh(np.arange(len(columns) + 1), np.arange(n + 1), matrix,
-                          cmap=cmap, vmin=-0.5, vmax=len(keys) - 0.5)
-            ax.hlines(np.arange(1, n), 0, len(columns), color='0.75', linewidth=0.3)
-            ax.vlines(separators, 0, n, color='0.55', linewidth=0.4)
-            if cell_text and len(columns) <= 36:
-                for i, row in enumerate(panel):
-                    for j, column in enumerate(columns):
-                        text = cell_text.get((row, column))
-                        if text:
-                            ax.text(j + 0.5, i + 0.5, text, ha='center', va='center',
-                                    fontsize=4.5, color=_text_color(
-                                        palette[cells[row][column]][1]))
-            ax.set_yticks(np.arange(n) + 0.5)
-            ax.set_yticklabels([row_label(*row, labels) + (
-                ' \u25c6' if marks and marks.get(row) else '') for row in panel],
-                fontsize=5.5)
-            ax.set_title(f'{panel[0][0]} ({n})', fontsize=7, fontweight='bold',
-                         loc='left', pad=8)
-
-    handles = [Patch(facecolor=color, edgecolor='0.3', linewidth=0.5, label=label)
-               for label, color in palette.values()]
-    if marks is not None:
-        handles.append(Patch(facecolor='none', edgecolor='none', label='\u25c6 after a '
-                             'name: run usage flags differ from build_gsinfo'))
-    fig.legend(handles=handles, loc='lower center', ncol=2, fontsize=6,
-               frameon=False, bbox_to_anchor=(0.5, 0.12 / fig_h))
-    for offset, (text, size, weight, color) in zip(
-            (0.12, 0.35, 0.55), [(header[0], 10, 'bold', 'black'),
-                                 (header[1], 8, 'bold', 'black'),
-                                 (header[2], 6, 'normal', '0.3')]):
-        if text:
-            fig.text(0.5, 1 - offset / fig_h, text, ha='center', va='top',
-                     fontsize=size, fontweight=weight, color=color)
-    fig.text(0.5, (legend_h + 0.05) / fig_h, footnote, ha='center', va='bottom',
-             fontsize=5.5, color='0.3')
-    fig.savefig(path, dpi=200)
-    plt.close(fig)
-
-
 # ------------------------------------------------------------------ main --
 
 def column_sources(loaded, column_of, field='source'):
@@ -637,7 +460,7 @@ def version_text(as_of, upto):
 
 def build_page(source, months, columns, column_of, version):
     """Load the months of one page (one version) into a merged table."""
-    parts, evidence, sources, experiments = [], OrderedDict(), {}, {}
+    parts, evidence, sources, experiments, workflows = [], OrderedDict(), {}, {}, {}
     gsinfo, iterations = Counter(), set()
     present = expected = 0
     for month in months:
@@ -646,6 +469,7 @@ def build_page(source, months, columns, column_of, version):
         evidence.update(evidence_rows(loaded, column_of))
         sources.update(column_sources(loaded, column_of))
         experiments.update(column_sources(loaded, column_of, 'experiment'))
+        workflows.update(column_sources(loaded, column_of, 'workflow'))
         expected += len(loaded)
         for results, info in loaded.values():
             present += results is not None
@@ -654,7 +478,7 @@ def build_page(source, months, columns, column_of, version):
                 iterations.add(info['iterations'])
     return {'table': merge_tables(parts, columns), 'evidence': evidence,
             'fill': {column: cell for _, fill in parts for column, cell in fill.items()},
-            'sources': sources, 'experiments': experiments,
+            'sources': sources, 'experiments': experiments, 'workflows': workflows,
             'present': present, 'expected': expected,
             'gsinfo': gsinfo, 'iterations': iterations}
 
@@ -665,70 +489,98 @@ def filled_row(page, row, columns):
         (column, page['fill'][column]) for column in columns)
 
 
-def gsinfo_text(versions, limit=2):
+def gsinfo_parts(versions, limit=2):
+    """Info parts naming the most common build_gsinfo versions of a page."""
     names = [name for name, _ in versions.most_common()]
-    more = f' (+{len(names) - limit} more)' if len(names) > limit else ''
-    return '; '.join(names[:limit]) + more if names else 'no records'
+    if not names:
+        return ['no records']
+    parts = names[:limit]
+    if len(names) > limit:
+        parts[-1] += f' (+{len(names) - limit} more)'
+    return parts
 
 
-def make_page(args, source, stem, months, columns, column_of, labels, state):
+def remove_figures(out, stem):
+    """Delete the figures of an earlier run of a page; its number of parts may
+    have changed (``<stem>_dashboard.png`` and ``<stem>_change.png`` are the
+    single-figure names of earlier versions)."""
+    pattern = re.compile(re.escape(stem) + r'_(dashboard|change|(%s)(_p\d+)?(_change)?)\.(%s)'
+                         % ('|'.join(GROUP_FILES.values()), '|'.join(FORMATS)))
+    for path in out.glob(f'{stem}_*'):
+        if pattern.fullmatch(path.name):
+            path.unlink()
+
+
+def make_page(args, source, stem, months, columns, column_of, labels, style, state):
     out = Path(args.output_dir)
     signature = hashlib.sha1(json.dumps(
         [vars(args).get(key) for key in sorted(vars(args)) if key != 'changed_only']
         + [source.signature(month) for month in months], default=str).encode()
     ).hexdigest()
-    image = out / f'{stem}_dashboard.png'
-    if args.changed_only and state.get(stem) == signature and image.is_file():
+    status_csv, evidence_csv, summary_json = (
+        out / f'{stem}_{name}' for name in ('status.csv', 'evidence.csv', 'summary.json'))
+    if args.changed_only and state.get(stem) == signature and summary_json.is_file():
         return []
 
     page = build_page(source, months, columns, column_of, (args.as_of, args.upto))
     table = page['table'] if args.show_inactive else active_rows(page['table'])
-    written = [image, out / f'{stem}_status.csv', out / f'{stem}_evidence.csv',
-               out / f'{stem}_summary.json']
-    write_status(written[1], table, args.resolution, labels)
-    write_evidence(written[2], page['evidence'], args.resolution, labels)
+    write_status(status_csv, table, args.resolution, labels)
+    write_evidence(evidence_csv, page['evidence'], args.resolution, labels)
+    remove_figures(out, stem)
 
     version = version_text(args.as_of, args.upto)
     span = (columns[0].strftime('%B %Y') if args.resolution == 'cycle'
             else f'{columns[0]:%Y-%m} to {columns[-1]:%Y-%m}')
-    x_title = ('day of month (one column per cycle, ticks at 00 UTC)'
-               if args.resolution == 'cycle' else 'one column per month'
-               + ('; numbers = failing cycles' if len(columns) <= 36 else ''))
+    if args.resolution == 'cycle':
+        xlabel = (f'Day of {columns[0]:%B %Y} (one column per cycle, '
+                  f'every {args.cycle_hours} h)')
+    else:
+        xlabel = ('Year' if len({column.year for column in columns}) > 3 else 'Month') \
+            + ' (one column per month)'
     iterations = '/'.join(sorted(page['iterations'])) or args.iterations
-    header = ['GSI observation usage vs. build_gsinfo intent',
-              args.title,
-              f"{span}  |  {gsinfo_text(page['gsinfo'])}  |  outer iterations: "
-              f"{iterations}  |  cycles present {page['present']}/{page['expected']}"
-              + (f'  |  version: {version}' if args.archive else '')
-              + f"  |  {x_title}  |  created {dt.datetime.now(dt.timezone.utc):%Y-%m-%d}"]
+    created = dt.datetime.now(dt.timezone.utc)
+    info = ([span, *gsinfo_parts(page['gsinfo']), f'outer iterations: {iterations}',
+             f"cycles present: {page['present']}/{page['expected']}"]
+            + ([f'version: {version}'] if args.archive else [])
+            + [f'created {created:%Y-%m-%d}'])
     footnote = ('A sensor or data type is green in a cycle only if every channel, level '
                 'or staged subtype intended for assimilation was assimilated in every '
                 'outer iteration' + ('; a month is green only if every cycle is green.'
                                      if args.resolution == 'month' else '.'))
-    strips = [('cylc install/run (iN/rM)', page['sources'], short_run)] if args.archive \
-        else None
-    if len(args.streams) > 1:
-        short = short_names([name for name, _ in args.streams])
-        strips.insert(0, ('experiment', page['experiments'], short.get))
+    strips = []
+    if args.archive:
+        strips.append(('cylc install/run (iN/rM)', page['sources'], short_run))
+        workflows = set(page['workflows'].values())
+        if len(workflows) > 1 or 'mixed' in workflows:  # e.g. a catch-up workflow
+            strips.insert(0, ('cylc workflow', page['workflows'],
+                              short_names(sorted(workflows - {'mixed'})).get))
+        if len(args.streams) > 1:
+            strips.insert(0, ('experiment', page['experiments'],
+                              short_names([name for name, _ in args.streams]).get))
     cell_text = {(row, column): str(sum(cell.counts.get(key, 0) for key in FAILURES))
                  for row, cells in table.items() for column, cell in cells.items()
                  if args.resolution == 'month'
                  and any(cell.counts.get(key) for key in FAILURES)}
-    plot_chart({row: {column: cell.status for column, cell in cells.items()}
-                for row, cells in table.items()}, columns, args.resolution, STATUSES,
-               labels, image, header, footnote,
-               marks={row: any(cell.mismatch for cell in cells.values())
-                      for row, cells in table.items()},
-               cell_text=cell_text, strips=strips)
+    figures = Chart(
+        style, OrderedDict((row, {column: cell.status for column, cell in cells.items()})
+                           for row, cells in table.items()),
+        columns, args.resolution, STATUSES, {row: row_label(*row, labels) for row in table},
+        title='GSI observation usage vs. build_gsinfo intent', subtitle=args.title,
+        info=info, xlabel=xlabel, footnote=footnote,
+        marks={row: any(cell.mismatch for cell in cells.values())
+               for row, cells in table.items()},
+        cell_text=cell_text, cell_note='numbers: failing cycles', strips=strips,
+    ).save(out, stem)
+    tables = [status_csv, evidence_csv]
 
-    summary = {'title': args.title, 'created': dt.datetime.now(
-                   dt.timezone.utc).isoformat(timespec='seconds'),
+    summary = {'title': args.title, 'created': created.isoformat(timespec='seconds'),
                'start': f'{columns[0]:%Y-%m}', 'end': f'{columns[-1]:%Y-%m}',
                'resolution': args.resolution, 'cycle_hours': args.cycle_hours,
                'cycles_expected': page['expected'], 'cycles_present': page['present'],
                **source.describe(), 'version': version, 'iterations': iterations,
                'build_gsinfo_versions': dict(page['gsinfo']),
                'sources': dict(Counter(page['sources'].values())),
+               'workflows': dict(Counter(page['workflows'].values())),
                'conventional_variables_checked': list(CONVENTIONAL_VARIABLES),
                'statuses': {key: {'label': label, 'color': color}
                             for key, (label, color) in STATUSES.items()},
@@ -745,15 +597,16 @@ def make_page(args, source, stem, months, columns, column_of, labels, state):
             (column, compare_cell(before[row][column], cell))
             for column, cell in cells.items())) for row, cells in current.items())
         base_text = version_text(args.compare_as_of, args.compare_upto)
-        written += [out / f'{stem}_change.png', out / f'{stem}_changes.csv']
-        plot_chart(changes, columns, args.resolution, CHANGES, labels, written[-2],
-                   ['Change in GSI observation usage vs. build_gsinfo intent',
-                    args.title,
-                    f"{span}  |  baseline: {base_text}  |  current: {version}  |  "
-                    f"{x_title.split(';')[0]}"],
-                   'Statuses are compared cell by cell; failing = intended but not '
-                   '(fully) assimilated, or assimilated but not intended.')
-        write_changes(written[-1], current, before, changes, args.resolution, labels,
+        figures += Chart(
+            style, changes, columns, args.resolution, CHANGES,
+            {row: row_label(*row, labels) for row in changes},
+            title='Change in GSI observation usage vs. build_gsinfo intent',
+            subtitle=args.title, info=[span, f'baseline: {base_text}', f'current: {version}'],
+            xlabel=xlabel, footnote='Statuses are compared cell by cell; failing = intended '
+            'but not (fully) assimilated, or assimilated but not intended.',
+        ).save(out, stem, '_change')
+        tables.append(out / f'{stem}_changes.csv')
+        write_changes(tables[-1], current, before, changes, args.resolution, labels,
                       page['sources'], base['sources'])
         summary['compare'] = {'baseline': base_text, 'change_counts': dict(Counter(
             change for cells in changes.values() for change in cells.values()))}
@@ -764,9 +617,12 @@ def make_page(args, source, stem, months, columns, column_of, labels, state):
                 column_name(column, args.resolution), {})
             period.setdefault(group, {}).setdefault(cell.status, 0)
             period[group][cell.status] += 1
-    written[3].write_text(json.dumps(summary, indent=2, default=str) + '\n')
+    summary['figures'] = [path.name for path in figures]
+    summary_json.write_text(json.dumps(summary, indent=2, default=str) + '\n')
     state[stem] = signature
-    return written
+    if not figures:
+        print(f'{stem}: no rows to draw')
+    return figures + tables + [summary_json]
 
 
 def main(argv=None):
@@ -834,8 +690,30 @@ def main(argv=None):
                         help='chart title (default: the experiment name)')
     parser.add_argument('--output-dir', default='.',
                         help='where figures, CSVs and JSON are written (default: .)')
+    figures = parser.add_argument_group(
+        'figures', 'One figure per group and page, sized for AMS journals; long groups '
+        'are split into parts at most 9 in deep.')
+    figures.add_argument('--width', type=float, choices=AMS_WIDTHS, default=6.5,
+                         help='width in inches: 3.2 (one column), 4.5, 5.5 (two columns) '
+                              'or 6.5 (default)')
+    figures.add_argument('--font-size', type=float, default=7.0,
+                         help='text size in points (default: 7; titles are 1-2 pt larger)')
+    figures.add_argument('--format', nargs='+', choices=FORMATS, default=['png'],
+                         help='file formats (default: png); pdf, svg and eps are vector '
+                              'graphics with embedded fonts')
+    figures.add_argument('--dpi', type=int, default=300,
+                         help='resolution of png and tif (default: 300)')
+    figures.add_argument('--font', default=os.getenv('OBS_USAGE_FONT'),
+                         help='font to use (default: $OBS_USAGE_FONT, else the first '
+                              'installed of Inter (CIRES), Helvetica Neue, Helvetica, '
+                              'Arial, Liberation Sans, DejaVu Sans)')
+    figures.add_argument('--font-dir', default=os.getenv('OBS_USAGE_FONT_DIR'),
+                         help='directory of .ttf fonts to add, e.g. the static Inter '
+                              'fonts (default: $OBS_USAGE_FONT_DIR)')
     args = parser.parse_args(argv)
 
+    if args.dpi < 72 or not 5 <= args.font_size <= 12:
+        parser.error('--dpi must be at least 72 and --font-size between 5 and 12')
     if args.archive and not args.experiment:
         parser.error('--archive needs --experiment (or $EXPERIMENT_NAME)')
     if not args.archive and any((args.as_of, args.upto, args.compare_as_of,
@@ -874,6 +752,8 @@ def main(argv=None):
 
     source = ArchiveSource(args) if args.archive else GsistatDirSource(args)
     labels = conventional_labels()
+    style = figure_style(args.width, args.font_size, args.dpi, args.format, args.font,
+                         args.font_dir)
     out = Path(args.output_dir)
     out.mkdir(parents=True, exist_ok=True)
     state_path = out / STATE_FILE
@@ -883,15 +763,20 @@ def main(argv=None):
         state = {}
 
     written = []
-    if args.resolution == 'cycle':
-        for month in months:
-            written += make_page(args, source, f'obs_usage_{month:%Y%m}_{args.cycle_hours}h',
-                                 [month], month_cycles(month, args.cycle_hours),
-                                 lambda cycle: cycle, labels, state)
-    else:
-        written += make_page(args, source, f'obs_usage_{months[0]:%Y%m}_'
-                             f'{months[-1]:%Y%m}_monthly', months, months,
-                             lambda cycle: cycle.replace(day=1, hour=0), labels, state)
+    try:
+        if args.resolution == 'cycle':
+            for month in months:
+                written += make_page(args, source,
+                                     f'obs_usage_{month:%Y%m}_{args.cycle_hours}h', [month],
+                                     month_cycles(month, args.cycle_hours),
+                                     lambda cycle: cycle, labels, style, state)
+        else:
+            written += make_page(args, source, f'obs_usage_{months[0]:%Y%m}_'
+                                 f'{months[-1]:%Y%m}_monthly', months, months,
+                                 lambda cycle: cycle.replace(day=1, hour=0), labels, style,
+                                 state)
+    except FigureSizeError as error:
+        parser.error(str(error))
     state_path.write_text(json.dumps(state, indent=1) + '\n')
     for path in written:
         print(f'wrote {path}')

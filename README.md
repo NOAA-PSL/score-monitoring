@@ -63,9 +63,10 @@ register_experiment() and register_storage_location() functions from the main()
 function "#register_experiment() and #register_storage_location()".
 
 ## Observation Usage Dashboard
-`scripts/obs_usage_dashboard.py` draws a one-page-per-month stop-light chart
-of every satellite radiance sensor, ozone sensor and conventional (PrepBUFR)
-data type. For each GSI cycle it compares the **intended** usage in
+`scripts/obs_usage_dashboard.py` draws stop-light charts of every satellite
+radiance sensor, ozone sensor and conventional (PrepBUFR) data type, one page
+per month, with separate figures for each group (see *Figures* below). For
+each GSI cycle it compares the **intended** usage in
 build_gsinfo (satinfo/ozinfo/convinfo `iuse`) with what GSI **actually did**
 according to that cycle's gsistat log. It answers "were the observations we
 intend to assimilate staged and assimilated, and the ones we intend to
@@ -83,7 +84,7 @@ python scripts/obs_usage_dashboard.py --gsistat-dir /path/to/gsistats \
   `--file-format` (default `$OBS_USAGE_FILE_FORMAT` or
   `gsistats.%Y%m%d%H_control`); `--cycle-hours` sets the cycle interval.
   Missing or unreadable logs are drawn grey.
-* `--resolution cycle` (default) draws one column per cycle and one PNG per
+* `--resolution cycle` (default) draws one column per cycle and one page per
   month. `--resolution month` draws one column per month; a month is only
   green if every cycle was, and cells show how many cycles failed.
 * Intent comes from [build_gsinfo-fix](https://github.com/NOAA-PSL/build_gsinfo-fix),
@@ -97,9 +98,11 @@ python scripts/obs_usage_dashboard.py --gsistat-dir /path/to/gsistats \
   the sensor is not green for that cycle. `--iterations` chooses which GSI
   outer iterations must show assimilation (default: all).
 * Rows never intended and never used are hidden unless `--show-inactive`.
-* Outputs: `*_dashboard.png` pages, a `*_status.csv` (status per row and
-  column, with failing-cycle counts), an `*_evidence.csv` (per-cycle reasons
-  and the gsistat file used) and a `*_summary.json` (provenance and counts).
+* Outputs per page: the figures `*_radiance.png`, `*_ozone.png` and
+  `*_conventional.png` (`*_conventional_p1.png`, `_p2`, ... when split), a
+  `*_status.csv` (status per row and column, with failing-cycle counts), an
+  `*_evidence.csv` (per-cycle reasons and the gsistat file used) and a
+  `*_summary.json` (provenance, counts and the figures written).
 
 | Colour | Status | Meaning |
 |---|---|---|
@@ -122,23 +125,86 @@ also lists platforms not yet launched. Conventional rows cover the types GSI
 summarises in gsistat (ps, t, q, uv, gps); other convinfo types cannot be
 checked.
 
+**Figures.** Each page is drawn as separate satellite radiance, ozone and
+conventional figures, so the text stays legible at print size. A group too
+long for one figure is split into parts (`_p1`, `_p2`, ...); conventional
+parts keep each variable (ps, t, q, uv, gps) whole where it fits, with a gap
+between variables.
+
+* Sizes follow the [AMS figure guidelines](https://www.ametsoc.org/ams/publications/author-information/figure-information-for-authors/):
+  `--width` 3.2, 4.5, 5.5 or 6.5 in (one column to full page; default 6.5),
+  at most 9 in deep, and text at its printed size in one font (`--font-size`,
+  default 7 pt; titles 1-2 pt larger). Each part holds as many rows as fit
+  in 9 in; text so large that no row fits (12 pt in a 3.2 in figure) is an
+  error. `--format` takes any of `png pdf svg eps tif` (default png) and
+  `--dpi` sets the raster resolution (default 300). For a journal, use PDF
+  (vector, fonts embedded) or 600 dpi.
+* Branding follows the [CIRES style guide](https://ciresconnect.colorado.edu/cires-style-guide)
+  first, then [CU Boulder](https://www.colorado.edu/imc/cu-boulder-brand/visual-identity):
+  - the CIRES font Inter;
+  - CIRES dark blue (#333666) titles;
+  - CU Boulder dark and light grays (#565A5C, #A2A4A3) for text and rules;
+  - CU Gold (#CFB87C) and CIRES turquoise (#3399CC, 50% tint) source strips.
+
+  The status colours stay Okabe-Ito, because brand colours such as CIRES
+  turquoise come too close to them under colour-vision deficiencies.
+* Inter is used if it is installed, or if its static `.ttf` files are in
+  `--font-dir` (`$OBS_USAGE_FONT_DIR`), e.g. from
+  `gh release download v4.1 --repo rsms/inter`. Otherwise the figures use
+  Helvetica Neue, Helvetica or Arial (CU Boulder's font and its substitutes).
+  `--font NAME` (`$OBS_USAGE_FONT`) picks a font; for example, use
+  `--font Arial` for an AMS submission.
+
 ### Production: record every cycle, chart from the archive
 The `obs_usage` task of `cylc_scout_gdas_gsi_soca_diags/flow.cylc` runs
-`obs_usage_record.py` after `store_data_gsi_obsfit` and appends one compact
-record per cycle (the intent, outcome and failure reasons of every row, plus
-provenance) to a file archive:
+`obs_usage_record.py`, which appends one compact record per cycle to a file
+archive. A record holds the intent, outcome and failure reasons of every row,
+plus provenance. The task is optional (`obs_usage?`), so it never stalls the
+workflow. The workflow has two modes, chosen when it is started:
+
+* `full` (default, production): one cycle at a time (`runahead limit = P0`).
+  `store_data` downloads, harvests and uploads to score-db, then
+  `store_data<stats=gsi_obsfit> => obs_usage?` records the cycle from the
+  gsistat log that was just downloaded.
+* `catchup` (retrospective analysis, e.g. after fixing an obs config, without
+  re-running the monitoring suite): the graph is just `obs_usage?`. Each
+  cycle downloads only its gsistat log from S3 and records it. There are no
+  file checks, harvesting, mapper or score-db.
+
+  Cycles are independent, so up to `CATCHUP_JOBS` (default 32) run at once:
+  a cylc queue caps the concurrent downloads, and a runahead limit of
+  4 x `CATCHUP_JOBS` cycles keeps the queue full.
+
+Run a catch-up as its own workflow with the same environment file, so its
+records join the stream's archive:
 
 ```
-store_data<stats=gsi_obsfit> => obs_usage?   # optional: never stalls the workflow
-
-[[obs_usage]]
-    script = obs_usage_record.py $CYLC_TASK_CYCLE_POINT {{ ENV_PATH }}
-    execution retry delays = 2*PT5M
+cylc vip cylc_scout_gdas_gsi_soca_diags --workflow-name stream1993_catchup \
+    --set "MODE='catchup'" --set CATCHUP_JOBS=32 \
+    --initial-cycle-point 19930101T00 --final-cycle-point 19961231T18
+cylc clean stream1993_catchup   # once finished; the archive is not in cylc-run
 ```
 
-* The gsistat log already downloaded by `store_data_gsi_obsfit` is reused
-  (tasks listed in `$OBS_USAGE_GSISTAT_TASKS`); it is only downloaded from
-  S3 again if that copy is gone.
+* A catch-up cycle that fails (e.g. no log in S3) does not retry or hold up
+  other cycles; the dashboard shows it grey. While the workflow runs,
+  `cylc trigger stream1993_catchup//19930312T06/obs_usage` re-runs it.
+  Afterwards, re-record it as below.
+* Appends hold an exclusive `flock` for a fraction of a second, so any number
+  of concurrent tasks can share the archive. Its directory must be on a
+  filesystem with working `flock` across the hosts the tasks run on: local
+  disk, NFSv4, or Lustre mounted with `flock`.
+* Measured with a local S3 server on 2 CPUs: a catch-up of 124 cycles ran up
+  to 23 jobs at once and took 112 s. Each task used about 0.5 CPU-s and
+  25 MB of memory, and downloaded its 3.6 MB log in 0.4 s. At scale the
+  limit is S3 bandwidth (1988 to present is about 55,000 logs, or 200 GB),
+  cylc job submission (about 1 CPU-s per job) or the cores available,
+  whichever is slowest; set `CATCHUP_JOBS` to match.
+
+* In `full` mode, the gsistat log already downloaded by
+  `store_data_gsi_obsfit` is reused (tasks listed in
+  `$OBS_USAGE_GSISTAT_TASKS`). It is only downloaded from S3, into a private
+  temporary directory that is always removed, if no such copy exists, as in
+  `catchup` mode.
 * Environment file: `OBS_USAGE_ARCHIVE_DIR` (required; keep it outside
   `cylc-run` so `cylc clean` cannot remove it) and `EXPERIMENT_NAME` (one
   archive directory per experiment: keep it the same for every install and
@@ -152,14 +218,22 @@ store_data<stats=gsi_obsfit> => obs_usage?   # optional: never stalls the workfl
 * Re-record or backfill outside cylc with `obs_usage_record.py CYCLE ENV_FILE
   --gsistat FILE --workflow-id NAME_installN/runM`.
 
-**Versions.** For each cycle the dashboard uses the record from the highest
-cylc install (`..._installN`), then run (`runN`), then time, so a rewound run
-replaces only the cycles it re-ran and a new install replaces the cycles it
-covers. A strip above the chart shows the install/run of every column.
-`--as-of TIME` or `--upto installN/runM` draw an earlier version, and
-`--compare-as-of` / `--compare-upto` add a `*_change.png` and
-`*_changes.csv` of what was fixed or got worse since then (e.g. after
-correcting an obs config and rewinding).
+**Versions.** For each cycle the dashboard uses the newest record (the most
+recently created; the last appended on a tie). Each of these replaces only
+the cycles it records, and all other cycles keep their earlier records:
+* a rewound run (`runN`);
+* a new install (`..._installN`);
+* a catch-up workflow.
+
+Strips above the chart show the cylc install/run of every column, and the
+workflow name when more than one workflow recorded the page.
+
+`--as-of TIME` draws the version current at an earlier time. `--upto
+installN/runM` ignores later installs and runs of any workflow name, so
+prefer `--as-of` once catch-up workflows have recorded cycles.
+`--compare-as-of` / `--compare-upto` add `*_change` figures (e.g.
+`*_radiance_change.png`) and a `*_changes.csv` of what was fixed or got
+worse since then (e.g. after correcting an obs config and catching up).
 
 ```
 python scripts/obs_usage_dashboard.py --archive $OBS_USAGE_ARCHIVE_DIR \
@@ -191,9 +265,10 @@ Without a START, the oldest stream that recorded a cycle is used. The source
 strip then also shows the experiment.
 
 **Cost.** A record is about 1.2 kB, so 1988-2025 (55,520 cycles) is about
-70 MB in 456 monthly files, and recording adds no S3 downloads. A page of one
-month of cycles takes about 2 s, a 5-year monthly overview about 5 s and the
-38-year overview about 45 s (250 MB of memory).
+66 MB in 456 monthly files. In `full` mode, recording adds no S3 downloads.
+One month of 6-hourly cycles (5 figures) takes about 3 s to draw, a 5-year
+monthly overview about 8 s and the 38-year overview about 70 s (260 MB of
+memory).
 
 # How To Run a Workflow
 

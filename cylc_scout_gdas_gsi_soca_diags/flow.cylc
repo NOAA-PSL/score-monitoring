@@ -31,6 +31,19 @@
 {% set INITIAL_CYCLE_POINT = '19790101T12' %}
 {% set FINAL_CYCLE_POINT = '20250930T18' %}
 {% set ENV_PATH = 'weakly_coupled_scoutrun_monitoring.env' %}
+{#- MODE, chosen at start-up (cylc play/vip --set "MODE='catchup'"):
+      full    - production (default): one cycle at a time; store_data downloads,
+                harvests and uploads to score-db, then obs_usage records the
+                cycle's observation usage
+      catchup - retrospective: each cycle only downloads its gsistat log and
+                records it for the obs usage dashboard (no harvesting, no
+                score-db); up to CATCHUP_JOBS cycles at once, so the S3
+                downloads are the bottleneck. Pick the period with --icp/--fcp. #}
+{% set MODE = MODE | default('full') %}
+{% set CATCHUP_JOBS = CATCHUP_JOBS | default(32) | int %}
+{% if MODE not in ['full', 'catchup'] %}
+{{ raise("MODE must be 'full' or 'catchup', not '" ~ MODE ~ "'") }}
+{% endif %}
 
 [task parameters]
     stats = file_count, gsi_obsfit, soca_obsfit    
@@ -48,13 +61,29 @@
 [scheduling]
     initial cycle point = {{ INITIAL_CYCLE_POINT }}
     final cycle point = {{ FINAL_CYCLE_POINT }}
+{% if MODE == 'full' %}
     runahead limit = P0
+{% else %}
+    # cycles are independent: the queue caps the concurrent S3 downloads and
+    # the runahead window keeps it full
+    runahead limit = P{{ 4 * CATCHUP_JOBS }}
+    [[queues]]
+        [[[s3_downloads]]]
+            limit = {{ CATCHUP_JOBS }}
+            members = obs_usage
+{% endif %}
     [[graph]]
         # File check dependencies for each cycle point (T00, T06, T18) for the current day
         T00, T06, T12, T18 = """
+{% if MODE == 'full' %}
             file_check => store_data & fv3gfs_sfc_mapper
             # obs usage vs. build_gsinfo intent (optional: never stalls the workflow)
             store_data<stats=gsi_obsfit> => obs_usage?
+{% else %}
+            # download the gsistat log and record obs usage; a failed cycle
+            # (e.g. no log) is left for the dashboard to show as missing
+            obs_usage?
+{% endif %}
         """
 
 [runtime]
@@ -105,8 +134,16 @@
 
     [[obs_usage]]
         # append this cycle's obs usage record to $OBS_USAGE_ARCHIVE_DIR (no
-        # score-db); reuses the gsistat log downloaded by store_data_gsi_obsfit
+        # score-db); reuses the gsistat log downloaded by store_data_gsi_obsfit,
+        # or (catchup) downloads it from S3 and deletes it afterwards
         script = """
             obs_usage_record.py $CYLC_TASK_CYCLE_POINT {{ ENV_PATH }}
         """
+{% if MODE == 'full' %}
         execution retry delays = 2*PT5M
+{% else %}
+        # no cylc retries: boto3 retries transient S3 errors itself, and a
+        # waiting retry would hold back the runahead window (re-run failed
+        # cycles afterwards with cylc trigger)
+        execution retry delays =
+{% endif %}

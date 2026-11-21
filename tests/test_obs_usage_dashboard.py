@@ -3,6 +3,7 @@
 import csv
 import datetime as dt
 import gzip
+import multiprocessing
 import os
 import subprocess
 import sys
@@ -16,6 +17,8 @@ import obs_usage_dashboard  # noqa: E402
 import obs_usage_record  # noqa: E402
 from obs_usage_archive import (append_record, make_record, month_path,  # noqa: E402
                                parse_workflow_id, read_month, select_latest)
+from obs_usage_figures import (Chart, FigureSizeError, FigureStyle, paginate,  # noqa: E402
+                               source_strip)
 from obs_usage_gsinfo import GsinfoInventory, GsinfoSource  # noqa: E402
 from obs_usage_gsistat import parse_lines  # noqa: E402
 from obs_usage_status import (CONVENTIONAL, OZONE, RADIANCE,  # noqa: E402
@@ -166,10 +169,19 @@ def test_dashboard_end_to_end(gsinfo_repo, tmp_path):
         ''.join(gsistat(amsua_nobs=(500, 0))))
     (logs / 'gsistats.2015050112_control').write_text('truncated\n')
     out = tmp_path / 'out'
+    out.mkdir()
+    stale = out / 'obs_usage_201505_6h_dashboard.png'  # single figure of old versions
+    stale.write_bytes(b'')
     obs_usage_dashboard.main(['--gsistat-dir', str(logs), '--start', '2015-05',
                               '--end', '2015-05', '--gsinfo', str(gsinfo_repo),
-                              '--gsinfo-ref', 'HEAD', '--output-dir', str(out)])
-    assert (out / 'obs_usage_201505_6h_dashboard.png').stat().st_size > 0
+                              '--gsinfo-ref', 'HEAD', '--output-dir', str(out),
+                              '--width', '3.2', '--format', 'png', 'pdf'])
+    assert not stale.exists()
+    from PIL import Image
+    for group in ('radiance', 'ozone', 'conventional'):  # AMS one-column figures
+        with Image.open(out / f'obs_usage_201505_6h_{group}.png') as image:
+            assert image.width == 3.2 * 300 and image.height <= 9 * 300
+        assert (out / f'obs_usage_201505_6h_{group}.pdf').stat().st_size > 0
     rows = {(row['row'], row['period']): row['status'] for row in
             csv.DictReader((out / 'obs_usage_201505_6h_status.csv').open())}
     assert rows[('amsua_n15', '2015050100')] == 'assimilated'
@@ -234,6 +246,100 @@ def test_archive_keeps_versions_and_selects_latest(tmp_path, capsys):
     assert latest() == {0: (0, 1, 'assimilated'), 6: (1, 1, 'not_staged')}
     assert latest(upto=(0, 2)) == {0: (0, 1, 'assimilated'), 6: (0, 2, 'assimilated')}
     assert latest(as_of='2026-01-01T12:00') == {0: (0, 1, 'partial'), 6: (0, 1, 'partial')}
+
+
+def test_catchup_record_supersedes_older_runs(tmp_path):
+    """A catch-up workflow (its own name, install0/run1) records a cycle after
+    production did, so its record wins; --as-of still finds the older one."""
+    for outcome, workflow_id, created in [
+            ('partial', 'reanl_install1/run3', '2026-01-01T00:00:00Z'),
+            ('assimilated', 'reanl_catchup/run1', '2026-02-01T00:00:00Z')]:
+        append_record(tmp_path, 'expt', make_record(
+            dt.datetime(2023, 1, 3), {(RADIANCE, 'amsua_n15'): CycleResult('assimilate', outcome)},
+            source=parse_workflow_id(workflow_id)) | {'created': created})
+    records = read_month(tmp_path, 'expt', dt.datetime(2023, 1, 1))
+    [record] = select_latest(records).values()
+    assert (record['workflow'], record['rows'][0][3]) == ('reanl_catchup', 'assimilated')
+    [record] = select_latest(records, as_of='2026-01-15T00:00').values()
+    assert (record['workflow'], record['run']) == ('reanl', 3)
+
+
+def append_cycles(archive, run):
+    for hour in range(0, 60, 6):
+        append_record(archive, 'expt', make_record(
+            dt.datetime(2023, 1, 1) + dt.timedelta(hours=hour),
+            {(RADIANCE, 'amsua_n15'): CycleResult('assimilate', 'assimilated')},
+            source=parse_workflow_id(f'flow_install0/run{run}')))
+
+
+def test_concurrent_appends_lose_nothing(tmp_path):
+    """Cycles recorded at once (cylc runahead) all land in the month file."""
+    with multiprocessing.get_context('fork').Pool(8) as pool:
+        pool.starmap(append_cycles, [(tmp_path, run) for run in range(1, 9)])
+    records = read_month(tmp_path, 'expt', dt.datetime(2023, 1, 1))
+    assert len(records) == 80
+    assert len({(record['run'], record['cycle']) for record in records}) == 80
+
+
+def test_paginate_keeps_variables_whole():
+    blocks = [('ps', 3), ('t', 5), ('q', 4), ('uv', 10)]
+    rows = [(CONVENTIONAL, f'{name} {i}') for name, count in blocks for i in range(count)]
+    parts = paginate(rows, 8)
+    assert [row for part in parts for row in part] == rows
+    assert [len(part) for part in parts] == [8, 4, 5, 5]  # ps + t, q, uv in halves
+    assert paginate(rows[:3], 8) == [rows[:3]]
+
+
+def test_wrap_breaks_wide_parts_and_cuts_long_words():
+    style = FigureStyle()
+    width = style.text_width('build_gsinfo-fix psl-develop')
+    lines = style.wrap(['May 2015', 'build_gsinfo-fix psl-develop @ 1a2b3c4', 'x' * 80],
+                       width, sep='  |  ')
+    assert lines[:3] == ['May 2015', 'build_gsinfo-fix psl-develop', '@ 1a2b3c4']
+    assert lines[3].endswith('\u2026') and len(lines) == 4
+    assert all(style.text_width(line) <= width for line in lines)
+
+
+def test_figure_text_fits_the_fonts_line_height(tmp_path, monkeypatch):
+    """Text is laid out with the line height matplotlib gives the font
+    (Inter's 1.45 em, not 1.2 em), so it neither overlaps nor leaves figures
+    of at most 9 in. cmsy10 ships with matplotlib and has 2 em lines."""
+    import matplotlib.figure
+    rows = [(CONVENTIONAL, f'ps {i}') for i in range(120)]
+    columns = [dt.datetime(2015, 5, 1, hour) for hour in (0, 6, 12, 18)]
+
+    def chart(size):
+        return Chart(FigureStyle(width=3.2, size=size, dpi=100, fonts=['cmsy10', 'DejaVu Sans']),
+                     {row: dict.fromkeys(columns, 'used') for row in rows}, columns, 'cycle',
+                     {'used': ('Intended and assimilated', '#009E73')},
+                     {row: row[1] for row in rows}, title='GSI observation usage',
+                     subtitle='reanl', info=['May 2015', 'build_gsinfo-fix @ 888fb45'],
+                     xlabel='Day of May 2015', footnote=' '.join(['A long footnote.'] * 12))
+
+    figures, savefig = [], matplotlib.figure.Figure.savefig
+
+    def save_and_measure(figure, *args, **kwargs):
+        savefig(figure, *args, **kwargs)
+        renderer = figure.canvas.get_renderer()
+        figures.append((figure, sorted(
+            [text.get_window_extent(renderer) for text in figure.texts]
+            + [axes.get_tightbbox(renderer) for axes in figure.axes], key=lambda box: -box.y1)))
+
+    monkeypatch.setattr(matplotlib.figure.Figure, 'savefig', save_and_measure)
+    assert len(chart(7).save(tmp_path, 'usage')) > 1
+    for figure, boxes in figures:  # top to bottom
+        assert figure.get_size_inches()[1] <= 9
+        assert boxes[-1].y0 >= 0 and all(box.x1 <= figure.bbox.x1 for box in boxes)
+        assert all(upper.y0 >= lower.y1 - 0.5 for upper, lower in zip(boxes, boxes[1:]))
+    with pytest.raises(FigureSizeError):
+        chart(30).save(tmp_path, 'large')
+
+
+def test_source_strip_labels_cover_their_own_cycles():
+    values, texts = source_strip({0: 'r1', 1: 'r1', 2: 'r2', 4: 'mixed', 5: 'r1'},
+                                 range(7), str, lambda text, columns: f'{text}:{columns}')
+    assert values == [1, 1, 2, 0, 3, 1, 0]
+    assert texts == {0: 'r1:2', 2: 'r2:1', 5: 'r1:1'}
 
 
 def test_streams_are_joined_oldest_first(tmp_path):

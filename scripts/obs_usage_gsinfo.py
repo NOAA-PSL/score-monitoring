@@ -25,6 +25,7 @@ import fcntl
 import hashlib
 import os
 import re
+import shutil
 import subprocess
 import time
 from functools import lru_cache
@@ -47,10 +48,20 @@ def _is_url(location):
     return '://' in str(location) or str(location).startswith('git@')
 
 
-def _cached_clone(url, cache_dir=None, refresh_minutes=None):
+def _stamp(path):
+    """Set ``path``'s mtime to this host's clock (``touch`` on NFS would use
+    the server's), as the refresh age is computed with ``time.time()``."""
+    path.touch()
+    now = time.time()
+    os.utime(path, (now, now))
+
+
+def _cached_clone(url, cache_dir=None, refresh_minutes=None, fetched_after=None):
     """Bare clone of ``url`` in a shared cache, fetched at most every
     ``refresh_minutes`` ($OBS_USAGE_GSINFO_REFRESH_MINUTES, default 60) so
-    that thousands of cycle tasks do not each contact the git server."""
+    that thousands of cycle tasks do not each contact the git server. A
+    fetch is skipped if another process fetched after ``fetched_after`` (a
+    ``time.time()``), so concurrent tasks that all need a fetch share one."""
     root = Path(cache_dir or os.environ.get(
         'OBS_USAGE_CACHE', Path.home() / '.cache' / 'score-monitoring'))
     if refresh_minutes is None:
@@ -61,20 +72,27 @@ def _cached_clone(url, cache_dir=None, refresh_minutes=None):
     with open(repo.with_suffix('.lock'), 'w') as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
         if not repo.exists():
-            subprocess.run(['git', 'clone', '--quiet', '--bare', url, str(repo)],
+            # clone next to the cache and rename, so that a killed task
+            # never leaves a partial clone behind
+            partial = repo.with_name(f'{repo.name}.{os.getpid()}.partial')
+            shutil.rmtree(partial, ignore_errors=True)
+            subprocess.run(['git', 'clone', '--quiet', '--bare', url, str(partial)],
                            check=True)
-            (repo / 'FETCH_HEAD').touch()
+            _stamp(partial / 'FETCH_HEAD')
+            partial.rename(repo)
             return repo
         stamp = repo / 'FETCH_HEAD'
-        age = time.time() - (stamp.stat().st_mtime if stamp.exists() else 0)
-        if age < refresh_minutes * 60:
+        fetched = stamp.stat().st_mtime if stamp.exists() else 0
+        if fetched_after is not None and fetched >= fetched_after:
+            return repo
+        if time.time() - fetched < refresh_minutes * 60:
             return repo
         try:
             subprocess.run(['git', '--git-dir', str(repo), 'fetch', '--quiet',
                             '--prune', url, '+refs/heads/*:refs/heads/*',
                             '+refs/tags/*:refs/tags/*'],
                            check=True, capture_output=True)
-            stamp.touch()
+            _stamp(stamp)
         except subprocess.CalledProcessError as error:
             print(f'warning: could not update {repo} from {url}; using cached '
                   f'copy ({error.stderr.decode().strip()})')
@@ -91,13 +109,15 @@ class GsinfoSource:
         self.repo = (_cached_clone(self.location, cache_dir)
                      if _is_url(location) else Path(location))
         if self.ref:
+            checked = time.time()
             try:
                 self.commit = self._resolve(self.ref)
             except ValueError:
                 if not _is_url(location):
                     raise
                 # the ref may have been pushed since the last throttled fetch
-                self.repo = _cached_clone(self.location, cache_dir, refresh_minutes=0)
+                self.repo = _cached_clone(self.location, cache_dir, refresh_minutes=0,
+                                          fetched_after=checked)
                 self.commit = self._resolve(self.ref)
             listing = _git(self.repo, 'ls-tree', '-r', '-z', self.commit)
             entries = [item.split('\t', 1) for item in listing.split('\0') if item]

@@ -11,11 +11,17 @@ gzip member, so appending never rewrites earlier records and the file stays
 a valid multi-member gzip file (``zcat`` reads it). A record is about 1 kB, so
 1988 to present is tens of MB in about 450 monthly files.
 
-Nothing is ever replaced: when a cylc run is rewound (``runN``) or a new
-workflow is installed (``..._installN``), the re-run cycles get new records
-next to the old ones. Readers pick, for each cycle, the record with the
-highest ``(install, run, created)``; earlier versions stay available for
-``--as-of`` and ``--compare`` views of how usage changed.
+Nothing is ever replaced: when a cylc run is rewound (``runN``), a new
+workflow is installed (``..._installN``) or a catch-up workflow re-records a
+period, the re-recorded cycles get new records next to the old ones. Readers
+pick, for each cycle, the most recently created record (so the latest run or
+install wins); earlier versions stay available for ``--as-of``, ``--upto``
+and ``--compare`` views of how usage changed.
+
+Appends hold an exclusive ``flock`` for a fraction of a second, so many
+cycle tasks can record at once; the archive must be on a file system with
+working ``flock`` across the hosts the tasks run on (local disk, NFSv4, or
+Lustre mounted with ``flock``).
 """
 
 import datetime as dt
@@ -173,11 +179,12 @@ def read_month(archive, experiment, month):
 def select_latest(records, as_of=None, upto=None):
     """Return ``{cycle: record}`` with the latest version of each cycle.
 
-    The latest version has the highest ``(install, run, created)``: a
-    rewound run replaces the cycles it re-ran, and a new install replaces
-    every cycle it covers, while all other cycles keep earlier records.
-    ``as_of`` ignores records created after that time; ``upto`` (a pair
-    ``(install, run)``) ignores records from later installs/runs.
+    The latest version is the most recently created record (the last one
+    appended on a tie): a rewound run or a catch-up workflow replaces the
+    cycles it re-recorded, and a new install replaces every cycle it covers,
+    while all other cycles keep earlier records. ``as_of`` ignores records
+    created after that time; ``upto`` (a pair ``(install, run)``) ignores
+    records from later installs/runs.
     """
     as_of = parse_time(as_of) if isinstance(as_of, str) else as_of
     chosen = {}
@@ -187,8 +194,7 @@ def select_latest(records, as_of=None, upto=None):
             continue
         if upto is not None and (record['install'], record['run']) > tuple(upto):
             continue
-        key = (record['install'], record['run'], created)
         cycle = dt.datetime.strptime(record['cycle'], CYCLE_FORMAT)
-        if cycle not in chosen or key > chosen[cycle][0]:
-            chosen[cycle] = (key, record)
+        if cycle not in chosen or created >= chosen[cycle][0]:
+            chosen[cycle] = (created, record)
     return {cycle: record for cycle, (_, record) in chosen.items()}

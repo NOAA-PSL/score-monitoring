@@ -14,7 +14,10 @@ Run as a cylc task after the task that downloads the gsistat log::
 The gsistat log is taken, in order, from ``--gsistat``, from a sibling task
 of the same cycle that already downloaded it (``$OBS_USAGE_GSISTAT_TASKS``,
 default store_data_gsi_obsfit,store_data_gsi_conv_obsfit), or downloaded
-from the S3 location in the environment file (and deleted afterwards).
+from the S3 location in the environment file into a private temporary
+directory (deleted afterwards). The last is how the workflow's catch-up mode
+works: each cycle only downloads and records its log, without store_data, so
+many cycles can run at once and the S3 downloads are the bottleneck.
 
 Environment (from the environment file or the shell):
     OBS_USAGE_ARCHIVE_DIR   archive root (required; outside cylc-run so
@@ -41,7 +44,10 @@ import hashlib
 import json
 import os
 import re
+import shutil
 import sys
+import tempfile
+import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -108,8 +114,12 @@ def download_gsistat(cycle, directory):
         prefix += '/' + os.getenv('GSI_FIT_FILE_KEY')
     key = cycle.strftime(f'{prefix}/{name_format}')
     path = Path(directory) / f'gsistats.{cycle:%Y%m%d%H}_control'
+    origin = f"s3://{os.getenv('STORAGE_LOCATION_BUCKET')}/{key}"
+    start = time.monotonic()
     s3.Bucket(os.getenv('STORAGE_LOCATION_BUCKET')).download_file(key, str(path))
-    return path, f"s3://{os.getenv('STORAGE_LOCATION_BUCKET')}/{key}"
+    print(f'downloaded {origin} ({path.stat().st_size / 1e6:.1f} MB) in '
+          f'{time.monotonic() - start:.1f} s')
+    return path, origin
 
 
 def score_monitoring_version(run_dir):
@@ -164,16 +174,20 @@ def main(argv=None):
     if not workflow_id:
         parser.error('set CYLC_WORKFLOW_ID or --workflow-id')
 
-    downloaded = False
+    download_dir = None
     if args.gsistat:
         path, origin = Path(args.gsistat), str(args.gsistat)
     else:
         path = sibling_gsistat(args.cycle, cycle)
         origin = str(path) if path else None
         if path is None:
-            directory = os.getenv('CYLC_TASK_WORK_DIR') or os.getcwd()
-            path, origin = download_gsistat(cycle, directory)
-            downloaded = True
+            download_dir = tempfile.mkdtemp(
+                prefix='obs_usage_', dir=os.getenv('CYLC_TASK_WORK_DIR') or os.getcwd())
+            try:
+                path, origin = download_gsistat(cycle, download_dir)
+            except BaseException:
+                shutil.rmtree(download_dir, ignore_errors=True)
+                raise
     if not path.is_file():
         raise FileNotFoundError(f'gsistat log {path} not found')
 
@@ -203,8 +217,8 @@ def main(argv=None):
             score_monitoring=score_monitoring_version(
                 args.run_dir or os.getenv('CYLC_WORKFLOW_RUN_DIR')))
     finally:
-        if downloaded:
-            path.unlink(missing_ok=True)
+        if download_dir:
+            shutil.rmtree(download_dir, ignore_errors=True)
 
     if args.dry_run:
         print(json.dumps(record, indent=1))
