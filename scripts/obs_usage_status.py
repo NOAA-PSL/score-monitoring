@@ -50,8 +50,8 @@ STATUSES = OrderedDict([
     ('unexpected', ('Not intended, but assimilated', '#D55E00')),
     ('not_used', ('Intended, but not assimilated (no obs staged, or none used)',
                   '#000000')),
-    ('partial', ('Intended, partly assimilated (an intended channel, level, '
-                 'subtype or outer iteration was not)', '#E69F00')),
+    ('partial', ('Intended, partly assimilated (an intended channel, subtype '
+                 'or outer iteration was not)', '#E69F00')),
     ('missing', ('gsistat log missing or unreadable', '#BBBBBB')),
     ('assimilated', ('Intended and assimilated', '#009E73')),
     ('monitored', ('Not intended for assimilation; staged and monitored',

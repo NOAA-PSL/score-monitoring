@@ -543,10 +543,11 @@ def make_page(args, source, stem, months, columns, column_of, labels, style, sta
              f"cycles present: {page['present']}/{page['expected']}"]
             + ([f'version: {version}'] if args.archive else [])
             + [f'created {created:%Y-%m-%d}'])
-    footnote = ('A sensor or data type is green in a cycle only if every channel, level '
-                'or staged subtype intended for assimilation was assimilated in every '
-                'outer iteration' + ('; a month is green only if every cycle is green.'
-                                     if args.resolution == 'month' else '.'))
+    footnote = ('A sensor or data type is green in a cycle only if every channel or '
+                'staged subtype intended for assimilation was assimilated in every '
+                'outer iteration (ozone sensors are checked as a whole, not per level)'
+                + ('; a month is green only if every cycle is green.'
+                   if args.resolution == 'month' else '.'))
     strips = []
     if args.archive:
         strips.append(('cylc install/run (iN/rM)', page['sources'], short_run))

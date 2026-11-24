@@ -96,7 +96,9 @@ python scripts/obs_usage_dashboard.py --gsistat-dir /path/to/gsistats \
   `~/.cache/score-monitoring`).
 * A satellite sensor is one row: if any intended channel is not assimilated
   the sensor is not green for that cycle. `--iterations` chooses which GSI
-  outer iterations must show assimilation (default: all).
+  outer iterations must show assimilation (default: all). An ozone sensor is
+  checked as a whole (its `o-g` summary must show obs assimilated in each of
+  those iterations); its levels are not checked individually.
 * Rows never intended and never used are hidden unless `--show-inactive`.
 * Outputs per page: the figures `*_radiance.png`, `*_ozone.png` and
   `*_conventional.png` (`*_conventional_p1.png`, `_p2`, ... when split), a
@@ -108,7 +110,7 @@ python scripts/obs_usage_dashboard.py --gsistat-dir /path/to/gsistats \
 |---|---|---|
 | green | assimilated | intended for assimilation and assimilated |
 | black | not used | intended for assimilation but not staged, or staged and not assimilated |
-| orange | partial | intended; only some channels, levels, subtypes or iterations assimilated |
+| orange | partial | intended; only some channels, subtypes or iterations assimilated |
 | vermillion | unexpected | not intended for assimilation but assimilated |
 | sky blue | monitored | intended for monitoring; staged and not assimilated |
 | white | unused | not intended and not used |
