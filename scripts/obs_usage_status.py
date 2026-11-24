@@ -142,13 +142,18 @@ def _not_intended(intent, staged, assimilated, mismatch):
 
 
 def summary_lookup(summary, sensor, aliases):
-    """Find a sensor's ``o-g`` summary rows: ``{iteration: (read, keep, assim)}``."""
+    """Find a sensor's ``o-g`` summary rows: ``{iteration: (read, keep, assim)}``.
+
+    Rows of every ``(sat, inst)`` that maps to the sensor (e.g. AMSR-E is read as
+    amsre_low, amsre_mid and amsre_hig) are added, so no row hides another.
+    """
     rows = {}
     for it, table in summary.items():
         for (sat, inst), counts in table.items():
             name = aliases.get((sat, inst), f'{inst}_{sat}')
             if name == sensor:
-                rows[it] = counts
+                previous = rows.get(it, (0, 0, 0))
+                rows[it] = tuple(a + b for a, b in zip(previous, counts))
     return rows
 
 

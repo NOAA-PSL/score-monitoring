@@ -151,6 +151,26 @@ def test_partial_unexpected_and_staged_not_assimilated(gsinfo_repo):
     assert status(results, RADIANCE, 'amsua_n15') == 'not_used'
 
 
+def test_summary_rows_of_one_sensor_are_added():
+    """GSI prints one ``o-g`` row per obs_input entry, so a later row with no
+    obs assimilated must not hide an earlier one: entries sharing a platform
+    and instrument (e.g. the typo ``atms n20 atms_n21``) or aliases of one
+    sensor (AMSR-E low/mid/hig)."""
+    lines = gsistat()
+    hirs = next(i for i, line in enumerate(lines) if 'rad   n19' in line)
+    lines[hirs:hirs] = [f'o-g 01 rad   {sat} {inst}  100  90  {assim}  1.0 1.0 0.2 0.2\n'
+                        for sat, inst, assim in [('n19', 'hirs4', 50), ('aqua', 'amsre_low', 40),
+                                                 ('aqua', 'amsre_mid', 0),
+                                                 ('aqua', 'amsre_hig', 0)]]
+    usage = parse_lines(lines)
+    assert usage.rad_summary[1][('n19', 'hirs4')] == (900, 790, 50)
+    aliases = {('aqua', f'amsre_{band}'): 'amsre_aqua' for band in ('low', 'mid', 'hig')}
+    results = evaluate_cycle(usage, {'hirs4_n19': {1: -1}, 'amsre_aqua': {1: -1}}, {}, {},
+                             aliases)
+    assert status(results, RADIANCE, 'hirs4_n19') == 'unexpected'
+    assert status(results, RADIANCE, 'amsre_aqua') == 'unexpected'
+
+
 def test_rollup_is_conservative():
     ok = CycleResult('assimilate', 'assimilated')
     assert aggregate_cycles([ok, ok]).status == 'assimilated'

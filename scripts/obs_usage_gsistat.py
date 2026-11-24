@@ -115,8 +115,13 @@ def parse_lines(lines, path=''):
                 it, kind, sat, inst, read, keep, assim = match.groups()
                 it = int(it)
                 table = usage.rad_summary if kind == 'rad' else usage.oz_summary
-                table.setdefault(it, {})[(sat.lower(), inst.lower())] = (
-                    int(read), int(keep), int(assim))
+                rows, key = table.setdefault(it, {}), (sat.lower(), inst.lower())
+                counts = (int(read), int(keep), int(assim))
+                # GSI prints one row per obs_input entry and entries can share a
+                # platform and instrument (duplicates, dsis typos): add, not replace
+                if key in rows:
+                    counts = tuple(a + b for a, b in zip(rows[key], counts))
+                rows[key] = counts
                 if kind == 'rad' and pending_channels:
                     channels = usage.rad_channels.setdefault(it, {})
                     for key, nobs in pending_channels:
