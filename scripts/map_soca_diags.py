@@ -165,15 +165,19 @@ class SurfaceMapper(object):
         for soca_diag_file in soca_diag_files:
             print(soca_diag_file.name)
             rootgrp = Dataset(soca_diag_file)
-            meta_grp = rootgrp.groups['MetaData']
-            ombg_grp = rootgrp.groups['ombg']
-            # obsvalue_grp = rootgrp.groups['ObsValue']
-            effectiveQC0_grp = rootgrp.groups['EffectiveQC0']
+            
+            try:
+            
+                meta_grp = rootgrp.groups['MetaData']
+                ombg_grp = rootgrp.groups['ombg']
+                # obsvalue_grp = rootgrp.groups['ObsValue']
+                effectiveQC0_grp = rootgrp.groups['EffectiveQC0']
 
-            lats = meta_grp.variables['latitude'][:]
-            lons = meta_grp.variables['longitude'][:]
-            has_depth = 'depth' in meta_grp.variables
-
+                lats = meta_grp.variables['latitude'][:]
+                lons = meta_grp.variables['longitude'][:]
+                has_depth = 'depth' in meta_grp.variables
+            except KeyError:
+                continue
             if not has_depth:
                 print(f"{soca_diag_file.name}: no depth variable → plotting surface map")
     
@@ -188,8 +192,11 @@ class SurfaceMapper(object):
                 effQC0_vals = effectiveQC0_grp[var][:]
                 ombg_arr = np.where(effQC0_vals==0, ombg_vals, np.nan)
                 
-                print(var, "RAW min/max:", np.nanmin(ombg_vals[valid_geo]), np.nanmax(ombg_vals[valid_geo]))
-                print(var, "QC min/max:", np.nanmin(ombg_arr[valid_geo]), np.nanmax(ombg_arr[valid_geo]))
+                try:
+                    print(var, "RAW min/max:", np.nanmin(ombg_vals[valid_geo]), np.nanmax(ombg_vals[valid_geo]))
+                    print(var, "QC min/max:", np.nanmin(ombg_arr[valid_geo]), np.nanmax(ombg_arr[valid_geo]))
+                except ValueError:
+                    continue
                 # relative_errs = (-1 * ombg[:]) / obsvals
 
                 # =========================================================
