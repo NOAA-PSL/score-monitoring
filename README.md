@@ -171,7 +171,7 @@ the cylc graph.
 
 ```
 [task parameters]
-	stats = file_count, gsi_obsfit
+	stats = file_count, soca_obsfit
 ```
 
 ### **5. Register relevant information in the database**
